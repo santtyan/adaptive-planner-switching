@@ -1,0 +1,1963 @@
+{
+  "metadata": {
+    "timestamp": "20251121_201354",
+    "n_scenarios": 4,
+    "n_trials_per_scenario": 30,
+    "total_trials": 360,
+    "threshold": 0.3
+  },
+  "results": {
+    "0.15": {
+      "RRT*": [
+        {
+          "success": false,
+          "time_ms": 29.310915945178103,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 35.06493021631328,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 44.59500317668319,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 15.068011461257274,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 39.05931127157275,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 60.16995578583507,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 33.39495290717556,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 29.576422924798376,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 41.87466167789836,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 36.3686358088992,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 22.1335324354657,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 59.66372001895331,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 18.976320842329795,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 25.31462869690175,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 41.61954315838021,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 57.65203138087608,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 20.428042979964605,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 46.27853056973366,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 29.735300785089166,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 34.33793527829822,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 36.13556623639397,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 49.660232664211925,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 34.87313175295252,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 42.46838623146149,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 29.914872936768386,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 45.51771363866248,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 51.28273984302001,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 30.64003998422622,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 39.315568499932795,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 26.56430326270978,
+          "trial": 29
+        }
+      ],
+      "PPO": [
+        {
+          "success": false,
+          "time_ms": 24.19945111003331,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 12.268593343599829,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 20.00627820077429,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 11.332542494287233,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 21.57463671978339,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 20.032263095236946,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 22.643835353412666,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 14.438992742987116,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 24.26370283432712,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 15.1359965894734,
+          "trial": 11
+        },
+        {
+          "success": true,
+          "time_ms": 20.38089879449704,
+          "trial": 12
+        },
+        {
+          "success": true,
+          "time_ms": 13.357947780029813,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 20.690685978242243,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 18.88927215917408,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 17.362780041392178,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 13.981778825117905,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 19.617265846944512,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 11.366103469325417,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 16.18699708344565,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 17.803207028427792,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 15.993700111791066,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 16.380029020248866,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 24.9843664240754,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 13.128812072543404,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 22.02437394007384,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 18.392593402830233,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 19.315565454043284,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 18.023538700597065,
+          "trial": 29
+        }
+      ],
+      "Adaptive": [
+        {
+          "success": false,
+          "time_ms": 27.89580268735032,
+          "selected": "RRT*",
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 46.277129199124545,
+          "selected": "RRT*",
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 34.28148887440398,
+          "selected": "RRT*",
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 16.317942794893685,
+          "selected": "RRT*",
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 18.330650683157362,
+          "selected": "RRT*",
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 26.721873974039852,
+          "selected": "RRT*",
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 23.86548306166131,
+          "selected": "RRT*",
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 43.38805568198392,
+          "selected": "RRT*",
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 27.481272281664314,
+          "selected": "RRT*",
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 47.33912045553002,
+          "selected": "RRT*",
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 40.39080402237154,
+          "selected": "RRT*",
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 42.7441042919704,
+          "selected": "RRT*",
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 27.893541097702535,
+          "selected": "RRT*",
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 45.69225856334464,
+          "selected": "RRT*",
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 47.71730165955844,
+          "selected": "RRT*",
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 16.975077015917623,
+          "selected": "RRT*",
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 25.096864727285553,
+          "selected": "RRT*",
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 52.84423010090843,
+          "selected": "RRT*",
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 30.173494603556108,
+          "selected": "RRT*",
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 40.1275641485951,
+          "selected": "RRT*",
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 59.66339816644647,
+          "selected": "RRT*",
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 53.39568821317729,
+          "selected": "RRT*",
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 41.83172718182174,
+          "selected": "RRT*",
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 36.30947174485733,
+          "selected": "RRT*",
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 41.11399393227103,
+          "selected": "RRT*",
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 16.977633216190377,
+          "selected": "RRT*",
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 28.576584740173153,
+          "selected": "RRT*",
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 36.06502956222661,
+          "selected": "RRT*",
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 31.70756368611919,
+          "selected": "RRT*",
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 41.97667713063007,
+          "selected": "RRT*",
+          "trial": 29
+        }
+      ]
+    },
+    "0.25": {
+      "RRT*": [
+        {
+          "success": false,
+          "time_ms": 43.172784390328864,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 66.84865558726791,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 41.73453439071214,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 47.82115066815766,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 38.84572716363868,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 52.813133998205515,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 40.85028548924358,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 23.09082698609245,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 55.557478781660805,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 40.59571594648298,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 62.64184676617138,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 46.53496436700709,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 31.049411760618913,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 50.98898808957554,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 52.028481494245725,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 46.52433314721816,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 50.85429739462799,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 37.96680082040087,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 59.138729832238205,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 40.58488580072397,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 38.248200710160575,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 54.48153982163994,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 46.76207294806409,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 57.26152200924327,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 50.251371857348666,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 39.679586120321346,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 43.921862567037955,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 66.71867624886929,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 63.38409892732638,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 55.10420558906071,
+          "trial": 29
+        }
+      ],
+      "PPO": [
+        {
+          "success": false,
+          "time_ms": 20.825731136032807,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 11.97349380586427,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 17.290235933672655,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 17.619863805775463,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 20.875826170356387,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 23.11630597670676,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 24.20348873309025,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 17.070546318610745,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 24.558061115658973,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 25.5305799579508,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 15.696887610193139,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 20.634680489036533,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 30.932476138511092,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 17.015846122862847,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 18.143454486883154,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 14.829183854815414,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 14.983260547664722,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 17.473883599724076,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 24.885806731134547,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 18.676249338155326,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 20.672468922342237,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 25.52352150424275,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 18.227835698340968,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 28.576665725122055,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 25.508406019712766,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 20.45200767408018,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 16.490836033236658,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 22.228451450258355,
+          "trial": 29
+        }
+      ],
+      "Adaptive": [
+        {
+          "success": false,
+          "time_ms": 80.56871531951195,
+          "selected": "RRT*",
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 74.8074266548937,
+          "selected": "RRT*",
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 33.93480056375863,
+          "selected": "RRT*",
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 33.78234930294984,
+          "selected": "RRT*",
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 47.235815706287944,
+          "selected": "RRT*",
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 37.809609882959535,
+          "selected": "RRT*",
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 46.45846601120117,
+          "selected": "RRT*",
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 46.2487353766907,
+          "selected": "RRT*",
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 61.177773446177284,
+          "selected": "RRT*",
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 31.483713366327912,
+          "selected": "RRT*",
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 21.756282684033017,
+          "selected": "RRT*",
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 81.73735867152237,
+          "selected": "RRT*",
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 51.84375114752041,
+          "selected": "RRT*",
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 24.43904949934779,
+          "selected": "RRT*",
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 35.3664672679863,
+          "selected": "RRT*",
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 53.34768011137264,
+          "selected": "RRT*",
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 36.76391920531627,
+          "selected": "RRT*",
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 66.92352987500968,
+          "selected": "RRT*",
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 50.1394674018364,
+          "selected": "RRT*",
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 63.10525592732194,
+          "selected": "RRT*",
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 33.59919149739324,
+          "selected": "RRT*",
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 25.701995605916885,
+          "selected": "RRT*",
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 50.38397363081446,
+          "selected": "RRT*",
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 35.75643950721346,
+          "selected": "RRT*",
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 42.33045333848355,
+          "selected": "RRT*",
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 55.95855820645405,
+          "selected": "RRT*",
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 41.45482300203703,
+          "selected": "RRT*",
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 48.88591315528415,
+          "selected": "RRT*",
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 50.2114363951127,
+          "selected": "RRT*",
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 49.600835717679004,
+          "selected": "RRT*",
+          "trial": 29
+        }
+      ]
+    },
+    "0.35": {
+      "RRT*": [
+        {
+          "success": false,
+          "time_ms": 29.00724604017608,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 44.2481206796191,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 41.02967808030302,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 17.60170090044933,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 34.791402900855104,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 66.43371779487893,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 45.757032890190985,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 67.5874073508407,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 69.46776988254668,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 69.4233695608273,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 73.39378747085475,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 66.19241276322013,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 39.80366403638117,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 25.396661067384038,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 72.52100330221428,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 65.99299998223421,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 35.557571857976356,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 41.96113897964122,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 60.30080060366075,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 56.874161048810194,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 74.28519133057584,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 47.092212079091205,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 30.234494091993565,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 63.01067518459073,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 61.51423522475357,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 59.550933929790155,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 64.28300330095975,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 38.51929725734451,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 52.95021767151754,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 77.079947289432,
+          "trial": 29
+        }
+      ],
+      "PPO": [
+        {
+          "success": false,
+          "time_ms": 10.779698868007898,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 13.841520279442097,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 13.635031687550494,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 17.90006180427653,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 24.618484687046855,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 13.826002690888156,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 14.850461340527946,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 25.70892781625796,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 23.726546221170686,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 22.885494374606765,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 18.647260448866838,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 20.698675515099257,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 13.938686225689686,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 22.542009021649257,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 20.337584506861454,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 11.813918701986962,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 18.87187585445426,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 20.913687434465608,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 24.233628036696462,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 16.787782348169383,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 20.27074615182548,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 16.211562188896867,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 28.61933661378095,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 15.61432386445051,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 14.617786220580943,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 19.35907661477072,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 27.674852935440004,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 17.625027652822,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 20.631389495737157,
+          "trial": 29
+        }
+      ],
+      "Adaptive": [
+        {
+          "success": false,
+          "time_ms": 13.323782008420071,
+          "selected": "PPO",
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 12.697265015052992,
+          "selected": "PPO",
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 17.713126763114424,
+          "selected": "PPO",
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 12.874726502211796,
+          "selected": "PPO",
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 27.171900549521762,
+          "selected": "PPO",
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 21.25561589322134,
+          "selected": "PPO",
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "selected": "PPO",
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 16.34726794214464,
+          "selected": "PPO",
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 23.77455733785017,
+          "selected": "PPO",
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 24.286428575547713,
+          "selected": "PPO",
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 25.510553321307444,
+          "selected": "PPO",
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 14.762910626742222,
+          "selected": "PPO",
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 11.092194150128432,
+          "selected": "PPO",
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 18.15476262223695,
+          "selected": "PPO",
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 18.83933608155899,
+          "selected": "PPO",
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 16.248042438792467,
+          "selected": "PPO",
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 11.57457030086908,
+          "selected": "PPO",
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 21.618133559883805,
+          "selected": "PPO",
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 19.74130852329376,
+          "selected": "PPO",
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 19.22771909401586,
+          "selected": "PPO",
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 23.403682426986933,
+          "selected": "PPO",
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 34.299253131389584,
+          "selected": "PPO",
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 21.360480491704948,
+          "selected": "PPO",
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 14.811281590618613,
+          "selected": "PPO",
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 26.00872707944633,
+          "selected": "PPO",
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 11.986523083280119,
+          "selected": "PPO",
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 13.432073508610008,
+          "selected": "PPO",
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 17.47829575753446,
+          "selected": "PPO",
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 18.106573930755047,
+          "selected": "PPO",
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 18.69466117944321,
+          "selected": "PPO",
+          "trial": 29
+        }
+      ]
+    },
+    "0.45": {
+      "RRT*": [
+        {
+          "success": false,
+          "time_ms": 69.33967848535718,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 32.175877677074716,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 16.66161268365918,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 69.6278207501091,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 62.374178251613294,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 68.53184592562503,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 46.228311860720794,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 74.52839910120275,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 88.76984164527275,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 74.14705668039764,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 64.54610898353776,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 88.22510269778219,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 87.52169508927756,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 75.21743125569233,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 53.220091026341976,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 44.077123407767445,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 53.34991627547838,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 70.49916644996222,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 57.83695046010676,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 69.39591421515118,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 62.584703994832424,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 58.079675693492284,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 88.10517350950133,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 32.94431076672103,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 70.52675050639893,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 98.1296595498354,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 81.73295552542834,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 54.49586952565026,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 104.71390253725667,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 76.0748399104361,
+          "trial": 29
+        }
+      ],
+      "PPO": [
+        {
+          "success": false,
+          "time_ms": 13.770623746668061,
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 21.186702291908155,
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 17.6419077438171,
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 14.346140798135623,
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 22.58828028781049,
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 11.809971359790518,
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 15.655759751170946,
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 12.70991765541983,
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 16.544070879450466,
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 23.152385104441024,
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 15.008091722775546,
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 14.23532469183059,
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 13.580014547427723,
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 19.26475033249296,
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 28.44429777143901,
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 12.123976457909363,
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 14.169378052298317,
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 11.563896202318427,
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 19.1175660768541,
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 13.11784161969762,
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 17.052081981666987,
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 13.195646570051931,
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 21.219491399896903,
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 15.572733607904889,
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 24.61191948691414,
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 14.352119412098782,
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 17.291036606860352,
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 12.176576555112092,
+          "trial": 29
+        }
+      ],
+      "Adaptive": [
+        {
+          "success": false,
+          "time_ms": 12.49312406417193,
+          "selected": "PPO",
+          "trial": 0
+        },
+        {
+          "success": false,
+          "time_ms": 17.320990465162982,
+          "selected": "PPO",
+          "trial": 1
+        },
+        {
+          "success": false,
+          "time_ms": 25.489076731470032,
+          "selected": "PPO",
+          "trial": 2
+        },
+        {
+          "success": false,
+          "time_ms": 21.118715300777872,
+          "selected": "PPO",
+          "trial": 3
+        },
+        {
+          "success": false,
+          "time_ms": 20.736010322494625,
+          "selected": "PPO",
+          "trial": 4
+        },
+        {
+          "success": false,
+          "time_ms": 15.446857078796416,
+          "selected": "PPO",
+          "trial": 5
+        },
+        {
+          "success": false,
+          "time_ms": 13.710367522176588,
+          "selected": "PPO",
+          "trial": 6
+        },
+        {
+          "success": false,
+          "time_ms": 25.1878125270397,
+          "selected": "PPO",
+          "trial": 7
+        },
+        {
+          "success": false,
+          "time_ms": 16.557742596595993,
+          "selected": "PPO",
+          "trial": 8
+        },
+        {
+          "success": false,
+          "time_ms": 14.067014056808343,
+          "selected": "PPO",
+          "trial": 9
+        },
+        {
+          "success": false,
+          "time_ms": 12.749780918622381,
+          "selected": "PPO",
+          "trial": 10
+        },
+        {
+          "success": false,
+          "time_ms": 16.09964088989116,
+          "selected": "PPO",
+          "trial": 11
+        },
+        {
+          "success": false,
+          "time_ms": 15.410760863112166,
+          "selected": "PPO",
+          "trial": 12
+        },
+        {
+          "success": false,
+          "time_ms": 13.84545540459128,
+          "selected": "PPO",
+          "trial": 13
+        },
+        {
+          "success": false,
+          "time_ms": 18.512623776436588,
+          "selected": "PPO",
+          "trial": 14
+        },
+        {
+          "success": false,
+          "time_ms": 15.880850191559954,
+          "selected": "PPO",
+          "trial": 15
+        },
+        {
+          "success": false,
+          "time_ms": 10.544283339882542,
+          "selected": "PPO",
+          "trial": 16
+        },
+        {
+          "success": false,
+          "time_ms": 18.273875240355185,
+          "selected": "PPO",
+          "trial": 17
+        },
+        {
+          "success": false,
+          "time_ms": 14.36169646267934,
+          "selected": "PPO",
+          "trial": 18
+        },
+        {
+          "success": false,
+          "time_ms": 10,
+          "selected": "PPO",
+          "trial": 19
+        },
+        {
+          "success": false,
+          "time_ms": 18.77397926025573,
+          "selected": "PPO",
+          "trial": 20
+        },
+        {
+          "success": false,
+          "time_ms": 14.797901903919211,
+          "selected": "PPO",
+          "trial": 21
+        },
+        {
+          "success": false,
+          "time_ms": 12.821053879310991,
+          "selected": "PPO",
+          "trial": 22
+        },
+        {
+          "success": false,
+          "time_ms": 17.64271927479265,
+          "selected": "PPO",
+          "trial": 23
+        },
+        {
+          "success": false,
+          "time_ms": 11.975646356669278,
+          "selected": "PPO",
+          "trial": 24
+        },
+        {
+          "success": false,
+          "time_ms": 25.83610848968672,
+          "selected": "PPO",
+          "trial": 25
+        },
+        {
+          "success": false,
+          "time_ms": 11.429334848251447,
+          "selected": "PPO",
+          "trial": 26
+        },
+        {
+          "success": false,
+          "time_ms": 14.674485297603674,
+          "selected": "PPO",
+          "trial": 27
+        },
+        {
+          "success": false,
+          "time_ms": 13.33024480932708,
+          "selected": "PPO",
+          "trial": 28
+        },
+        {
+          "success": false,
+          "time_ms": 13.88887371013901,
+          "selected": "PPO",
+          "trial": 29
+        }
+      ]
+    }
+  }
+}
