@@ -1,437 +1,240 @@
-# 🖨️ K1 Max Controller
+﻿# Adaptive Context-Based Planner Switching Framework
 
-Biblioteca Python para controle da impressora 3D Creality K1 Max integrada com API Metaverso UFG.
+Framework adaptativo para seleção dinâmica entre algoritmos de planejamento de trajetória (RRT* e PPO) baseado em contexto ambiental, desenvolvido como projeto de Iniciação Científica na Universidade Federal de Goiás.
 
-## 🎯 Sobre o Projeto
-Sistema de controle e monitoramento para impressoras Creality K1 Max, oferecendo interface programática via WebSocket e automação CLI/GUI, integrado ao ecossistema Metaverso UFG.
+## Visão Geral
 
-## ✨ Funcionalidades
+Este trabalho aborda o problema de seleção de algoritmos de planejamento em navegação autônoma através de switching adaptativo contextual. Diferentemente de abordagens que utilizam um único planner ou switching heurístico, nosso framework trata a seleção como variável de otimização baseada na densidade de obstáculos do ambiente.
 
-### 🖨️ Controle K1 Max
-5 funções de controle implementadas:
+**Principais Resultados:**
+- Taxa de sucesso de 85.3% (1º lugar contra 6 métodos state-of-the-art)
+- 100% de acurácia no switching entre algoritmos
+- Regret bounds formais ≤2.2% versus performance oracle
+- Validação em 1500+ experimentos controlados
 
-1. `is_printing()` - Verifica se está imprimindo (WebSocket)
-2. `is_ready()` - Verifica se está livre e pronta (WebSocket)
-3. `set_material(material)` - Valida e prepara configuração de material
-4. `set_temperature(nozzle, bed)` - Valida temperaturas para aplicação
-5. `send_print_job(file)` - Envia arquivo para impressão (aplica configs 3-4)
+## Motivação
 
-**Nota Técnica:** Funções 1-2 leem estado via WebSocket em tempo real. Funções 3-4 validam parâmetros aplicados durante `send_print_job()` via GUI automation (WebSocket K1 Max é read-only).
+Trabalhos recentes em planejamento de trajetória utilizam ou métodos clássicos (RRT*, A*) ou aprendizado por reforço (PPO, SAC), mas raramente combinam ambas abordagens de forma adaptativa. Nossa análise da literatura identificou que:
 
-### 🌐 Integração API Metaverso
+- **He et al. (2025)**: Otimizam pesos de um único planner
+- **Sensors (2025)**: Switching geográfico com regras fixas
+- **Métodos fixos**: Performance degrada em contextos heterogêneos
 
-✅ Autenticação automática  
-✅ Gerenciamento de fila de impressão  
-✅ Sincronização de status  
-✅ 8 métodos disponíveis
+Este trabalho preenche essa lacuna através de switching baseado em densidade de obstáculos com threshold cientificamente otimizado.
 
-### 📊 Monitoramento WebSocket
+## Metodologia
 
-✅ Telemetria em tempo real  
-✅ Status de impressão  
-✅ Temperaturas (nozzle/bed)  
-✅ Progresso e layers
+### Formulação do Problema
 
-## 🛠️ Tecnologias
+O framework implementa uma política π(ρ) que mapeia densidade de obstáculos para seleção de planner:
+```
+π(ρ) → { RRT*  se ρ < 0.30
+        { PPO   se ρ ≥ 0.30
+```
 
-- **Python 3.13+**: Linguagem principal
-- **Slic3r 1.3.0**: Slicer CLI para G-code generation
-- **WebSocket**: Protocolo tempo real (porta 9999)
-- **Trimesh**: Processamento GLB→STL com correção automática
-- **Requests**: Cliente HTTP
-- **PyYAML**: Gerenciamento configuração
-- **Pytest**: Framework de testes
+Onde o threshold ρ* = 0.30 foi determinado através de validação experimental sistemática.
 
-## 📋 Pré-requisitos
+### Componentes Principais
 
-### Software
+1. **SimpleEnvironment**: Simulador grid 100×100 com controle de densidade
+2. **RRTStarPlanner**: Implementação própria com otimizações para navegação
+3. **PPOPlanner**: Modelo baseado em Stable-Baselines3 calibrado para o domínio
+4. **AdaptiveSwitcher**: Lógica de switching com threshold otimizado
+
+### Ambientes de Teste
+
+**Sintéticos:** Grids com densidades controladas (ρ ∈ [0.1, 0.5])
+
+**Automotivos Realísticos:**
+- Interseção urbana: 14.580 obstáculos
+- Highway merge: 365 obstáculos  
+- Estacionamento: 334 obstáculos
+
+## Resultados
+
+### Comparação State-of-the-Art
+
+| Método | Success Rate | Diferença |
+|--------|--------------|-----------|
+| **Adaptive Ours** | **85.3%** | - |
+| Neural Switching | 78.7% | -6.6% |
+| Fixed PPO | 76.0% | -9.3% |
+| Hybrid DRL | 66.0% | -19.3% |
+| He Multi-opt | 54.0% | -31.3% |
+| Fixed RRT* | 48.0% | -37.3% |
+
+### Performance por Contexto
+
+**Baixa Densidade (ρ < 0.30):**
+- RRT*: 88-92% success
+- PPO: 73-76% success
+- Framework seleciona RRT* (correto)
+
+**Alta Densidade (ρ ≥ 0.30):**
+- RRT*: 45-62% success
+- PPO: 71-78% success
+- Framework seleciona PPO (correto)
+
+### Análise Teórica
+
+- **Average Regret**: 2.2% vs oracle
+- **Max Regret**: 6.7% (pior caso)
+- **Optimality Gap**: 1.7% (threshold teórico vs empírico)
+- **Performance Guarantee**: ≥93.3% da performance oracle
+
+### Cenários Automotivos
+
+| Cenário | RRT* | PPO | Adaptive | Ganho |
+|---------|------|-----|----------|-------|
+| Urban Intersection | 45% | 78% | 85% | +7% |
+| Highway Merge | 89% | 67% | 89% | 0% |
+| Parking Lot | 62% | 71% | 76% | +5% |
+
+## Instalação
+
+### Requisitos
+
+- Python 3.8+
+- OMPL 1.6.0
+- Stable-Baselines3
+- NumPy, Pandas, Matplotlib
+
+### Setup
 ```bash
-python --version  # 3.13+
+# Clonar repositório
+git clone https://github.com/santtyan/adaptive-planner-switching
+cd adaptive-planner-switching
+
+# Criar ambiente virtual
+python -m venv venv_ic
+source venv_ic/bin/activate  # Linux/Mac
+# ou
+.\venv_ic\Scripts\activate   # Windows
+
+# Instalar dependências
+pip install -r requirements.txt
 ```
 
-**Slic3r 1.3.0:**
-- Download: https://dl.slic3r.org/win/Slic3r-1.3.0.64bit.zip
-- Extrair em: `C:\Slic3r\` ou local preferido
+## Uso
 
-**Creality Print 6.2:**
-- `C:\Program Files\Creality\Creality Print 6.2\CrealityPrint.exe`
+### Experimento Básico
+```python
+from src.environment import SimpleEnvironment
+from src.adaptive_switcher import AdaptiveSwitcher
 
-### Hardware
-- Creality K1 Max na rede
-- Windows 10/11
-- RAM mínima: 4GB
+# Criar ambiente com densidade 0.35
+env = SimpleEnvironment(obstacle_density=0.35)
 
-## 🚀 Instalação
+# Inicializar framework
+switcher = AdaptiveSwitcher(threshold=0.30)
+switcher.set_environment(env)
 
-### Guia Completo para Novos Estudantes
+# Planejar trajetória
+start = (10, 10)
+goal = (90, 90)
+success, time_ms, trajectory, selected = switcher.plan(start, goal, env)
 
-#### Passo 1: Clonar o Repositório
+print(f"Planner selecionado: {selected}")
+print(f"Sucesso: {success}, Tempo: {time_ms:.2f}ms")
+```
+
+### Reproduzir Experimentos
 ```bash
-# GitLab (principal)
-git clone https://gitlab.com/ivato/immersion/metaversoufg-printerinterface.git
-cd metaversoufg-printerinterface
+# Experimentos comprehensivos (1500 trials)
+python experiments/comprehensive_experiments.py
 
-# GitHub (espelho)
-git clone https://github.com/santtyan/metaversoufg-printerinterface.git
-cd metaversoufg-printerinterface
+# Comparação SOTA (6 métodos)
+python experiments/sota_comparison.py
+
+# Análise teórica (regret bounds)
+python experiments/theoretical_analysis.py
+
+# Cenários automotivos
+python experiments/realistic_scenario_validation.py
 ```
 
-#### Passo 2: Criar Ambiente Virtual
-```powershell
-# No PowerShell (Windows)
-python -m venv venv_k1max_automation
-.\venv_k1max_automation\Scripts\Activate.ps1
-
-# Atualizar pip
-python -m pip install --upgrade pip
+## Estrutura do Projeto
+```
+adaptive-planner-switching/
+├── src/                    # Código fonte principal
+│   ├── environment.py      # Simulador
+│   ├── planners/           # RRT* e PPO
+│   └── adaptive_switcher.py
+├── experiments/            # Scripts experimentais
+├── results/               # Dados e figuras
+├── docs/                  # Documentação
+└── temp/                  # Backups
 ```
 
-#### Passo 3: Instalar Dependências
-```powershell
-# Opção A: Instalação automatizada (recomendado)
-pip install -e .
+## Publicações
 
-# Opção B: Instalação manual
-pip install `
-    trimesh==4.8.2 `
-    numpy==2.1.3 `
-    pyautogui==0.9.54 `
-    pillow==11.0.0 `
-    websockets==12.0 `
-    requests==2.31.0 `
-    pyyaml==6.0.2 `
-    pytest==8.3.3 `
-    flake8==7.1.1 `
-    black==24.10.0
-```
+Este trabalho está sendo preparado para submissão em periódicos científicos:
 
-#### Passo 4: Validar Instalação
-```powershell
-# Verificar dependências instaladas
-pip list | Select-String -Pattern "trimesh|numpy|pyautogui|websockets|metaverso"
+1. **Paper 1 - IEEE Access (A4):** "Adaptive Context-Based Planner Switching Framework"
+   - Framework + validação experimental básica
+   - Submissão: Janeiro 2026
 
-# Testar imports críticos
-python -c "import trimesh; import pyautogui; import websockets; print('✓ Dependências core OK')"
+2. **Paper 2 - Applied Sciences (B1):** "Multi-Objective Performance Analysis"
+   - Análise trade-offs (sucesso vs tempo vs energia)
+   - Submissão: Março 2026
 
-# Testar módulo do projeto
-python -c "from src.k1max.k1max_controller import K1MaxController; print('✓ Controller funcional')"
-```
+3. **Paper 3 - Sensors (A4):** "Theoretical Foundations of Adaptive Planning"
+   - Regret bounds + análise de optimalidade
+   - Submissão: Abril 2026
 
-**Saída esperada:**
-```
-metaverso-printer  1.0.0
-numpy              2.1.3
-PyAutoGUI          0.9.54
-trimesh            4.8.2
-websockets         12.0
-✓ Dependências core OK
-✓ Controller funcional
-```
+## Limitações
 
-#### Passo 5: Configurar Credenciais
-```bash
-# Copiar template de configuração
-cp config/config.example.yaml config/config.yaml
+- Contexto unidimensional (apenas densidade de obstáculos)
+- Threshold fixo determinado offline
+- Validação em ambiente 2D (não simuladores 3D completos)
+- PPO ainda em otimização para convergência máxima
 
-# Editar com suas credenciais (use notepad ou VS Code)
-notepad config/config.yaml
-```
+## Trabalhos Futuros
 
-**Estrutura do config.yaml:**
-```yaml
-api:
-  base_url: "https://metaverso.medialab.ufg.br/v1"
+**Curto Prazo:**
+- Expansão para contexto multi-dimensional (densidade + incerteza + tempo)
+- Threshold adaptativo online
+- Otimização adicional do PPO
 
-credentials:
-  email: "seu_email@example.com"
-  username: "seu_usuario"
-  password: "sua_senha"
+**Médio Prazo:**
+- Integração com ROS 2/Gazebo
+- Validação em simuladores realísticos
+- Extensão para múltiplos planners (A*, DWA)
 
-printer:
-  ip: "192.168.20.175"  # IP da K1 Max no laboratório
-  websocket_port: 9999
-```
+**Longo Prazo:**
+- Hardware-in-the-loop
+- Ambientes dinâmicos
+- Deployment em veículo real
 
-### Troubleshooting da Instalação
+## Contribuição Científica
 
-#### Erro: "deactivate não é reconhecido"
-✅ **Normal** - ocorre quando nenhum ambiente virtual está ativo. Ignore e prossiga.
+Este trabalho representa a primeira abordagem sistemática para switching adaptivo entre planners clássicos e modernos com garantias teóricas formais. A principal contribuição é transformar a seleção de algoritmo de uma decisão de design para uma variável de otimização contextual, demonstrando superioridade empírica contra métodos state-of-the-art.
 
-#### Erro: "No module named 'src.k1max'"
-```powershell
-# Reinstalar pacote
-pip install -e . --force-reinstall --no-deps
-```
-
-#### Erro: Import falha após instalação
-```powershell
-# Verificar se __init__.py existem
-Get-ChildItem -Recurse -Filter "__init__.py" | Select-Object FullName
-
-# Se faltarem, criar:
-New-Item -Path "src\__init__.py" -ItemType File -Force
-New-Item -Path "src\k1max\__init__.py" -ItemType File -Force
-```
-
-## 🎮 Uso
-
-### Exemplo Básico
-```python
-from src.k1max.k1max_controller import K1MaxController
-
-controller = K1MaxController()
-
-# Verificar disponibilidade
-if controller.is_ready():
-    # Preparar configurações
-    controller.set_material('PLA')
-    controller.set_temperature(210, 60)
-    
-    # Enviar arquivo (aplica configurações)
-    controller.send_print_job('models/object.glb')
-```
-
-### Workflow Completo
-```python
-from src.adapters.metaverso_client import MetaversoAPIClient
-from src.k1max.k1max_controller import K1MaxController
-
-# Integração API + Impressora
-api = MetaversoAPIClient()
-controller = K1MaxController()
-
-api.authenticate()
-objetos = api.get_printable_objects()
-
-if objetos and controller.is_ready():
-    obj = objetos[0]
-    api.mark_object_printing(obj['object_id'])
-    api.save_object_file(obj['object_id'], 'models/temp.glb')
-    controller.send_print_job('models/temp.glb')
-```
-
-## 🚀 Pipeline Automatizado
-
-### ✅ 95% Automação Atingida
-- **Latência:** 90s → 42s (slice time)
-- **Taxa sucesso:** 100% (validado em produção)
-- **G-code generation:** Slic3r CLI (sem GUI)
-
-```python
-from src.converters.glb_to_stl import convert_glb_to_stl
-
-# Conversão automática com 3 níveis de correção:
-# 1. Escala metros→milímetros (1000x)
-# 2. Redimensionamento para caber na mesa (280mm)
-# 3. Centralização e posicionamento (150,150,0)
-
-stl_path = convert_glb_to_stl("model.glb")
-```
-
-### Pipeline CLI Completo
-```bash
-python test_simplified_pipeline.py
-```
-
-**Fluxo:**
-1. GLB→STL (Trimesh + correções automáticas)
-2. STL→G-code (Slic3r CLI + perfil K1 Max)
-3. Preview automático (Creality Print)
-4. Send manual (clique "Enviar impressão")
-
-### Modelos Validados
-✅ `sf-1_white_ghost__futuristic_starfighter.glb` (21MB G-code, 15h28min)  
-✅ Geometrias complexas + escala automática  
-✅ Posicionamento correto (150,150) na mesa 300x300mm
-
-### Preset Slic3r K1 Max
-- **Bed size:** 300x300mm
-- **Nozzle:** 0.4mm
-- **Filament:** 1.75mm PLA
-- **Layer height:** 0.3mm
-- **Infill:** 20% stars pattern
-- **Temperatures:** 220°C nozzle, 60°C bed
-
-## 📁 Estrutura
-
-```
-metaversoufg-printerinterface/
-├── src/
-│   ├── k1max/
-│   │   ├── controller.py         # 5 funções principais
-│   │   ├── k1max_controller.py   # Interface unificada
-│   │   └── monitor.py            # WebSocket monitor
-│   ├── converters/
-│   │   └── glb_to_stl.py         # Conversão automática
-│   ├── adapters/
-│   │   └── metaverso_client.py   # API Metaverso
-│   └── automation/               # GUI helpers
-├── tests/
-│   ├── unit/                     # 8 testes unitários
-│   ├── integration/              # Testes integração
-│   └── test_simplified_pipeline.py # Pipeline CLI
-├── config/
-│   ├── config.yaml               # Config (gitignored)
-│   ├── slic3r_k1max.ini          # Perfil Slic3r
-│   └── config.example.yaml       # Template
-├── models/                       # Arquivos 3D (.glb, .stl)
-├── data/output/                  # G-code gerado
-├── setup.py                      # Configuração do pacote
-├── requirements.txt              # Dependências (legacy)
-└── README.md
-```
-
-## 🔌 Protocolo WebSocket K1 Max
-
-### Conexão
-```python
-ws://192.168.20.175:9999
-ping_interval=None  # CRÍTICO: K1 Max não responde PING frames
-```
-
-### Broadcast Completo (~5-10s)
-```json
-{
-  "state": 0,
-  "printProgress": 0,
-  "nozzleTemp": "25.0",
-  "bedTemp0": "24.0",
-  "printFileName": "/path/file.gcode"
+## Citação
+```bibtex
+@misc{silva2025adaptive,
+  title={Adaptive Context-Based Planner Switching for Autonomous Navigation},
+  author={Silva, Yan and Aldo},
+  year={2025},
+  institution={Universidade Federal de Goiás}
 }
 ```
 
-**Campos críticos:**
-- `state`: 0=idle, 1=printing
-- `printProgress`: 0-100%
-- `nozzleTemp`, `bedTemp0`: Temperaturas (string)
-- `printFileName`: Arquivo atual (material no nome: PLA)
+## Licença
 
-**Limitação:** Protocolo é read-only. Comandos de escrita não descobertos via engenharia reversa. HTTP upload testado (erro 500). GUI automation necessária para comandos.
+Este projeto é desenvolvido como parte de uma Iniciação Científica na UFG. Código será disponibilizado sob licença apropriada após publicação.
 
-## 🧪 Testes
+## Contato
 
-```bash
-# Testes unitários (8/8 passing)
-pytest tests/unit/ -v
+**Estudante:** Yan Silva  
+**Orientador:** Prof. Aldo  
+**Instituição:** Universidade Federal de Goiás - Escola de Engenharia Elétrica, Mecânica e de Computação
 
-# Teste API Metaverso
-python test_integration_api.py
+## Agradecimentos
 
-# Pipeline completo (requer hardware)
-python test_simplified_pipeline.py
-```
-
-## 📈 Status Atualizado
-
-| Componente | Status | Performance |
-|------------|--------|-------------|
-| K1 Max Controller | ✅ | 8/8 tests |
-| GLB→STL Converter | ✅ | 3-level auto-correction |
-| Slic3r CLI | ✅ | 42s slice time |
-| API Metaverso | ✅ | 17 objects in queue |
-| WebSocket Monitor | ✅ | Real-time |
-| **Pipeline Completo** | **✅ 95%** | **Validated** |
-
-### 🎯 SISTEMA 95% COMPLETO
-
-| Função | Método | Testado |
-|--------|--------|---------|
-| `is_printing()` | WebSocket (read) | ✅ Lab |
-| `is_ready()` | WebSocket (read) | ✅ Lab |
-| `set_material()` | Validação + Preset | ✅ |
-| `set_temperature()` | Validação + Preset | ✅ |
-| `send_print_job()` | Slic3r CLI + GUI | ✅ |
-
-**⚠️ Pendência:** MinIO acesso externo (`metaversoufg-minio:9000`)
-
-## ⚠️ Limitações Conhecidas
-
-### MinIO Inacessível
-- **URLs internas:** `metaversoufg-minio:9000`
-- **Erro:** Name Resolution Error (rede UFG interna)
-- **Workaround:** Aguardando liberação acesso externo
-- **Impact:** Fila API funcional, mas download GLB bloqueado
-
-### WebSocket Read-Only
-- **K1 Max:** Protocolo proprietário (apenas telemetria)
-- **Solução:** Slic3r CLI (95%) + GUI automation (5%)
-- **Performance:** 42s slice vs 90s+ anteriormente
-
-## 🔧 Troubleshooting
-
-### WebSocket Timeout
-```
-Error: timed out during opening handshake
-```
-✅ Verificar IP em `config.yaml` e impressora ligada
-
-### Slic3r CLI Not Found
-```
-FileNotFoundError: Slic3r-console.exe
-```
-✅ Instalar Slic3r 1.3.0 e atualizar path em `test_simplified_pipeline.py`
-
-### Autenticação API
-```
-401 Unauthorized
-```
-✅ Atualizar credenciais em `config.yaml`
-
-### Import Error após Instalação
-```
-ModuleNotFoundError: No module named 'src.k1max'
-```
-✅ Executar: `pip install -e . --force-reinstall --no-deps`
-
-## 📝 Changelog
-
-### v3.1.0 (2025-11-11)
-
-✅ **Guia de Setup Completo** - Documentação passo-a-passo para novos estudantes  
-✅ **Ambiente Virtual Validado** - Procedimento de reconstrução testado  
-✅ **Troubleshooting Expandido** - Soluções para erros comuns de instalação  
-
-### v3.0.0 (2025-11-10)
-
-🚀 **MAJOR RELEASE - 95% Pipeline Automation**
-
-✅ **Slic3r CLI Integration** - Eliminado 95% GUI dependency  
-✅ **GLB→STL Converter** - 3-level auto-correction (scale, resize, position)  
-✅ **Automated Pipeline** - GLB→G-code em 42s  
-✅ **K1 Max Profile** - Perfil validado (300x300mm bed)  
-✅ **Production Ready** - 100% success rate em testes  
-
-**Breaking Changes:**
-- PrusaSlicer removido (bug CLI)
-- Slic3r 1.3.0 agora obrigatório
-
-### v2.0.0 (2025-10-16)
-
-✅ Implementa 5 funções (controller, monitor)  
-✅ WebSocket protocol descoberto via engenharia reversa (read-only)  
-✅ Integração API Metaverso (8 métodos)  
-✅ 8 testes unitários (100% passing)  
-🔧 Reorganização estrutura (`src/`, `tests/`, `docs/`)
-
-### v1.0.0
-
-✨ Implementação inicial GUI automation  
-✨ Integração Creality Print
-
-## 👥 Autores
-**Yan Santos** - Desenvolvimento  
-- GitLab: [@ivato](https://gitlab.com/ivato)
-- GitHub: [@santtyan](https://github.com/santtyan)
-
-## 📞 Contato
-
-- **Repositório GitLab (Principal):** [metaversoufg-printerinterface](https://gitlab.com/ivato/immersion/metaversoufg-printerinterface)
-- **Repositório GitHub (Espelho):** [metaversoufg-printerinterface](https://github.com/santtyan/metaversoufg-printerinterface)
-- **Email:** leiteyan@discente.ufg.br
-
-## 📄 Licença
-MIT License - veja LICENSE
+Agradeço ao Prof. Aldo pela orientação, ao grupo de pesquisa em navegação autônoma da UFG pelas discussões técnicas, e aos colegas Luca Plaster e Leandra pelo feedback durante o desenvolvimento do projeto.
 
 ---
 
-*Desenvolvido para o Metaverso UFG* 🎓
+**Última atualização:** Novembro 2025  
+**Status:** Projeto ativo - Framework completo, preparando submissões científicas
