@@ -47,17 +47,17 @@ Métodos clássicos (RRT*, A*) ou modernos (PPO, SAC) são usados isoladamente. 
 
 ## Instalação
 
-\\\ash
+```bash
 git clone https://github.com/santtyan/adaptive-planner-switching
 cd adaptive-planner-switching
 python -m venv venv_ic
 .\venv_ic\Scripts\activate  # Windows
 pip install -r requirements.txt
-\\\
+```
 
 ## Uso Rápido
 
-\\\python
+```python
 from src.environment import SimpleEnvironment
 from src.adaptive_switcher import AdaptiveSwitcher
 
@@ -67,20 +67,20 @@ switcher.set_environment(env)
 
 success, time_ms, trajectory, selected = switcher.plan((10,10), (90,90), env)
 print(f"{selected}: {success} em {time_ms:.2f}ms")
-\\\
+```
 
 ## Experimentos
 
-\\\ash
+```bash
 python experiments/comprehensive_experiments.py  # 1500 trials
 python experiments/sota_comparison.py           # 6 métodos
 python experiments/theoretical_analysis.py      # regret bounds
 python experiments/realistic_scenario_validation.py  # cenários automotivos
-\\\
+```
 
 ## Estrutura
 
-\\\
+```
 src/                # Código core
 ├── environment.py
 ├── adaptive_switcher.py
@@ -88,7 +88,7 @@ src/                # Código core
 experiments/       # 10 scripts validação
 results/          # 8 CSVs + figuras
 docs/             # Relatórios
-\\\
+```
 
 ## Publicações Planejadas
 
@@ -114,14 +114,14 @@ Primeira abordagem sistemática para switching adaptivo com garantias formais en
 
 ## Citação
 
-\\\ibtex
+```bibtex
 @misc{silva2025adaptive,
   title={Adaptive Context-Based Planner Switching for Autonomous Navigation},
   author={Silva, Yan and Aldo},
   year={2025},
   institution={Universidade Federal de Goiás}
 }
-\\\
+```
 
 ---
 
