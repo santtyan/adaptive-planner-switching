@@ -1,206 +1,116 @@
 ﻿# Adaptive Context-Based Planner Switching Framework
 
-Framework adaptativo para seleção dinâmica entre algoritmos de planejamento de trajetória (RRT* e PPO) baseado em contexto ambiental, desenvolvido como projeto de Iniciação Científica na Universidade Federal de Goiás.
+Framework adaptativo para seleção dinâmica entre RRT* e PPO baseado em densidade de obstáculos. Projeto de Iniciação Científica - UFG.
 
-## Visão Geral
+## Resultados Principais
 
-Este trabalho aborda o problema de seleção de algoritmos de planejamento em navegação autônoma através de switching adaptativo contextual. Diferentemente de abordagens que utilizam um único planner ou switching heurístico, nosso framework trata a seleção como variável de otimização baseada na densidade de obstáculos do ambiente.
+- **85.3% success rate** (#1 vs 6 métodos SOTA)
+- **100% switching accuracy**
+- **Regret bounds ≤2.2%** vs oracle
+- **1500+ experimentos** validados
 
-**Principais Resultados:**
-- Taxa de sucesso de 85.3% (1º lugar contra 6 métodos state-of-the-art)
-- 100% de acurácia no switching entre algoritmos
-- Regret bounds formais ≤2.2% versus performance oracle
-- Validação em 1500+ experimentos controlados
+## Problema
 
-## Motivação
+Métodos clássicos (RRT*, A*) ou modernos (PPO, SAC) são usados isoladamente. Trabalhos recentes (He et al. 2025, Sensors 2025) usam switching heurístico ou pesos fixos. Nossa solução: **switching adaptativo baseado em densidade de obstáculos** com threshold otimizado.
 
-Trabalhos recentes em planejamento de trajetória utilizam ou métodos clássicos (RRT*, A*) ou aprendizado por reforço (PPO, SAC), mas raramente combinam ambas abordagens de forma adaptativa. Nossa análise da literatura identificou que:
+## Método
 
-- **He et al. (2025)**: Otimizam pesos de um único planner
-- **Sensors (2025)**: Switching geográfico com regras fixas
-- **Métodos fixos**: Performance degrada em contextos heterogêneos
+**Política de seleção:**
+- RRT* quando densidade < 0.30 (ambientes abertos)
+- PPO quando densidade ≥ 0.30 (ambientes densos)
 
-Este trabalho preenche essa lacuna através de switching baseado em densidade de obstáculos com threshold cientificamente otimizado.
+**Componentes:**
+- SimpleEnvironment (grid 100×100)
+- RRTStarPlanner (implementação própria)
+- PPOPlanner (Stable-Baselines3)
+- AdaptiveSwitcher (threshold 0.30)
 
-## Metodologia
+## Resultados vs SOTA
 
-### Formulação do Problema
+| Método | Success Rate |
+|--------|--------------|
+| **Adaptive (ours)** | **85.3%** |
+| Neural Switching | 78.7% |
+| Fixed PPO | 76.0% |
+| Hybrid DRL | 66.0% |
+| He Multi-opt | 54.0% |
+| Fixed RRT* | 48.0% |
 
-O framework implementa uma política que mapeia densidade de obstáculos para seleção de planner:
+**Performance por densidade:**
+- Baixa (ρ<0.30): RRT* 88-92%, PPO 73-76% → seleciona RRT*
+- Alta (ρ≥0.30): RRT* 45-62%, PPO 71-78% → seleciona PPO
 
-- RRT* quando densidade < 0.30
-- PPO quando densidade >= 0.30
-
-O threshold 0.30 foi determinado através de validação experimental sistemática.
-
-### Componentes Principais
-
-1. **SimpleEnvironment**: Simulador grid 100×100 com controle de densidade
-2. **RRTStarPlanner**: Implementação própria com otimizações para navegação
-3. **PPOPlanner**: Modelo baseado em Stable-Baselines3 calibrado para o domínio
-4. **AdaptiveSwitcher**: Lógica de switching com threshold otimizado
-
-### Ambientes de Teste
-
-**Sintéticos:** Grids com densidades controladas (0.1 a 0.5)
-
-**Automotivos Realísticos:**
-- Interseção urbana: 14.580 obstáculos
-- Highway merge: 365 obstáculos  
-- Estacionamento: 334 obstáculos
-
-## Resultados
-
-### Comparação State-of-the-Art
-
-| Método | Success Rate | Diferença |
-|--------|--------------|-----------|
-| **Adaptive Ours** | **85.3%** | - |
-| Neural Switching | 78.7% | -6.6% |
-| Fixed PPO | 76.0% | -9.3% |
-| Hybrid DRL | 66.0% | -19.3% |
-| He Multi-opt | 54.0% | -31.3% |
-| Fixed RRT* | 48.0% | -37.3% |
-
-### Performance por Contexto
-
-**Baixa Densidade (< 0.30):**
-- RRT*: 88-92% success
-- PPO: 73-76% success
-- Framework seleciona RRT* (correto)
-
-**Alta Densidade (>= 0.30):**
-- RRT*: 45-62% success
-- PPO: 71-78% success
-- Framework seleciona PPO (correto)
-
-### Análise Teórica
-
-- **Average Regret**: 2.2% vs oracle
-- **Max Regret**: 6.7% (pior caso)
-- **Optimality Gap**: 1.7% (threshold teórico vs empírico)
-- **Performance Guarantee**: >=93.3% da performance oracle
-
-### Cenários Automotivos
-
-| Cenário | RRT* | PPO | Adaptive | Ganho |
-|---------|------|-----|----------|-------|
-| Urban Intersection | 45% | 78% | 85% | +7% |
-| Highway Merge | 89% | 67% | 89% | 0% |
-| Parking Lot | 62% | 71% | 76% | +5% |
+**Garantias teóricas:**
+- Average regret: 2.2% vs oracle
+- Optimality gap: 1.7%
+- Performance: ≥93.3% do oracle
 
 ## Instalação
 
-### Requisitos
-
-- Python 3.8+
-- OMPL 1.6.0
-- Stable-Baselines3
-- NumPy, Pandas, Matplotlib
-
-### Setup
-
 \\\ash
-# Clonar repositório
 git clone https://github.com/santtyan/adaptive-planner-switching
 cd adaptive-planner-switching
-
-# Criar ambiente virtual
 python -m venv venv_ic
-.\venv_ic\Scripts\activate   # Windows
-source venv_ic/bin/activate  # Linux/Mac
-
-# Instalar dependências
+.\venv_ic\Scripts\activate  # Windows
 pip install -r requirements.txt
 \\\
 
-## Uso
-
-### Experimento Básico
+## Uso Rápido
 
 \\\python
 from src.environment import SimpleEnvironment
 from src.adaptive_switcher import AdaptiveSwitcher
 
-# Criar ambiente com densidade 0.35
 env = SimpleEnvironment(obstacle_density=0.35)
-
-# Inicializar framework
 switcher = AdaptiveSwitcher(threshold=0.30)
 switcher.set_environment(env)
 
-# Planejar trajetória
-start = (10, 10)
-goal = (90, 90)
-success, time_ms, trajectory, selected = switcher.plan(start, goal, env)
-
-print(f"Planner selecionado: {selected}")
-print(f"Sucesso: {success}, Tempo: {time_ms:.2f}ms")
+success, time_ms, trajectory, selected = switcher.plan((10,10), (90,90), env)
+print(f"{selected}: {success} em {time_ms:.2f}ms")
 \\\
 
-### Reproduzir Experimentos
+## Experimentos
 
 \\\ash
-# Experimentos comprehensivos (1500 trials)
-python experiments/comprehensive_experiments.py
-
-# Comparação SOTA (6 métodos)
-python experiments/sota_comparison.py
-
-# Análise teórica (regret bounds)
-python experiments/theoretical_analysis.py
-
-# Cenários automotivos
-python experiments/realistic_scenario_validation.py
+python experiments/comprehensive_experiments.py  # 1500 trials
+python experiments/sota_comparison.py           # 6 métodos
+python experiments/theoretical_analysis.py      # regret bounds
+python experiments/realistic_scenario_validation.py  # cenários automotivos
 \\\
 
-## Estrutura do Projeto
+## Estrutura
 
 \\\
-adaptive-planner-switching/
-├── src/                    # Código fonte principal
-│   ├── environment.py      # Simulador
-│   ├── planners/           # RRT* e PPO
-│   └── adaptive_switcher.py
-├── experiments/            # Scripts experimentais
-├── results/               # Dados e figuras
-├── docs/                  # Documentação
-└── temp/                  # Backups
+src/                # Código core
+├── environment.py
+├── adaptive_switcher.py
+└── planners/      # RRT* + PPO
+experiments/       # 10 scripts validação
+results/          # 8 CSVs + figuras
+docs/             # Relatórios
 \\\
 
-## Publicações
+## Publicações Planejadas
 
-Este trabalho está sendo preparado para submissão em periódicos científicos:
-
-1. **Paper 1 - IEEE Access (A4):** Framework + validação experimental (Janeiro 2026)
-2. **Paper 2 - Applied Sciences (B1):** Multi-objective analysis (Março 2026)
-3. **Paper 3 - Sensors (A4):** Theoretical foundations (Abril 2026)
+1. **IEEE Access (A4)** - Framework + experimentos (Jan 2026)
+2. **Applied Sciences (B1)** - Multi-objetivo (Mar 2026)
+3. **Sensors (A4)** - Teoria + SOTA (Abr 2026)
 
 ## Limitações
 
-- Contexto unidimensional (apenas densidade de obstáculos)
-- Threshold fixo determinado offline
-- Validação em ambiente 2D
-- PPO em otimização
+- Contexto unidimensional (densidade)
+- Threshold fixo offline
+- Ambiente 2D
 
-## Trabalhos Futuros
+## Próximos Passos
 
-**Curto Prazo:**
 - Contexto multi-dimensional
 - Threshold adaptativo online
-- Otimização PPO
+- ROS 2/Gazebo
 
-**Médio Prazo:**
-- Integração ROS 2/Gazebo
-- Múltiplos planners
+## Contribuição
 
-**Longo Prazo:**
-- Hardware-in-the-loop
-- Deployment real
-
-## Contribuição Científica
-
-Primeira abordagem sistemática para switching adaptivo entre planners clássicos e modernos com garantias teóricas formais. Transforma seleção de algoritmo de decisão de design para variável de otimização contextual.
+Primeira abordagem sistemática para switching adaptivo com garantias formais entre planners clássicos e modernos.
 
 ## Citação
 
@@ -213,17 +123,6 @@ Primeira abordagem sistemática para switching adaptivo entre planners clássico
 }
 \\\
 
-## Contato
-
-**Estudante:** Yan Silva  
-**Orientador:** Prof. Aldo  
-**Instituição:** Universidade Federal de Goiás
-
-## Agradecimentos
-
-Agradeço ao Prof. Aldo, ao grupo de pesquisa em navegação autônoma da UFG, e aos colegas Luca Plaster e Leandra.
-
 ---
 
-**Última atualização:** Novembro 2025  
-**Status:** Framework completo, preparando submissões científicas
+**Estudante:** Yan Silva | **Orientador:** Prof. Aldo | **UFG** - Nov 2025
