@@ -1,0 +1,44 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+venv_ic/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Experimentos (arquivos grandes)
+results/*.csv
+results/figures/*.png
+results/figures/*.pdf
+
+# Logs
+*.log
+
+# Modelos treinados (grandes)
+*.pkl
+*.pth
+*.h5
+models/
+
+# Temporários
+*.tmp
+*.bak
+temp/
