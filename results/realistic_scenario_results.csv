@@ -1,0 +1,61 @@
+scenario,scenario_type,trial,density,success,selected_planner,planning_time_ms,path_length,realistic_challenge
+Urban Intersection,intersection,0,0.09,True,rrt_star,9.382009506225586,14,True
+Urban Intersection,intersection,1,0.09,True,rrt_star,10.21432876586914,13,True
+Urban Intersection,intersection,2,0.09,True,rrt_star,13.10586929321289,12,True
+Urban Intersection,intersection,3,0.09,True,rrt_star,16.991376876831055,14,True
+Urban Intersection,intersection,4,0.09,True,rrt_star,21.65985107421875,13,True
+Urban Intersection,intersection,5,0.09,True,rrt_star,2.5496482849121094,12,True
+Urban Intersection,intersection,6,0.09,True,rrt_star,12.936830520629883,12,True
+Urban Intersection,intersection,7,0.09,True,rrt_star,69.06342506408691,13,True
+Urban Intersection,intersection,8,0.09,True,rrt_star,9.302377700805664,16,True
+Urban Intersection,intersection,9,0.09,True,rrt_star,39.725542068481445,15,True
+Urban Intersection,intersection,10,0.09,True,rrt_star,8.921384811401367,15,True
+Urban Intersection,intersection,11,0.09,True,rrt_star,11.81936264038086,14,True
+Urban Intersection,intersection,12,0.09,True,rrt_star,5.507230758666992,13,True
+Urban Intersection,intersection,13,0.09,True,rrt_star,13.818502426147461,13,True
+Urban Intersection,intersection,14,0.09,True,rrt_star,4.708528518676758,12,True
+Urban Intersection,intersection,15,0.09,True,rrt_star,11.146306991577148,14,True
+Urban Intersection,intersection,16,0.09,True,rrt_star,35.7818603515625,14,True
+Urban Intersection,intersection,17,0.09,True,rrt_star,31.595945358276367,13,True
+Urban Intersection,intersection,18,0.09,True,rrt_star,15.782594680786133,14,True
+Urban Intersection,intersection,19,0.09,True,rrt_star,3.1778812408447266,12,True
+Highway,highway,0,0.0096,True,rrt_star,43.891191482543945,14,True
+Highway,highway,1,0.0072,True,rrt_star,54.71920967102051,14,True
+Highway,highway,2,0.0048,True,rrt_star,155.0769805908203,15,True
+Highway,highway,3,0.0072,True,rrt_star,62.58273124694824,15,True
+Highway,highway,4,0.0072,True,rrt_star,14.097452163696289,15,True
+Highway,highway,5,0.0168,True,rrt_star,44.017791748046875,15,True
+Highway,highway,6,0.0,True,rrt_star,18.517494201660156,15,True
+Highway,highway,7,0.0072,True,rrt_star,25.0399112701416,17,True
+Highway,highway,8,0.0072,True,rrt_star,20.10345458984375,17,True
+Highway,highway,9,0.0096,True,rrt_star,14.918804168701172,15,True
+Highway,highway,10,0.0048,True,rrt_star,51.00870132446289,15,True
+Highway,highway,11,0.0072,True,rrt_star,4.827976226806641,13,True
+Highway,highway,12,0.012,True,rrt_star,10.388374328613281,16,True
+Highway,highway,13,0.0096,True,rrt_star,34.6066951751709,16,True
+Highway,highway,14,0.0072,True,rrt_star,36.44824028015137,15,True
+Highway,highway,15,0.0096,True,rrt_star,49.154043197631836,23,True
+Highway,highway,16,0.0048,True,rrt_star,19.372940063476562,13,True
+Highway,highway,17,0.0072,True,rrt_star,12.273073196411133,15,True
+Highway,highway,18,0.0168,True,rrt_star,41.44477844238281,17,True
+Highway,highway,19,0.0048,True,rrt_star,179.0294647216797,14,True
+Parking Lot,parking,0,0.3258,True,ppo,11.557361533859643,31,True
+Parking Lot,parking,1,0.3168,False,ppo,10.180691914536476,0,True
+Parking Lot,parking,2,0.306,True,ppo,11.090250365562081,27,True
+Parking Lot,parking,3,0.2736,False,rrt_star,49.44205284118652,0,True
+Parking Lot,parking,4,0.3078,True,ppo,12.210451886866531,28,True
+Parking Lot,parking,5,0.3186,True,ppo,13.200579070361107,20,True
+Parking Lot,parking,6,0.3312,True,ppo,15.414812051286624,25,True
+Parking Lot,parking,7,0.3132,True,ppo,9.575973511831029,27,True
+Parking Lot,parking,8,0.3096,True,ppo,12.06403897562195,27,True
+Parking Lot,parking,9,0.3204,True,ppo,8.816901347811134,25,True
+Parking Lot,parking,10,0.3168,True,ppo,10.024237228798256,15,True
+Parking Lot,parking,11,0.3294,True,ppo,15.300110078584227,27,True
+Parking Lot,parking,12,0.306,True,ppo,8.020595745580003,26,True
+Parking Lot,parking,13,0.315,True,ppo,7.165451042624113,25,True
+Parking Lot,parking,14,0.2934,False,rrt_star,51.19013786315918,0,True
+Parking Lot,parking,15,0.3042,True,ppo,8.866490896392264,28,True
+Parking Lot,parking,16,0.3258,False,ppo,12.461719050952592,0,True
+Parking Lot,parking,17,0.3168,True,ppo,11.2070093471339,28,True
+Parking Lot,parking,18,0.3078,True,ppo,11.446656541502602,26,True
+Parking Lot,parking,19,0.324,False,ppo,9.812366368046273,0,True
