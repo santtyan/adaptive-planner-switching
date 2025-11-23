@@ -26,13 +26,12 @@ Este trabalho preenche essa lacuna através de switching baseado em densidade de
 
 ### Formulação do Problema
 
-O framework implementa uma política π(ρ) que mapeia densidade de obstáculos para seleção de planner:
-```
-π(ρ) → { RRT*  se ρ < 0.30
-        { PPO   se ρ ≥ 0.30
-```
+O framework implementa uma política que mapeia densidade de obstáculos para seleção de planner:
 
-Onde o threshold ρ* = 0.30 foi determinado através de validação experimental sistemática.
+- RRT* quando densidade < 0.30
+- PPO quando densidade >= 0.30
+
+O threshold 0.30 foi determinado através de validação experimental sistemática.
 
 ### Componentes Principais
 
@@ -43,7 +42,7 @@ Onde o threshold ρ* = 0.30 foi determinado através de validação experimental
 
 ### Ambientes de Teste
 
-**Sintéticos:** Grids com densidades controladas (ρ ∈ [0.1, 0.5])
+**Sintéticos:** Grids com densidades controladas (0.1 a 0.5)
 
 **Automotivos Realísticos:**
 - Interseção urbana: 14.580 obstáculos
@@ -65,12 +64,12 @@ Onde o threshold ρ* = 0.30 foi determinado através de validação experimental
 
 ### Performance por Contexto
 
-**Baixa Densidade (ρ < 0.30):**
+**Baixa Densidade (< 0.30):**
 - RRT*: 88-92% success
 - PPO: 73-76% success
 - Framework seleciona RRT* (correto)
 
-**Alta Densidade (ρ ≥ 0.30):**
+**Alta Densidade (>= 0.30):**
 - RRT*: 45-62% success
 - PPO: 71-78% success
 - Framework seleciona PPO (correto)
@@ -80,7 +79,7 @@ Onde o threshold ρ* = 0.30 foi determinado através de validação experimental
 - **Average Regret**: 2.2% vs oracle
 - **Max Regret**: 6.7% (pior caso)
 - **Optimality Gap**: 1.7% (threshold teórico vs empírico)
-- **Performance Guarantee**: ≥93.3% da performance oracle
+- **Performance Guarantee**: >=93.3% da performance oracle
 
 ### Cenários Automotivos
 
@@ -100,25 +99,26 @@ Onde o threshold ρ* = 0.30 foi determinado através de validação experimental
 - NumPy, Pandas, Matplotlib
 
 ### Setup
-```bash
+
+\\\ash
 # Clonar repositório
 git clone https://github.com/santtyan/adaptive-planner-switching
 cd adaptive-planner-switching
 
 # Criar ambiente virtual
 python -m venv venv_ic
-source venv_ic/bin/activate  # Linux/Mac
-# ou
 .\venv_ic\Scripts\activate   # Windows
+source venv_ic/bin/activate  # Linux/Mac
 
 # Instalar dependências
 pip install -r requirements.txt
-```
+\\\
 
 ## Uso
 
 ### Experimento Básico
-```python
+
+\\\python
 from src.environment import SimpleEnvironment
 from src.adaptive_switcher import AdaptiveSwitcher
 
@@ -136,10 +136,11 @@ success, time_ms, trajectory, selected = switcher.plan(start, goal, env)
 
 print(f"Planner selecionado: {selected}")
 print(f"Sucesso: {success}, Tempo: {time_ms:.2f}ms")
-```
+\\\
 
 ### Reproduzir Experimentos
-```bash
+
+\\\ash
 # Experimentos comprehensivos (1500 trials)
 python experiments/comprehensive_experiments.py
 
@@ -151,10 +152,11 @@ python experiments/theoretical_analysis.py
 
 # Cenários automotivos
 python experiments/realistic_scenario_validation.py
-```
+\\\
 
 ## Estrutura do Projeto
-```
+
+\\\
 adaptive-planner-switching/
 ├── src/                    # Código fonte principal
 │   ├── environment.py      # Simulador
@@ -164,77 +166,64 @@ adaptive-planner-switching/
 ├── results/               # Dados e figuras
 ├── docs/                  # Documentação
 └── temp/                  # Backups
-```
+\\\
 
 ## Publicações
 
 Este trabalho está sendo preparado para submissão em periódicos científicos:
 
-1. **Paper 1 - IEEE Access (A4):** "Adaptive Context-Based Planner Switching Framework"
-   - Framework + validação experimental básica
-   - Submissão: Janeiro 2026
-
-2. **Paper 2 - Applied Sciences (B1):** "Multi-Objective Performance Analysis"
-   - Análise trade-offs (sucesso vs tempo vs energia)
-   - Submissão: Março 2026
-
-3. **Paper 3 - Sensors (A4):** "Theoretical Foundations of Adaptive Planning"
-   - Regret bounds + análise de optimalidade
-   - Submissão: Abril 2026
+1. **Paper 1 - IEEE Access (A4):** Framework + validação experimental (Janeiro 2026)
+2. **Paper 2 - Applied Sciences (B1):** Multi-objective analysis (Março 2026)
+3. **Paper 3 - Sensors (A4):** Theoretical foundations (Abril 2026)
 
 ## Limitações
 
 - Contexto unidimensional (apenas densidade de obstáculos)
 - Threshold fixo determinado offline
-- Validação em ambiente 2D (não simuladores 3D completos)
-- PPO ainda em otimização para convergência máxima
+- Validação em ambiente 2D
+- PPO em otimização
 
 ## Trabalhos Futuros
 
 **Curto Prazo:**
-- Expansão para contexto multi-dimensional (densidade + incerteza + tempo)
+- Contexto multi-dimensional
 - Threshold adaptativo online
-- Otimização adicional do PPO
+- Otimização PPO
 
 **Médio Prazo:**
-- Integração com ROS 2/Gazebo
-- Validação em simuladores realísticos
-- Extensão para múltiplos planners (A*, DWA)
+- Integração ROS 2/Gazebo
+- Múltiplos planners
 
 **Longo Prazo:**
 - Hardware-in-the-loop
-- Ambientes dinâmicos
-- Deployment em veículo real
+- Deployment real
 
 ## Contribuição Científica
 
-Este trabalho representa a primeira abordagem sistemática para switching adaptivo entre planners clássicos e modernos com garantias teóricas formais. A principal contribuição é transformar a seleção de algoritmo de uma decisão de design para uma variável de otimização contextual, demonstrando superioridade empírica contra métodos state-of-the-art.
+Primeira abordagem sistemática para switching adaptivo entre planners clássicos e modernos com garantias teóricas formais. Transforma seleção de algoritmo de decisão de design para variável de otimização contextual.
 
 ## Citação
-```bibtex
+
+\\\ibtex
 @misc{silva2025adaptive,
   title={Adaptive Context-Based Planner Switching for Autonomous Navigation},
   author={Silva, Yan and Aldo},
   year={2025},
   institution={Universidade Federal de Goiás}
 }
-```
-
-## Licença
-
-Este projeto é desenvolvido como parte de uma Iniciação Científica na UFG. Código será disponibilizado sob licença apropriada após publicação.
+\\\
 
 ## Contato
 
 **Estudante:** Yan Silva  
 **Orientador:** Prof. Aldo  
-**Instituição:** Universidade Federal de Goiás - Escola de Engenharia Elétrica, Mecânica e de Computação
+**Instituição:** Universidade Federal de Goiás
 
 ## Agradecimentos
 
-Agradeço ao Prof. Aldo pela orientação, ao grupo de pesquisa em navegação autônoma da UFG pelas discussões técnicas, e aos colegas Luca Plaster e Leandra pelo feedback durante o desenvolvimento do projeto.
+Agradeço ao Prof. Aldo, ao grupo de pesquisa em navegação autônoma da UFG, e aos colegas Luca Plaster e Leandra.
 
 ---
 
 **Última atualização:** Novembro 2025  
-**Status:** Projeto ativo - Framework completo, preparando submissões científicas
+**Status:** Framework completo, preparando submissões científicas
