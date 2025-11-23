@@ -115,9 +115,9 @@ Primeira abordagem sistemática para switching adaptivo com garantias formais en
 ## Citação
 
 ```bibtex
-@misc{silva2025adaptive,
+@misc{santos2025adaptive,
   title={Adaptive Context-Based Planner Switching for Autonomous Navigation},
-  author={Silva, Yan and Aldo},
+  author={Santos, Yan and Aldo},
   year={2025},
   institution={Universidade Federal de Goiás}
 }
@@ -125,4 +125,4 @@ Primeira abordagem sistemática para switching adaptivo com garantias formais en
 
 ---
 
-**Estudante:** Yan Silva | **Orientador:** Prof. Aldo | **UFG** - Nov 2025
+**Estudante:** Yan Santos | **Orientador:** Prof. Aldo | **UFG** - Nov 2025
