@@ -1,6 +1,6 @@
 ﻿# experiments_workshop.py - Experimentos para paper workshop
 import sys
-sys.path.append('src')
+sys.path.append('../validation_abstract')
 
 import numpy as np
 import time

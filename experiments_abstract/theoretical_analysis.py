@@ -1,4 +1,4 @@
-﻿"""
+"""
 Theoretical Analysis Module - A1 Enhancement
 Formal regret bounds and optimality analysis
 """

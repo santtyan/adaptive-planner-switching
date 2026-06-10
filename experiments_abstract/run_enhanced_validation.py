@@ -4,7 +4,7 @@ Generates new data with path quality metrics
 """
 
 import sys
-sys.path.append("src")
+sys.path.append("../validation_abstract")
 import numpy as np
 import pandas as pd
 from multiobjective_analysis import PathQualityAnalyzer

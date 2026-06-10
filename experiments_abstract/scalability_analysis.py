@@ -4,7 +4,7 @@ Critical for demonstrating framework robustness
 """
 
 import sys
-sys.path.append("src")
+sys.path.append("../validation_abstract")
 import numpy as np
 import pandas as pd
 import time

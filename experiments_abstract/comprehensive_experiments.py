@@ -1,5 +1,5 @@
-﻿import sys
-sys.path.append("src")
+import sys
+sys.path.append("../validation_abstract")
 
 from environment import SimpleEnvironment
 from adaptive_switcher_fixed import AdaptiveSwitcher

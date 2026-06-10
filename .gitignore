@@ -6,6 +6,7 @@ __pycache__/
 .Python
 venv_ic/
 venv/
+.venv/
 env/
 ENV/
 
@@ -42,3 +43,11 @@ models/
 *.tmp
 *.bak
 temp/
+
+# ROS2 build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Resultados empíricos ROS2 (gerados pelo benchmark — versionar só após finalizar)
+ros2_ws/results_ros2/

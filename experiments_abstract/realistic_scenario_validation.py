@@ -1,10 +1,10 @@
-﻿"""
+"""
 Complex Realistic Environments - Final Enhancement
 Automotive-inspired scenarios with structured obstacles
 """
 
 import sys
-sys.path.append("src")
+sys.path.append("../validation_abstract")
 import numpy as np
 import pandas as pd
 from adaptive_switcher_fixed import AdaptiveSwitcher

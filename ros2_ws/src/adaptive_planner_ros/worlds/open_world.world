@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<!-- open_world.world — sparse arena, global density ~0.05. Used as Nav2-favourable baseline. -->
+<sdf version="1.6">
+  <world name="open_world">
+    <physics type="ode">
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <!-- Bounding walls 6m x 6m -->
+    <model name="wall_north"><static>true</static><pose>0 3.1 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_south"><static>true</static><pose>0 -3.1 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_east"><static>true</static><pose>3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_west"><static>true</static><pose>-3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+
+    <!-- 2 widely-spaced obstacles — density ~0.05 -->
+    <model name="obs_0"><static>true</static><pose>1.8 1.8 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+    <model name="obs_1"><static>true</static><pose>-1.8 -1.8 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+
+    <gui fullscreen="0"><camera name="user_camera"><pose>0 0 10 0 1.5708 0</pose></camera></gui>
+  </world>
+</sdf>

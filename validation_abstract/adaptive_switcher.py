@@ -1,9 +1,6 @@
-﻿import sys
-sys.path.append('src')
-
-from environment import SimpleEnvironment
-from planners.rrt_star_impl import RRTStarPlanner
-from planners.ppo_mock_scientific import PPOPlannerMockScientific
+﻿from environment import SimpleEnvironment
+from planners.rrt_star import MockRRTStarPlanner as RRTStarPlanner
+from planners.ppo_planner import PPOPlannerMockScientific
 from typing import Tuple, List, Dict, Any
 import numpy as np
 import time

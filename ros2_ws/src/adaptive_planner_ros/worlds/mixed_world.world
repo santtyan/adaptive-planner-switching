@@ -1,0 +1,59 @@
+<?xml version="1.0" ?>
+<!--
+  mixed_world.world — half open, half dense.
+
+  Left half (x < 0): 1 obstacle — density ~0.10 (Nav2 favoured)
+  Right half (x > 0): 5 tight obstacles — density ~0.45 (RL favoured)
+
+  This is the key benchmark map for validating H1/H3 (mode switching correlates
+  with density variance along the trajectory).
+-->
+<sdf version="1.6">
+  <world name="mixed_world">
+    <physics type="ode">
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <!-- Bounding walls 6m x 4m -->
+    <model name="wall_north"><static>true</static><pose>0 2.1 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_south"><static>true</static><pose>0 -2.1 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_east"><static>true</static><pose>3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link"><collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+    <model name="wall_west"><static>true</static><pose>-3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link"><collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+      <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry><material><script><name>Gazebo/Grey</name></script></material></visual></link></model>
+
+    <!-- LEFT half — sparse (x < 0) -->
+    <model name="obs_sparse_0"><static>true</static><pose>-1.5 0.5 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/Blue</name></script></material></visual></link></model>
+
+    <!-- RIGHT half — dense (x > 0) -->
+    <model name="obs_dense_0"><static>true</static><pose>0.8 1.2 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+    <model name="obs_dense_1"><static>true</static><pose>1.4 0.5 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+    <model name="obs_dense_2"><static>true</static><pose>2.0 1.5 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+    <model name="obs_dense_3"><static>true</static><pose>1.2 -0.6 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+    <model name="obs_dense_4"><static>true</static><pose>2.3 -1.2 0.5 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+      <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry><material><script><name>Gazebo/DarkGrey</name></script></material></visual></link></model>
+
+    <gui fullscreen="0"><camera name="user_camera"><pose>0 0 10 0 1.5708 0</pose></camera></gui>
+  </world>
+</sdf>

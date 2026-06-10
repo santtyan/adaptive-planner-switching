@@ -1,0 +1,20 @@
+twist_mux:
+  ros__parameters:
+    use_sim_time: True
+    topics:
+      # RL controller has higher priority — preempts Nav2 when active
+      cmd_vel_rl:
+        topic: /cmd_vel_rl
+        timeout: 0.5
+        priority: 100
+      # Nav2 DWB controller
+      cmd_vel_nav2:
+        topic: /cmd_vel_nav2
+        timeout: 0.5
+        priority: 10
+    locks:
+      # AdaptiveSwitcherNode publishes here to hard-lock one source
+      adaptive_lock:
+        topic: /cmd_vel_mux_lock
+        timeout: 2.0
+        priority: 200

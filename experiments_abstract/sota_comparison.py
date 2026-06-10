@@ -1,4 +1,4 @@
-﻿"""
+"""
 State-of-the-Art Comparison - A1 Critical Component
 Implements and compares against recent planning methods
 """
@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 import sys
-sys.path.append("src")
+sys.path.append("../validation_abstract")
 from adaptive_switcher_fixed import AdaptiveSwitcher
 from environment import SimpleEnvironment
 
