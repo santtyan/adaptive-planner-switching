@@ -26,7 +26,11 @@ import os
 
 import rclpy
 from stable_baselines3 import SAC
-from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
+from stable_baselines3.common.callbacks import (
+    EvalCallback,
+    CheckpointCallback,
+    BaseCallback,
+)
 from stable_baselines3.common.monitor import Monitor
 
 from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNode
@@ -37,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--steps", type=int, default=500_000)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--eval-freq", type=int, default=10_000)
-    p.add_argument("--eval-episodes", type=int, default=10)
+    p.add_argument("--eval-episodes", type=int, default=5)
     p.add_argument("--models-dir", default="models")
     p.add_argument("--logs-dir", default="logs")
     # Early abort threshold: if mean reward < this at step planb_step, stop
@@ -47,26 +51,30 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-class PlanBCallback:
-    """Stop training early if SAC has not converged by planb_step."""
+class PlanBCallback(BaseCallback):
+    """Stop training early if SAC has not converged by planb_step.
 
-    def __init__(self, check_step: int, threshold: float) -> None:
+    BaseCallback subclass (não um callable solto) para ser compatível com
+    CallbackList quando passado em lista junto a EvalCallback/CheckpointCallback.
+    """
+
+    def __init__(self, check_step: int, threshold: float, verbose: int = 0) -> None:
+        super().__init__(verbose)
         self._check_step = check_step
         self._threshold = threshold
         self._triggered = False
 
-    def __call__(self, locals_: dict, globals_: dict) -> bool:
+    def _on_step(self) -> bool:
         if self._triggered:
             return True
-        num_steps = locals_.get("self").num_timesteps
-        if num_steps >= self._check_step:
-            mean_reward = locals_.get("self").logger.name_to_value.get(
+        if self.num_timesteps >= self._check_step:
+            mean_reward = self.logger.name_to_value.get(
                 "rollout/ep_rew_mean", float("inf")
             )
             if mean_reward < self._threshold:
                 print(
                     f"\n[PlanB] ep_rew_mean={mean_reward:.1f} < {self._threshold} "
-                    f"at step {num_steps}. Aborting SAC — use PPO only.\n"
+                    f"at step {self.num_timesteps}. Aborting SAC — use PPO only.\n"
                 )
                 self._triggered = True
                 return False  # stops training
@@ -118,6 +126,8 @@ def main() -> None:
         batch_size=256,
         tau=0.005,
         gamma=0.99,
+        train_freq=1,
+        gradient_steps=4,         # 4 updates por passo — passos de sim são caros
         ent_coef="auto",          # automatic entropy tuning
         target_entropy="auto",
         verbose=1,
@@ -125,9 +135,14 @@ def main() -> None:
         seed=args.seed,
     )
 
+    planb_cb = PlanBCallback(
+        check_step=args.planb_step,
+        threshold=args.planb_threshold,
+    )
+
     model.learn(
         total_timesteps=args.steps,
-        callback=[eval_cb, ckpt_cb],
+        callback=[eval_cb, ckpt_cb, planb_cb],
         tb_log_name=f"sac_{args.seed}",
         progress_bar=False,
     )

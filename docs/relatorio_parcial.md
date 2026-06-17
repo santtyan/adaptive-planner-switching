@@ -2,8 +2,8 @@ RELATÓRIO PARCIAL - INICIAÇÃO CIENTÍFICA
 
 DESENVOLVIMENTO DE FRAMEWORK ADAPTIVO PARA SELEÇÃO DE ALGORITMOS DE PLANEJAMENTO DE TRAJETÓRIA EM NAVEGAÇÃO AUTÔNOMA
 
-Estudante: Yan Silva
-Orientador: Prof. Aldo
+Estudante: Yan Santos Leite
+Orientador: Prof. Aldo André Diaz Salazar
 Período: Primeiro Semestre - IC UFG
 Data: Novembro 2025
 

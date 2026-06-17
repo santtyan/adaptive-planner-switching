@@ -1,3 +1,6 @@
+> **RASCUNHO OBSOLETO — NÃO SUBMETER.** Este arquivo usa τ=0.35 e 83.2% (valores desatualizados).
+> O documento canônico é `paper/relatorio_final_pip.md` (ρ*=0.30, 85.3%).
+
 # An Adaptive Density-Based Framework for Switching Between Classical and Reinforcement Learning Planners in Mobile Robot Navigation
 
 **Yan Santos Leite** · Escola de Engenharia Elétrica, Mecânica e de Computação — UFG

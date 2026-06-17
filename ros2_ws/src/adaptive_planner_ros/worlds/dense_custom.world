@@ -13,7 +13,9 @@
 
     <!-- Physics -->
     <physics type="ode">
-      <real_time_update_rate>1000.0</real_time_update_rate>
+      <!-- real_time_update_rate=0 → roda a física tão rápido quanto a CPU permitir
+           (destrava o treino RL do limite de 1x wall-clock). max_step_size mantido. -->
+      <real_time_update_rate>0.0</real_time_update_rate>
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
       <ode>

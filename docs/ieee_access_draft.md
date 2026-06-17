@@ -1,4 +1,7 @@
-﻿# Adaptive Context-Based Planner Switching for Autonomous Vehicle Navigation
+﻿> **RASCUNHO OBSOLETO — NÃO SUBMETER.** Este arquivo usa τ=0.35 e 83.2% (valores desatualizados).
+> O documento canônico é `paper/relatorio_final_pip.md` (ρ*=0.30, 85.3%).
+
+# Adaptive Context-Based Planner Switching for Autonomous Vehicle Navigation
 ## IEEE Access Submission Draft - January 2026
 
 ### Abstract
