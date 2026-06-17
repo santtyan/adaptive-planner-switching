@@ -26,9 +26,11 @@ from gazebo_msgs.msg import ModelStates
 
 from adaptive_planner_ros.obs_utils import (
     make_observation,
+    min_valid_range,
     LINEAR_VEL_MAX,
     ANGULAR_VEL_MAX,
     LIDAR_MAX_RANGE,
+    SAFETY_STOP_DIST,
     OBS_DIM,
 )
 
@@ -73,6 +75,7 @@ class RLControllerNode(Node):
         self._model_states: Optional[ModelStates] = None
         self._goal: Optional[PoseStamped] = None
         self._active = False  # only publish cmd_vel when activated
+        self._safety_stops = 0  # count of safety-guard overrides (metric)
 
         # Publishers / subscribers
         self._cmd_pub = self.create_publisher(Twist, "/cmd_vel_rl", 10)
@@ -103,6 +106,20 @@ class RLControllerNode(Node):
         ranges = (list(self._scan.ranges)
                   if self._scan is not None
                   else [LIDAR_MAX_RANGE] * 360)
+
+        # Safety guard (LiCS-style): override the learned policy with a hard
+        # stop when an obstacle is within SAFETY_STOP_DIST. Acts on the raw
+        # scan, independent of the model, so a mispredicting policy cannot
+        # drive into a wall. Disparos are counted/logged as a metric.
+        if min_valid_range(ranges) < SAFETY_STOP_DIST:
+            self._safety_stops += 1
+            self.get_logger().warn(
+                f"safety stop #{self._safety_stops}: obstacle within "
+                f"{SAFETY_STOP_DIST:.2f} m — overriding policy",
+                throttle_duration_sec=1.0,
+            )
+            self._cmd_pub.publish(Twist())  # zero velocity
+            return
 
         x, y, yaw = self._get_pose()
         gx = self._goal.pose.position.x

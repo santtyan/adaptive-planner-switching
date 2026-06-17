@@ -58,6 +58,7 @@ from adaptive_planner_ros.obs_utils import (
     ANGULAR_VEL_MAX,
     OBS_DIM,
     LIDAR_MAX_RANGE,
+    COLLISION_DIST,
 )
 
 # ---------------------------------------------------------------------------
@@ -70,7 +71,7 @@ SCAN_TOPIC = "/scan"
 MODEL_STATES_TOPIC = "/gazebo/model_states"
 
 GOAL_RADIUS = 0.25          # metres — episode success threshold
-COLLISION_DIST = 0.15       # metres — min lidar distance before collision
+# COLLISION_DIST imported from obs_utils (single source of truth)
 MAX_STEPS = 600             # ~120 s at 5 Hz control loop
 CONTROL_HZ = 5.0            # Hz — how fast step() publishes and reads
 SCAN_TIMEOUT = 1.0          # seconds — max wait for a fresh /scan message

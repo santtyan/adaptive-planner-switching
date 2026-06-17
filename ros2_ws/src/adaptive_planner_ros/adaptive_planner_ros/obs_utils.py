@@ -19,6 +19,24 @@ GOAL_DISTANCE_MAX = 6.0        # metres — normalise goal distance
 LINEAR_VEL_MAX = 0.22          # m/s
 ANGULAR_VEL_MAX = 2.84         # rad/s
 
+# Collision / safety thresholds — shared by training (collision termination)
+# and inference (safety-stop guard). Single source of truth: never duplicate.
+COLLISION_DIST = 0.15          # metres — min lidar distance treated as collision
+SAFETY_STOP_DIST = 0.20        # metres — inference guard stops just before collision
+
+
+def min_valid_range(ranges: Sequence[float],
+                    max_range: float = LIDAR_MAX_RANGE) -> float:
+    """Smallest finite lidar return, with inf/nan mapped to max_range.
+
+    Used by the inference-time safety guard to detect imminent collision on the
+    raw (un-normalised) scan, independent of the learned policy.
+    """
+    rays = np.array(ranges, dtype=np.float32)
+    rays = np.where(np.isfinite(rays), rays, max_range)
+    rays = np.clip(rays, 0.0, max_range)
+    return float(rays.min()) if rays.size else max_range
+
 
 def downsample_scan(ranges: Sequence[float], n_out: int = LIDAR_N_DOWNSAMPLED,
                     max_range: float = LIDAR_MAX_RANGE) -> np.ndarray:
