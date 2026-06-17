@@ -1,0 +1,158 @@
+<?xml version="1.0" ?>
+<!--
+  dense_custom_eval.world — versão de AVALIAÇÃO do dense_custom.world.
+
+  Diferenças em relação ao mundo de treino:
+    - real_time_update_rate=1000 (tempo real — para observação humana e gravação de vídeo)
+    - Câmera overhead estática a z=5m (inspirado em cerise-turtlebot3-nav/world_with_camera.world)
+      publica /camera/image_raw e /camera/camera_info via libgazebo_ros_camera.so
+
+  Uso:
+    gzserver worlds/dense_custom_eval.world -slibgazebo_ros_init.so \
+             -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so &
+    python3 eval/record_episode.py --model models/best_model.zip
+-->
+<sdf version="1.6">
+  <world name="dense_custom_eval">
+
+    <physics type="ode">
+      <!-- Tempo real para avaliação visual -->
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>150</iters>
+          <sor>1.400000</sor>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000.0</contact_max_correcting_vel>
+          <contact_surface_layer>0.01</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <!-- Paredes (arena 4m × 4m) -->
+    <model name="wall_north"><static>true</static><pose>0 2.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_south"><static>true</static><pose>0 -2.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_east"><static>true</static><pose>2.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_west"><static>true</static><pose>-2.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Obstáculos cilíndricos (idênticos ao mundo de treino) -->
+    <model name="obs_0"><static>true</static><pose>-1.2 1.2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_1"><static>true</static><pose>-0.6 1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_2"><static>true</static><pose>1.0 0.3 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_3"><static>true</static><pose>1.4 -0.3 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_4"><static>true</static><pose>-0.2 -0.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_5"><static>true</static><pose>0.5 -1.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_6"><static>true</static><pose>-1.0 -1.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Câmera overhead a z=5m (arena 4m → FOV 60° cobre ~5.8m) -->
+    <model name="camera_overhead">
+      <static>true</static>
+      <pose>0 0 5 0 1.5708 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+        </visual>
+        <sensor type="camera" name="camera_overhead">
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.2217</horizontal_fov> <!-- 70° — cobre arena 4m de z=5m -->
+            <image><width>640</width><height>640</height><format>R8G8B8</format></image>
+            <clip><near>0.1</near><far>20</far></clip>
+          </camera>
+          <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+            <ros>
+              <remapping>camera_overhead/image_raw:=camera/image_raw</remapping>
+              <remapping>camera_overhead/camera_info:=camera/camera_info</remapping>
+            </ros>
+            <camera_name>camera_overhead</camera_name>
+            <frame_name>camera_overhead_link</frame_name>
+          </plugin>
+        </sensor>
+      </link>
+    </model>
+
+    <!-- GUI — visão top-down para gzclient -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>0 0 8 0 1.5708 0</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+  </world>
+</sdf>
