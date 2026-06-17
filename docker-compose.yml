@@ -1,0 +1,164 @@
+version: "3.9"
+
+# ── Uso ───────────────────────────────────────────────────────────────────────
+#
+# RECOMENDADO — tudo num único container (sem problema de DDS inter-container):
+#   docker compose run --rm train-all
+#
+# Alternativa — containers separados (requer ROS_LOCALHOST_ONLY=1):
+#   docker compose up -d gazebo
+#   docker compose run --rm train-sac
+#
+# Smoketest (5 episódios):
+#   docker compose run --rm smoketest
+#
+# Treino PPO em paralelo (ROS_DOMAIN_ID=1 isolado):
+#   docker compose run --rm -e ROS_DOMAIN_ID=1 train-ppo
+#
+# Benchmark 540 trials (requer modelos treinados):
+#   docker compose run --rm benchmark
+#
+# Shell interativo dentro do container:
+#   docker compose run --rm shell
+
+services:
+
+  # ── Tudo-em-um: Gazebo + SAC no mesmo container (sem DDS inter-container) ──
+  train-all:
+    build: .
+    image: adaptive-planner:latest
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models
+      - PYTHONPATH=/workspace/ros2_ws/src/turtlebot3_gym_env:/workspace/ros2_ws/src/adaptive_planner_ros:/workspace/ros2_ws/build/turtlebot3_gym_env:/workspace/ros2_ws/build/adaptive_planner_ros
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+      - ./models:/workspace/models
+      - ./ros2_ws/logs:/workspace/logs
+      - ./results_ros2:/workspace/results_ros2
+    command: >-
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        source /workspace/ros2_ws/install/setup.bash &&
+        ros2 launch gazebo_ros gzserver.launch.py world:=/workspace/ros2_ws/src/adaptive_planner_ros/worlds/dense_custom.world verbose:=false &
+        GZPID=$! &&
+        echo 'Aguardando Gazebo /spawn_entity...' &&
+        until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
+        ros2 run gazebo_ros spawn_entity.py -entity waffle -file /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf -x -2.0 -y -0.5 -z 0.01 &&
+        echo 'Robô spawnado. Iniciando treino SAC...' &&
+        python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps 500000 --seed 42 --models-dir /workspace/models/ --logs-dir /workspace/logs/
+        wait $$GZPID
+      "
+
+  # ── Gazebo headless (serviço base compartilhado) ──────────────────────────
+  gazebo:
+    build: .
+    image: adaptive-planner:latest
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro   # código do host (read-only)
+      - ./models:/workspace/models                  # modelos treinados
+      - ./results_ros2:/workspace/results_ros2      # resultados benchmark
+    # Rede host: ROS2 DDS precisa de multicast; network_mode:host é mais simples
+    network_mode: host
+    command: >-
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        source /workspace/ros2_ws/install/setup.bash &&
+        ros2 launch gazebo_ros gzserver.launch.py world:=/workspace/ros2_ws/src/adaptive_planner_ros/worlds/dense_custom.world verbose:=false &
+        GZPID=$$! &&
+        echo 'Waiting for Gazebo /spawn_entity service...' &&
+        until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
+        echo 'Spawning TurtleBot3 Waffle...' &&
+        ros2 run gazebo_ros spawn_entity.py -entity waffle -file /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf -x -2.0 -y -0.5 -z 0.01 &&
+        echo 'Robot spawned. Environment ready.' &&
+        wait $$GZPID
+      "
+
+  # ── Smoketest (5 episódios aleatórios, verifica env end-to-end) ──────────
+  smoketest:
+    build: .
+    image: adaptive-planner:latest
+    depends_on:
+      - gazebo
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+    command: bash -c "source /opt/ros/humble/setup.bash && source /workspace/ros2_ws/install/setup.bash && sleep 8 && ros2 run turtlebot3_gym_env smoketest"
+
+  # ── Treino SAC (~24h CPU / ~8h GPU) ──────────────────────────────────────
+  train-sac:
+    build: .
+    image: adaptive-planner:latest
+    depends_on:
+      - gazebo
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+      - ./models:/workspace/models                  # salva modelo aqui
+      - ./ros2_ws/logs:/workspace/logs              # tensorboard logs
+    command: bash -c "source /opt/ros/humble/setup.bash && source /workspace/ros2_ws/install/setup.bash && sleep 10 && python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps 500000 --seed 42 --models-dir /workspace/models/"
+
+  # ── Treino PPO (ROS_DOMAIN_ID=1, pode rodar em paralelo com SAC) ─────────
+  train-ppo:
+    build: .
+    image: adaptive-planner:latest
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=1                             # domínio isolado do SAC
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+      - ./models:/workspace/models
+      - ./ros2_ws/logs:/workspace/logs
+    command: bash -c "source /opt/ros/humble/setup.bash && source /workspace/ros2_ws/install/setup.bash && sleep 10 && python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_ppo.py --steps 500000 --seed 42 --models-dir /workspace/models/"
+
+  # ── Benchmark 540 trials ──────────────────────────────────────────────────
+  benchmark:
+    build: .
+    image: adaptive-planner:latest
+    depends_on:
+      - gazebo
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+      - ./models:/workspace/models:ro               # lê modelos (read-only)
+      - ./results_ros2:/workspace/results_ros2      # escreve master.csv
+    command: bash -c "source /opt/ros/humble/setup.bash && source /workspace/ros2_ws/install/setup.bash && sleep 15 && python3 /workspace/ros2_ws/src/adaptive_planner_ros/benchmark/run_benchmark.py --trials 30 --maps open dense mixed --ppo-model /workspace/models/ppo_42_500k.zip --sac-model /workspace/models/sac_42_500k.zip --output /workspace/results_ros2/master.csv"
+
+  # ── Shell interativo ──────────────────────────────────────────────────────
+  shell:
+    build: .
+    image: adaptive-planner:latest
+    network_mode: host
+    environment:
+      - TURTLEBOT3_MODEL=waffle
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=1
+    volumes:
+      - ./ros2_ws/src:/workspace/ros2_ws/src
+      - ./models:/workspace/models
+      - ./results_ros2:/workspace/results_ros2
+      - ./paper:/workspace/paper
+    stdin_open: true
+    tty: true
+    command: /bin/bash

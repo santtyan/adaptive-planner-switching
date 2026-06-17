@@ -23,15 +23,11 @@ Outputs:
 
 import argparse
 import os
-import sys
 
 import rclpy
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
-
-_HERE = os.path.dirname(__file__)
-sys.path.insert(0, os.path.join(_HERE, "../../.."))
 
 from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNode
 
@@ -106,6 +102,13 @@ def main() -> None:
         verbose=0,
     )
 
+    try:
+        import tensorboard  # noqa: F401
+        tb_log = args.logs_dir
+    except ImportError:
+        print("[WARN] tensorboard not installed — logging disabled")
+        tb_log = None
+
     model = SAC(
         "MlpPolicy",
         train_env,
@@ -118,7 +121,7 @@ def main() -> None:
         ent_coef="auto",          # automatic entropy tuning
         target_entropy="auto",
         verbose=1,
-        tensorboard_log=args.logs_dir,
+        tensorboard_log=tb_log,
         seed=args.seed,
     )
 
@@ -126,7 +129,7 @@ def main() -> None:
         total_timesteps=args.steps,
         callback=[eval_cb, ckpt_cb],
         tb_log_name=f"sac_{args.seed}",
-        progress_bar=True,
+        progress_bar=False,
     )
 
     final_path = os.path.join(args.models_dir, f"{model_name}_final.zip")

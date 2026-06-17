@@ -49,5 +49,8 @@ ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
+# TensorBoard logs de treino (machine-specific, regeneráveis)
+ros2_ws/logs/
+
 # Resultados empíricos ROS2 (gerados pelo benchmark — versionar só após finalizar)
 ros2_ws/results_ros2/

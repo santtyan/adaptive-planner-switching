@@ -70,7 +70,7 @@ SCAN_TOPIC = "/scan"
 MODEL_STATES_TOPIC = "/gazebo/model_states"
 
 GOAL_RADIUS = 0.25          # metres — episode success threshold
-COLLISION_DIST = 0.20       # metres — min lidar distance before collision
+COLLISION_DIST = 0.15       # metres — min lidar distance before collision
 MAX_STEPS = 600             # ~120 s at 5 Hz control loop
 CONTROL_HZ = 5.0            # Hz — how fast step() publishes and reads
 SCAN_TIMEOUT = 1.0          # seconds — max wait for a fresh /scan message
@@ -81,13 +81,23 @@ R_TIME = -0.02              # per step alive penalty
 R_COLLISION = -20.0         # terminal collision penalty
 R_GOAL = 50.0               # terminal goal reward
 
-# Default goal sampling bounds (metres from origin in Gazebo world frame)
+# Spawn candidates validated for dense_custom.world:
+# - min 0.30m from cylinder surfaces (radius 0.18m)
+# - min 0.30m from walls (at ±2.1m)
+# - spread across the navigable area for diverse training
 DEFAULT_SPAWN_CANDIDATES: List[Tuple[float, float]] = [
-    (-1.5, -0.5), (-1.5, 0.5), (-1.5, 1.5),
-    (0.0, -1.5),  (0.0, 0.0),  (0.0, 1.5),
-    (1.5, -1.5),  (1.5, 0.0),  (1.5, 1.5),
-    (-0.5, -1.5), (0.5, -1.5), (0.5, 1.5),
-    (-0.5, 1.5),  (2.0, 0.0),  (-2.0, 0.0),
+    ( 0.8,  1.3),  # NE quadrant, clear
+    ( 1.3,  1.3),  # NE corner area
+    (-0.7,  0.3),  # center-W, good clearance
+    ( 0.3,  1.3),  # N center
+    (-1.2,  0.3),  # W side
+    ( 0.3,  0.8),  # center
+    (-1.2, -0.2),  # W center
+    (-0.2,  0.8),  # center-N
+    ( 1.3, -1.2),  # SE area
+    (-0.2,  0.3),  # center, best wall clearance
+    ( 0.3,  0.3),  # center
+    (-0.2, -1.2),  # S center
 ]
 
 # ---------------------------------------------------------------------------
@@ -176,9 +186,7 @@ class _GazeboEnvNode(Node):
         Does NOT reset /clock — safe to call during training.
         Returns True on success.
         """
-        if not self._set_entity_cli.wait_for_service(timeout_sec=2.0):
-            self.get_logger().warning("set_entity_state service not available")
-            return False
+
 
         req = SetEntityState.Request()
         req.state.name = ROBOT_NAME
@@ -270,16 +278,24 @@ class TurtleBot3GazeboEnv(gym.Env):
         start, goal = self._sample_start_goal()
         self._goal = goal
 
-        # Stop robot, teleport, clear costmap, wait for sensor data
+        # Teleport with collision validation — resample if spawn is inside obstacle
+        SAFE_SPAWN_MARGIN = COLLISION_DIST + 0.10   # 0.25 m clearance required
+        MAX_SPAWN_TRIES = len(self._goal_candidates)
         self._node.stop_robot()
-        self._node.teleport_robot(start[0], start[1], yaw=float(
-            self._rng.uniform(-math.pi, math.pi)
-        ))
-        time.sleep(0.3)          # allow Gazebo physics to settle
+        for _try in range(MAX_SPAWN_TRIES):
+            self._node.teleport_robot(start[0], start[1], yaw=float(
+                self._rng.uniform(-math.pi, math.pi)
+            ))
+            time.sleep(0.3)          # allow Gazebo physics to settle
+            scan = self._node.wait_for_scan(timeout=2.0)
+            if _min_scan_range(scan) >= SAFE_SPAWN_MARGIN:
+                break
+            # Position is in collision — try a different candidate
+            idxs = self._rng.choice(len(self._goal_candidates), size=2, replace=False)
+            start = self._goal_candidates[int(idxs[0])]
+            goal = self._goal_candidates[int(idxs[1])]
+            self._goal = goal
         self._node.clear_costmap()
-
-        # Spin until we have a valid scan
-        scan = self._node.wait_for_scan(timeout=2.0)
         self._last_scan = scan
 
         obs = self._build_obs()

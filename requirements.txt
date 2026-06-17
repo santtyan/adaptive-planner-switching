@@ -12,6 +12,7 @@ plotly==5.18.0
 # Reinforcement learning
 stable-baselines3==2.3.0
 gymnasium==0.29.1
+tensorboard==2.14.0
 
 # ompl is installed via apt: sudo apt install ros-humble-ompl
 # (pip wheel not available for Linux/Ubuntu 22.04)

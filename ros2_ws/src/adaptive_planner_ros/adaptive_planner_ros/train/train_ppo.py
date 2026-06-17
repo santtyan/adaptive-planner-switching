@@ -14,16 +14,11 @@ Outputs:
 
 import argparse
 import os
-import sys
 
 import rclpy
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
-
-# Add workspace to path when running without colcon install
-_HERE = os.path.dirname(__file__)
-sys.path.insert(0, os.path.join(_HERE, "../../.."))  # ros2_ws/src
 
 from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNode
 
