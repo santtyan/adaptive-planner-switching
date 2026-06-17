@@ -47,7 +47,11 @@ services:
         GZPID=$! &&
         echo 'Aguardando Gazebo /spawn_entity...' &&
         until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
-        ros2 run gazebo_ros spawn_entity.py -entity waffle -file /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf -x -2.0 -y -0.5 -z 0.01 &&
+        sleep 3 &&
+        for i in 1 2 3; do
+          ros2 run gazebo_ros spawn_entity.py -entity waffle -file /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf -x -2.0 -y -0.5 -z 0.01 && break
+          echo \"Spawn tentativa \$i falhou, retentando...\" && sleep 5
+        done
         echo 'Robô spawnado. Iniciando treino SAC...' &&
         python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps ${TRAIN_STEPS:-100000} --seed 42 --models-dir /workspace/models/ --logs-dir /workspace/logs/
         wait \$GZPID
