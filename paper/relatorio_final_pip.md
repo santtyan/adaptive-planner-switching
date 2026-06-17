@@ -44,6 +44,12 @@ Este trabalho aborda essa lacuna. O projeto foi executado no período 01/09/2025
 4. Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle.
 5. Comparar o framework adaptivo contra métodos fixos da literatura.
 
+### 1.3 Trabalhos Relacionados
+
+A combinação de planejadores clássicos e de aprendizado por reforço é tema ativo de pesquisa. Sharma et al. (2024) propõem um planejador local híbrido que comuta entre DWA e um planejador SAC com base em heurística *reativa* — a detecção de obstáculos no caminho imediato à frente do robô. A linha APPL/APPLR (Xiao et al., 2021) adota estratégia distinta: em vez de trocar de planejador, aprende por reforço os *parâmetros* de um planejador clássico (velocidade máxima, raio de inflação), tratando-o como parte do ambiente em um meta-MDP. No extremo de políticas únicas, o método LiCS (Damanik et al., 2024), vencedor do BARN Challenge 2024, treina uma política de imitação baseada em Transformer robusta para espaços altamente confinados, acoplada a uma camada de verificação de segurança que sobrepõe a política aprendida — abordagem aqui adotada no controlador RL deste trabalho (guarda de parada independente do modelo). O BARN Challenge (Xiao et al., 2024) consolidou-se como benchmark de referência para navegação autônoma em ambientes densos e altamente restritos.
+
+O presente trabalho difere dessas abordagens por adotar um critério *preditivo* — a densidade local de obstáculos ρ — que antecipa a necessidade de comutação **antes** do bloqueio ou da falha do planejador clássico, em vez de reagir à detecção de um obstáculo já no caminho (Sharma et al., 2024) ou de ajustar os parâmetros de um único planejador (APPL). Até onde se verificou na literatura recente, não há um critério de comutação preditivo baseado em densidade aplicado ao par A*/SAC integrado a ROS2/Nav2.
+
 ---
 
 ## 2. Metodologia
@@ -183,6 +189,8 @@ A implementação em ROS2 Humble com Gazebo e TurtleBot3 valida a aplicabilidade
 
 CORMEN, T. H. et al. **Introduction to Algorithms**. 4. ed. Cambridge: MIT Press, 2022.
 
+DAMANIK, J. J. et al. LiCS: navigation using learned-imitation on cluttered space. **IEEE Robotics and Automation Letters**, 2024. arXiv:2406.14947.
+
 HART, P. E.; NILSSON, N. J.; RAPHAEL, B. A formal basis for the heuristic determination of minimum cost paths. **IEEE Transactions on Systems Science and Cybernetics**, v. 4, n. 2, p. 100–107, 1968.
 
 HAARNOJA, T. et al. Soft actor-critic: off-policy maximum entropy deep reinforcement learning with a stochastic actor. In: **International Conference on Machine Learning (ICML)**, 2018.
@@ -192,6 +200,12 @@ MACENSKI, S. et al. Robot operating system 2: design, architecture, and uses in 
 SCHULMAN, J. et al. Proximal policy optimization algorithms. **arXiv:1707.06347**, 2017.
 
 RAFFIN, A. et al. Stable-baselines3: reliable reinforcement learning implementations. **Journal of Machine Learning Research**, v. 22, n. 268, p. 1–8, 2021.
+
+SHARMA, V. D. et al. Hybrid classical/RL local planner for ground robot navigation. **arXiv:2410.03066**, 2024.
+
+XIAO, X. et al. APPLR: adaptive planner parameter learning from reinforcement. In: **IEEE International Conference on Robotics and Automation (ICRA)**, 2021. arXiv:2011.00397.
+
+XIAO, X. et al. Autonomous ground navigation in highly constrained spaces: lessons learned from the third BARN Challenge at ICRA 2024. **IEEE Robotics & Automation Magazine**, 2024. arXiv:2407.01862.
 
 HE, X. et al. Multi-objective trajectory optimization for autonomous vehicles. **IEEE Transactions on Intelligent Transportation Systems**, 2025.
 
