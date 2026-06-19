@@ -141,19 +141,17 @@ Para cada algoritmo e tamanho de grid (10×10, 20×20, 30×30, 50×50), com dens
 
 ### 3.2 Validação do Critério Adaptivo ρ — Fase 1 (Monte Carlo)
 
-Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado). **Esta fase utiliza modelos de planejamento calibrados estatisticamente** — MockRRTStar como planejador clássico de referência e PPOPlannerMock como política de RL — isolando o critério ρ do ruído de simulação física. A validação com planejadores reais (A*/SAC em Gazebo) constitui a Fase 2, em andamento (Seção 3.3).
+Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado). **Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados estatisticamente** — não são reimplementações dos algoritmos originais da literatura, mas proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos em condições comparáveis de densidade. MockRRTStar e PPOPlannerMock modelam os planejadores clássico e RL; os demais baselines (Neural Switching, Hybrid DRL) são calibrados a partir dos valores publicados em He et al. (2025) e Sensors (2025). Esta abordagem isola o critério ρ do ruído de simulação física, permitindo avaliação controlada do switcher. A validação com planejadores reais (A*/SAC em Gazebo) constitui a Fase 2, em andamento (Seção 3.3).
 
-| Método | Taxa de sucesso |
-|---|---|
-| Método | Taxa de sucesso |
-|---|---|
-| Framework adaptivo ρ-criterion (Fase 1, Monte Carlo) | **85,3%** |
-| Neural Switching (literatura) | 78,7% |
-| PPO fixo (mock calibrado) | 76,0% |
-| Hybrid DRL (literatura) | 66,0% |
-| RRT* fixo (mock calibrado) | 48,0% |
+| Método | Tipo | Taxa de sucesso |
+|---|---|---|
+| Framework adaptivo ρ-criterion | Mock calibrado (este trabalho) | **85,3%** |
+| Neural Switching | Mock calibrado (ref. He et al., 2025) | 78,7% |
+| PPO fixo | Mock calibrado (este trabalho) | 76,0% |
+| Hybrid DRL | Mock calibrado (ref. Sensors, 2025) | 66,0% |
+| RRT* fixo | Mock calibrado (este trabalho) | 48,0% |
 
-O framework adaptivo supera o melhor baseline (Neural Switching) em 6,6 pontos percentuais (p < 0,001, Wilcoxon signed-rank com correção Holm-Bonferroni). Regret em relação ao oracle ideal: **2,2%** (pior caso: 6,7%). Limiar fixado em ρ* = 0,30 em todo o experimento.
+O framework adaptivo supera todos os baselines no ambiente de simulação Monte Carlo. Regret em relação ao oracle ideal: **2,2%** (pior caso: 6,7%). Limiar fixado em ρ* = 0,30 em todo o experimento. A significância estatística entre métodos nesta fase é avaliada pelo critério de regret e pela análise de sensibilidade do threshold; comparações com teste de hipótese formal (Wilcoxon) são aplicadas aos resultados com planejadores reais na Fase 2 (Seção 3.3).
 
 ### 3.3 Integração ROS2/Gazebo — Fase 2
 
@@ -233,11 +231,11 @@ A Figura abaixo mostra, para cada célula do mapa, qual planejador o ρ-criterio
 
 ### 3.4 Extensão Multi-Agente
 
-Resultados reportados no Relatório Parcial (aprovado 01/04/2026):
-- 100 cenários com 2 agentes → 1.110 decisões de planejamento; 93% usaram RRT* (densidade global média ~0,19 < limiar 0,30)
-- 21 cenários com 5 agentes: até 26% das decisões usaram SAC em situações de congestionamento (densidade local elevada)
+Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos via simulação Monte Carlo com modelos calibrados (mesma metodologia da Fase 1, Seção 3.2):
+- 100 cenários com 2 agentes → 1.110 decisões de planejamento; 93% usaram o planejador clássico (densidade global média ~0,19 < limiar 0,30)
+- 21 cenários com 5 agentes: até 26% das decisões usaram o planejador RL em situações de congestionamento (densidade local elevada)
 
-Estes resultados validam a generalização do ρ-criterion para ambientes multi-agente sem modificação do critério.
+Estes resultados indicam que o ρ-criterion generaliza para ambientes multi-agente sem modificação do critério. Validação com agentes reais em ROS2 constitui trabalho futuro.
 
 ---
 
