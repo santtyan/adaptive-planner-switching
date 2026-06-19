@@ -616,6 +616,25 @@ domínios de navegação onde a densidade local é estimável em tempo real.
         \textit{mechanism design} para sistemas multi-robô.
 \end{itemize}
 
+A Figura~\ref{fig:roadmap} sintetiza a progressão natural de extensão do trabalho: da
+validação do $\rho$-criterion em agente único (Fase~1, concluída), passando pela
+generalização multi-agente via CBS com anotação adaptiva (Fase~2, parcialmente implementada),
+até o horizonte de pesquisa em aprendizado por reforço multi-agente (MARL) e teoria dos
+jogos cooperativos (Fase~3, trabalho futuro). A arquitetura ROS2 desenvolvida neste trabalho
+--- modular, baseada em tópicos e com estimador $\rho$ desacoplado --- foi projetada para
+suportar a extensão a $N$ agentes sem refatoração estrutural.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/roadmap_marl_tj.png}
+  \caption{Roadmap de extensão do framework: Fase~1 (implementada, agente único),
+           Fase~2 (CBS + anotação adaptiva, parcialmente implementada) e
+           Fase~3 (MARL + teoria dos jogos cooperativos, trabalho futuro).
+           Setas sólidas indicam progressão já executada; setas tracejadas indicam
+           direções de pesquisa abertas.}
+  \label{fig:roadmap}
+\end{figure}
+
 % ============================================================
 \section*{Referências Bibliográficas}
 \addcontentsline{toc}{section}{Referências Bibliográficas}
