@@ -1,0 +1,195 @@
+<?xml version="1.0" ?>
+<!--
+  very_dense.world — Arena 4×4m com 13 obstáculos cilíndricos organizados em 4 fileiras.
+  Densidade global ρ ≈ 0.50 → SAC deve ser selecionado na maior parte do mapa.
+  Corredor mínimo entre obstáculos: ~0.60 m (passável para TurtleBot3 Waffle, largura 0.28 m).
+  Serve como nível 3 de dificuldade na comparação de progressão.
+
+  Layout:
+    Fileira 1 (y=+1.5): 4 cilindros com corredor forçado no centro-direita
+    Fileira 2 (y=+0.5): 3 cilindros — zona de congestionamento lateral
+    Fileira 3 (y=-0.4): 4 cilindros — máxima densidade
+    Fileira 4 (y=-1.4): 2 cilindros — corredor estreito
+-->
+<sdf version="1.6">
+  <world name="very_dense">
+
+    <physics type="ode">
+      <real_time_update_rate>0.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>150</iters>
+          <precon_iters>0</precon_iters>
+          <sor>1.400000</sor>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000.000000</contact_max_correcting_vel>
+          <contact_surface_layer>0.01000</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <!-- Bounding walls (4m x 4m arena) -->
+    <model name="wall_north">
+      <static>true</static><pose>0 2.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static><pose>0 -2.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static><pose>2.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static><pose>-2.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Fileira 1 — y=+1.5 (4 cilindros, corredor forçado centro-direita) -->
+    <model name="obs_0">
+      <static>true</static><pose>-1.5 1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_1">
+      <static>true</static><pose>-0.7 1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <!-- gap ~0.6m entre obs_1 e obs_2 → corredor estreito para o robô -->
+    <model name="obs_2">
+      <static>true</static><pose>0.5 1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_3">
+      <static>true</static><pose>1.4 1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Fileira 2 — y=+0.5 (3 cilindros laterais, espaço central livre) -->
+    <model name="obs_4">
+      <static>true</static><pose>-1.3 0.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_5">
+      <static>true</static><pose>0.1 0.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_6">
+      <static>true</static><pose>1.3 0.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Fileira 3 — y=-0.4 (4 cilindros, zona de máxima densidade) -->
+    <model name="obs_7">
+      <static>true</static><pose>-1.6 -0.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_8">
+      <static>true</static><pose>-0.6 -0.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_9">
+      <static>true</static><pose>0.5 -0.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_10">
+      <static>true</static><pose>1.5 -0.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Fileira 4 — y=-1.4 (2 cilindros, corredor estreito para a saída) -->
+    <model name="obs_11">
+      <static>true</static><pose>-1.0 -1.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_12">
+      <static>true</static><pose>0.8 -1.4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>0 0 8 0 1.5708 0</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+  </world>
+</sdf>
