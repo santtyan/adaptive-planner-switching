@@ -759,6 +759,17 @@ domínios de navegação onde a densidade local é estimável em tempo real.
         recursos computacionais (GPU para SAC) são compartilhados entre agentes?
         Esse enquadramento conecta diretamente o presente trabalho à literatura de
         \textit{mechanism design} para sistemas multi-robô.
+
+  \item \textbf{Aprendizado por Reforço Multi-Agente (MARL) --- próximo passo prioritário.}
+        O presente trabalho estabelece a fundação necessária para MARL: (a) formalização
+        Dec-POMDP com observação local $\rho_i$ por agente; (b) evidência empírica de
+        equilíbrio de Nash candidato ($\mathrm{PoA} = 1{,}141$); (c) demonstração de que
+        a decisão $O(1)$ do $\rho$-criterion escala para $N$ agentes onde o CBS centralizado
+        não escala (Figura~\ref{fig:cbs_scalability}). O único elemento ausente é o
+        \textbf{treino conjunto} das políticas com função de recompensa compartilhada ---
+        o que define MARL propriamente dito. A arquitetura SAC/Stable-Baselines3 já em uso
+        é compatível com extensões MARL (e.g., QMIX, MADDPG, MAPPO via RLlib), tornando
+        a transição para Fase~3 direta do ponto de vista de implementação.
 \end{itemize}
 
 A Figura~\ref{fig:roadmap} sintetiza a progressão natural de extensão do trabalho: da
