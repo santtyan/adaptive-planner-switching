@@ -206,13 +206,22 @@ def main():
     ax_res.set_title("Resultados — Fase 1 (Monte Carlo)", fontsize=11, fontweight="bold",
                      color=DARK, pad=5)
 
-    # ── Célula (1,2): Success by density ─────────────────────────────────────
-    ax_suc = fig.add_subplot(gs[1, 2])
-    img_suc = mpimg.imread(os.path.join(args.out, "success_by_density.png"))
-    ax_suc.imshow(img_suc)
-    ax_suc.axis("off")
-    ax_suc.set_title("Sucesso por Faixa de Densidade (Fase 2 — placeholder)",
-                     fontsize=10, fontweight="bold", color=DARK, pad=5)
+    # ── Célula (1,2): Painel Gazebo (screenshots reais) ──────────────────────
+    ax_gz = fig.add_subplot(gs[1, 2])
+    gz_panel = os.path.join(args.out, "gazebo_screenshots", "gz_panel.png")
+    gz_lidar = os.path.join(args.out, "gazebo_screenshots", "gz_02_lidar_disc.png")
+    gz_path = gz_panel if os.path.exists(gz_panel) else gz_lidar
+    if os.path.exists(gz_path):
+        img_gz = mpimg.imread(gz_path)
+        ax_gz.imshow(img_gz)
+        ax_gz.axis("off")
+        ax_gz.set_title("Simulação real — TurtleBot3 Waffle em Gazebo Classic",
+                        fontsize=10, fontweight="bold", color=DARK, pad=5)
+    else:
+        ax_gz.axis("off")
+        ax_gz.text(0.5, 0.5, "Screenshot Gazebo\n(ver paper/figs/gazebo_screenshots/)",
+                   ha="center", va="center", fontsize=10, color="#888888",
+                   transform=ax_gz.transAxes)
 
     # ── Rodapé ────────────────────────────────────────────────────────────────
     fig.text(0.5, 0.025,
