@@ -143,8 +143,8 @@ def main():
     img_heat = mpimg.imread(os.path.join(args.out, "switching_heatmap.png"))
     ax_heat.imshow(img_heat)
     ax_heat.axis("off")
-    ax_heat.set_title("Decisão Espacial do Switcher", fontsize=11, fontweight="bold",
-                      color=DARK, pad=5)
+    ax_heat.set_title("Decisão Espacial do Switcher (modelo analítico, ρ*=0,30)",
+                      fontsize=10, fontweight="bold", color=DARK, pad=5)
 
     # ── Célula (1,0): Benchmark clássicos ────────────────────────────────────
     ax_bench = fig.add_subplot(gs[1, 0])
@@ -152,10 +152,10 @@ def main():
 
     tabela = [
         ["Algoritmo", "100 nós", "2.500 nós", "Complexidade"],
-        ["Dijkstra",  "0,07 ms\n3,7 KB",  "2,46 ms\n85 KB",   "O(V log V)"],
-        ["A*",        "0,07 ms\n6,6 KB",  "3,09 ms\n220 KB",  "O(V log V)"],
-        ["Floyd-W.",  "20,9 ms\n2,4 MB",  "inviável",          "O(V³)"],
-        ["Johnson",   "5,5 ms\n145 KB",   "inviável",          "O(VE log V)"],
+        ["Dijkstra",  "0,07 ms\n3,7 KB",   "2,46 ms\n85 KB",   "O(V log V)"],
+        ["A*",        "0,07 ms\n6,6 KB",   "3,09 ms\n220 KB",  "O(V log V)"],
+        ["Floyd-W.",  "20,9 ms\n271 KB",   "inviável",          "O(V³)"],
+        ["Johnson",   "5,5 ms\n603 KB",    "inviável",          "O(VE log V)"],
     ]
     col_widths = [0.22, 0.22, 0.28, 0.28]
     row_h = 0.155
@@ -185,11 +185,11 @@ def main():
     ax_res.axis("off")
 
     metricas = [
-        ("Taxa de sucesso", "85,3%", "Adaptativo"),
-        ("Baseline fixo",  "76,0%", "PPO fixo (Monte Carlo)"),
-        ("Regret vs oracle", "2,2%", "↓ melhor"),
-        ("Threshold",      "ρ* = 0,30", "1.500 experimentos MC"),
-        ("Experimentos",   "1.500", "Monte Carlo calibrado"),
+        ("Taxa de sucesso",    "85,3%",     "Framework adaptivo"),
+        ("PPO fixo (melhor baseline)", "76,0%", "↑ 9,3 pp de diferença"),
+        ("Regret vs oracle",   "2,2%",      "↓ dentro do limite 5%"),
+        ("Threshold ρ*",       "0,30",      "1.500 experimentos Monte Carlo"),
+        ("Generalização",      "N agentes", "CBS + ρ-criterion sem modificação"),
     ]
     y = 0.93
     for label, valor, sub in metricas:
@@ -206,8 +206,18 @@ def main():
     ax_res.set_title("Resultados — Fase 1 (Monte Carlo)", fontsize=11, fontweight="bold",
                      color=DARK, pad=5)
 
-    # ── Célula (1,2): Painel Gazebo (screenshots reais) ──────────────────────
-    ax_gz = fig.add_subplot(gs[1, 2])
+    # ── Célula (1,2): painel duplo — Gazebo + progressão de densidade ──────────
+    from matplotlib.gridspec import GridSpecFromSubplotSpec
+    ax_gz_outer = fig.add_subplot(gs[1, 2])
+    ax_gz_outer.axis("off")
+    ax_gz_outer.set_title("Implementação ROS2 + Progressão de Densidade",
+                           fontsize=10, fontweight="bold", color=DARK, pad=5)
+
+    inner = GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[1, 2],
+                                    hspace=0.12)
+
+    # Sub-painel superior: Gazebo
+    ax_gz = fig.add_subplot(inner[0])
     gz_panel = os.path.join(args.out, "gazebo_screenshots", "gz_panel.png")
     gz_lidar = os.path.join(args.out, "gazebo_screenshots", "gz_02_lidar_disc.png")
     gz_path = gz_panel if os.path.exists(gz_panel) else gz_lidar
@@ -215,13 +225,28 @@ def main():
         img_gz = mpimg.imread(gz_path)
         ax_gz.imshow(img_gz)
         ax_gz.axis("off")
-        ax_gz.set_title("Simulação real — TurtleBot3 Waffle em Gazebo Classic",
-                        fontsize=10, fontweight="bold", color=DARK, pad=5)
+        ax_gz.set_title("TurtleBot3 Waffle — Gazebo Classic",
+                        fontsize=8, color=DARK, pad=2)
     else:
         ax_gz.axis("off")
-        ax_gz.text(0.5, 0.5, "Screenshot Gazebo\n(ver paper/figs/gazebo_screenshots/)",
-                   ha="center", va="center", fontsize=10, color="#888888",
+        ax_gz.text(0.5, 0.5, "[Screenshot Gazebo — pendente convergência SAC]",
+                   ha="center", va="center", fontsize=8, color="#888888",
                    transform=ax_gz.transAxes)
+
+    # Sub-painel inferior: progressão de densidade
+    ax_prog = fig.add_subplot(inner[1])
+    dp_path = os.path.join(args.out, "density_progression.png")
+    if os.path.exists(dp_path):
+        img_dp = mpimg.imread(dp_path)
+        ax_prog.imshow(img_dp)
+        ax_prog.axis("off")
+        ax_prog.set_title("Progressão: esparso → misto → denso (ρ*=0,30)",
+                          fontsize=8, color=DARK, pad=2)
+    else:
+        ax_prog.axis("off")
+        ax_prog.text(0.5, 0.5, "[density_progression.png]",
+                     ha="center", va="center", fontsize=8, color="#888888",
+                     transform=ax_prog.transAxes)
 
     # ── Rodapé ────────────────────────────────────────────────────────────────
     fig.text(0.5, 0.025,
