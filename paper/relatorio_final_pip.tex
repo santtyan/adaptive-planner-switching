@@ -125,7 +125,11 @@ tese é verificada por três hipóteses:
         decisão ótima entre planejadores clássicos e RL, com regret $\leq 5\%$ em relação
         ao oracle ideal.
   \item \textbf{H3:} O framework é realizável em um stack robótico padrão da indústria
-        (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes.
+        (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes. A confirmação de H3
+        abre uma questão natural para cenários multi-agente: quando $N$ robôs aplicam o
+        $\rho$-criterion de forma independente e simultânea, a decisão coletiva emergente é
+        coordenada ou pode levar a conflitos de recursos? Essa pergunta pertence ao domínio da
+        \textit{teoria dos jogos cooperativos} e é identificada como direção de pesquisa futura.
 \end{itemize}
 
 O projeto foi executado no período 01/09/2025--31/08/2026 com bolsa FAPEG (PI08078-2024).
@@ -530,7 +534,15 @@ nos benchmarks de densidade global baixa ($\rho \approx 0{,}19$). A Figura~\ref{
 ilustra a transição espacial entre regimes: pontos azuis nas abordagens esparsas e vermelhos
 concentrados no canyon.
 
-Validação com múltiplos agentes reais em ROS2 constitui trabalho futuro.
+Do ponto de vista formal, cada agente avalia $\rho$ com base exclusivamente em sua observação
+local, sem comunicação com os demais. Esse regime de \textbf{informação local e decisão
+descentralizada} é precisamente a estrutura de um \textit{jogo de coordenação com informação
+incompleta}: cada jogador escolhe uma ação (A* ou SAC) sem conhecer as escolhas dos outros,
+mas o resultado coletivo --- congestionamento, colisões, tempo total de missão --- depende das
+decisões combinadas. A pergunta aberta é: \textit{o $\rho$-criterion é um equilíbrio de Nash
+nesse jogo?} Responder formalmente a essa questão constitui trabalho futuro.
+
+Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
 
 \begin{figure}[H]
   \centering
@@ -594,11 +606,14 @@ domínios de navegação onde a densidade local é estimável em tempo real.
         (Isaac Sim, Webots) é trabalho futuro.
   \item O agente SAC é treinado em mapa fixo; domain randomization é necessária para robustez
         a ambientes não vistos.
-  \item A extensão multi-agente (Seção~\ref{sec:multiagente}) trata cada agente como tomador
-        de decisão independente. Um enquadramento em \textbf{teoria dos jogos cooperativos}
-        permitiria verificar formalmente se o $\rho$-criterion constitui um equilíbrio de Nash
-        em jogos de coordenação com informação local, ou se mecanismos de leilão melhorariam
-        a alocação de planejadores em cenários com recursos computacionais limitados.
+  \item \textbf{Teoria dos jogos cooperativos aplicada ao $\rho$-criterion}
+        (Seção~\ref{sec:multiagente}): cada agente decide A* ou SAC com informação local,
+        sem comunicação --- estrutura de jogo de coordenação com informação incompleta.
+        Perguntas abertas: (i) o $\rho$-criterion é um equilíbrio de Nash nesse jogo?
+        (ii) mecanismos de leilão ou contrato melhorariam a alocação de planejadores quando
+        recursos computacionais (GPU para SAC) são compartilhados entre agentes?
+        Esse enquadramento conecta diretamente o presente trabalho à literatura de
+        \textit{mechanism design} para sistemas multi-robô.
 \end{itemize}
 
 % ============================================================
