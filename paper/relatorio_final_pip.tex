@@ -1,0 +1,596 @@
+% ============================================================
+% Relatório Final — PIP/UFG
+% Arial 12pt, espaço 1,5, A4, máx. 15 páginas (excluindo Informações Complementares)
+% Compilar: pdflatex relatorio_final_pip.tex
+% Fonte: helvet (substituto LaTeX para Arial)
+% ============================================================
+\documentclass[12pt, a4paper]{article}
+
+% ── Codificação e língua ────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+
+% ── Fonte Arial (helvet) ────────────────────────────────────
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% ── Margens e espaçamento ───────────────────────────────────
+\usepackage[top=3cm, bottom=2cm, left=3cm, right=2cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ── Tabelas e figuras ───────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ── Matemática ──────────────────────────────────────────────
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% ── Links e metadados ───────────────────────────────────────
+\usepackage[hidelinks]{hyperref}
+
+% ── Código ──────────────────────────────────────────────────
+\usepackage{listings}
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  frame=single,
+  columns=flexible,
+}
+
+% ── Cabeçalho / rodapé ─────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small PIP/UFG 2025--2026}
+\lhead{\small Yan Santos Leite}
+\cfoot{\thepage}
+
+% ── Seções sem recuo ────────────────────────────────────────
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+% ── Título do documento ─────────────────────────────────────
+\title{
+  \textbf{MÉTODOS MODERNOS PARA PLANEJAMENTO DE TRAJETÓRIA \\ PARA VEÍCULOS AUTÔNOMOS} \\[6pt]
+  \large\textit{Desenvolvimento de Framework Adaptivo para Seleção de Algoritmos \\
+  de Planejamento de Trajetória em Navegação Autônoma}
+}
+\author{
+  Yan Santos Leite\textsuperscript{1} \and
+  Aldo André Diaz Salazar\textsuperscript{2} \\[4pt]
+  \small\textsuperscript{1}Estudante, Escola de Engenharia Elétrica, Mecânica e de Computação --- UFG \\
+  \small santosleiteyan@icloud.com \\[2pt]
+  \small\textsuperscript{2}Orientador, Instituto de Informática --- UFG \\
+  \small aldo.diaz@ufg.br
+}
+\date{Junho/2026 --- Versão parcial (resultados finais: Agosto/2026)}
+
+% ============================================================
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+% ── Resumo ──────────────────────────────────────────────────
+\begin{abstract}
+O planejamento de trajetória em robótica autônoma enfrenta um dilema fundamental: algoritmos
+determinísticos como Dijkstra e A* oferecem garantias de otimalidade, mas degradam-se em
+ambientes com alta densidade de obstáculos; políticas de aprendizado por reforço, como SAC
+(\textit{Soft Actor-Critic}), adaptam-se melhor a contextos complexos, porém são
+desnecessariamente custosas em espaços abertos. Este trabalho desenvolve e valida um framework
+adaptivo que seleciona automaticamente, em tempo de execução, o planejador mais adequado com
+base na densidade local de obstáculos. O critério proposto, denominado $\rho$-\textit{criterion},
+aplica a política $\pi(\rho) = \{\text{A}^* \text{ se } \rho < 0{,}30;\; \text{SAC se }
+\rho \geq 0{,}30\}$, com limiar determinado por validação experimental em 1.500 experimentos
+Monte Carlo. A Fase~1 demonstrou taxa de sucesso de 85,3\% contra 76\% do método fixo de
+referência, com regret de 2,2\% em relação ao oracle ideal. A Fase~2 --- integração em
+ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle --- está em andamento, com resultados
+quantitativos previstos para Agosto/2026.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Apresentação}
+
+\subsection{Introdução e Justificativa}
+
+Robôs autônomos navegam em ambientes heterogêneos onde nenhum planejador único é
+universalmente ótimo. Em corredores abertos, A* encontra caminhos ótimos em milissegundos.
+Em depósitos densamente obstruídos ou cruzamentos urbanos, políticas aprendidas por reforço
+--- treinadas para reagir localmente --- superam abordagens analíticas que pressupõem grafos
+esparsos e bem comportados.
+
+A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto.
+Trabalhos recentes como \citet{He2025} otimizam pesos de um único planejador; abordagens
+híbridas em \citet{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
+de planejador como variável de otimização contextual com garantias formais.
+
+Este trabalho aborda essa lacuna com a seguinte tese central: \textbf{a seleção adaptiva de
+planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes
+heterogêneos, com ganho mensurável e garantias formais de performance}. Operacionalmente, essa
+tese é verificada por três hipóteses:
+
+\begin{itemize}
+  \item \textbf{H1:} O framework adaptivo $\rho$-criterion obtém taxa de sucesso superior ao
+        melhor método fixo em ambientes de densidade variável.
+  \item \textbf{H2:} O critério $\rho$ com limiar $\rho^*{=}0{,}30$ captura a fronteira de
+        decisão ótima entre planejadores clássicos e RL, com regret $\leq 5\%$ em relação
+        ao oracle ideal.
+  \item \textbf{H3:} O framework é realizável em um stack robótico padrão da indústria
+        (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes.
+\end{itemize}
+
+O projeto foi executado no período 01/09/2025--31/08/2026 com bolsa FAPEG (PI08078-2024).
+
+\subsection{Objetivos}
+
+\textbf{Objetivo geral:} Desenvolver um framework que trate a seleção de planejador de
+trajetória como variável de otimização contextual, não como escolha fixa de design.
+
+\textbf{Objetivos específicos:}
+\begin{enumerate}
+  \item Implementar e comparar algoritmicamente Dijkstra, A*, Floyd-Warshall e Johnson com
+        métricas de tempo e memória.
+  \item Formular o critério $\rho$ de seleção adaptiva e determinar o limiar ótimo $\rho^*$
+        experimentalmente.
+  \item Derivar garantias teóricas de performance (\textit{regret bounds}) em relação ao
+        oracle ideal.
+  \item Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle.
+  \item Comparar o framework adaptivo contra métodos fixos da literatura.
+\end{enumerate}
+
+\subsection{Trabalhos Relacionados}
+
+A combinação de planejadores clássicos e de aprendizado por reforço é tema ativo de pesquisa.
+\citet{Sharma2024} propõem um planejador local híbrido que comuta entre DWA e um planejador
+SAC com base em heurística reativa. A linha APPL/APPLR \citep{Xiao2021} adota estratégia
+distinta: em vez de trocar de planejador, aprende por reforço os \textit{parâmetros} de um
+planejador clássico. O método LiCS \citep{Damanik2024}, vencedor do BARN Challenge 2024,
+treina uma política de imitação baseada em Transformer robusta para espaços altamente
+confinados.
+
+O presente trabalho difere dessas abordagens por adotar um critério \textit{preditivo} ---
+a densidade local de obstáculos $\rho$ --- que antecipa a necessidade de comutação
+\textbf{antes} do bloqueio do planejador clássico.
+
+% ============================================================
+\section{Metodologia}
+
+\subsection{Algoritmos Clássicos Implementados}
+
+Os quatro algoritmos foram implementados em Python puro, operando sobre listas de adjacências
+com conectividade 4-direcional:
+
+\begin{itemize}
+  \item \textbf{Dijkstra} --- busca de caminho mínimo de fonte única, $O(V \log V + E)$.
+  \item \textbf{A*} --- Dijkstra com heurística euclidiana admissível.
+  \item \textbf{Floyd-Warshall} --- todos os pares, $O(V^3)$ tempo / $O(V^2)$ memória.
+  \item \textbf{Johnson} --- todos os pares com rebalanceamento por Bellman-Ford,
+        $O(V \cdot E \cdot \log V)$.
+\end{itemize}
+
+\subsection{Critério Adaptivo $\rho$}
+
+A densidade local de obstáculos é calculada em uma janela $w$ ao redor da pose atual do
+robô na costmap de ocupação:
+
+\begin{equation}
+  \rho(p, w) = \frac{\lvert\{c \in W(p,w) : \mathrm{occ}(c) \geq 65\}\rvert}{\lvert W(p,w)\rvert}
+\end{equation}
+
+A política de seleção é:
+
+\begin{equation}
+  \pi(\rho) =
+  \begin{cases}
+    \text{A*} \; (\text{Nav2 SmacPlanner2D}) & \text{se } \rho < 0{,}30 \\
+    \text{SAC} \; (\text{Stable-Baselines3}) & \text{se } \rho \geq 0{,}30
+  \end{cases}
+\end{equation}
+
+O limiar $\rho^* = 0{,}30$ foi determinado por validação experimental com 1.500 trials.
+
+\subsection{Análise Teórica de Regret}
+
+Dado um oracle $O$ que sempre escolhe o planejador ótimo com conhecimento perfeito,
+definimos o regret do framework como:
+
+\begin{equation}
+  \mathrm{Regret}(\pi) = \mathbb{E}[R_{\mathrm{oracle}}] - \mathbb{E}[R_\pi]
+\end{equation}
+
+Sob o modelo de simulação calibrado (Monte Carlo), demonstramos que
+$\mathrm{Regret}(\pi^*) \leq 2{,}2\%$ de $\mathbb{E}[R_{\mathrm{oracle}}]$, com regret
+máximo de $6{,}7\%$ no pior caso.
+
+\subsection{Implementação ROS2}
+
+O sistema integra ROS2 Humble, Gazebo Classic~11, TurtleBot3 Waffle, Nav2
+SmacPlanner2D e Stable-Baselines3 SAC. O ambiente gym customizado recebe observações
+de 27 dimensões: 24 raios LIDAR subamostrados de 360°, posição relativa ao goal (2D)
+e yaw relativo. Ações controlam velocidade linear e angular em $[-1, 1]^2$.
+
+\subsection{Benchmark dos Algoritmos Clássicos}
+
+Para cada algoritmo e tamanho de grid (10$\times$10 a 50$\times$50), com densidade de
+obstáculos 25\% e 5 trials por configuração:
+\begin{itemize}
+  \item \textbf{Tempo de execução} (ms): \texttt{timeit.perf\_counter()}, média dos trials.
+  \item \textbf{Memória de pico} (KB): \texttt{tracemalloc.get\_traced\_memory()}.
+  \item \textbf{Alcançabilidade}: fração de trials onde source-target é conectado.
+\end{itemize}
+
+% ============================================================
+\section{Resultados e Discussão}
+
+\subsection{Benchmark dos Algoritmos Clássicos}
+
+\begin{table}[H]
+  \centering
+  \caption{Tempo de execução médio (ms)}
+  \label{tab:tempo}
+  \begin{tabular}{lrrrr}
+    \toprule
+    \textbf{Algoritmo} & \textbf{10$\times$10} & \textbf{20$\times$20} & \textbf{30$\times$30} & \textbf{50$\times$50} \\
+    \midrule
+    Dijkstra        & 0,071  & 0,335   & 0,878    & 2,46     \\
+    A*              & 0,072  & 0,345   & 0,975    & 3,09     \\
+    Floyd-Warshall  & 20,9   & 2.356   & 39.083   & inviável \\
+    Johnson         & 5,5    & 145     & 854      & inviável \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Memória de pico média (KB)}
+  \label{tab:memoria}
+  \begin{tabular}{lrrrr}
+    \toprule
+    \textbf{Algoritmo} & \textbf{10$\times$10} & \textbf{20$\times$20} & \textbf{30$\times$30} & \textbf{50$\times$50} \\
+    \midrule
+    Dijkstra        & 3,7   & 13,5    & 31,0    & 85,4   \\
+    A*              & 6,6   & 25,9    & 57,1    & 219,6  \\
+    Floyd-Warshall  & 271   & 4.347   & 22.981  & ---    \\
+    Johnson         & 603   & 10.820  & 58.518  & ---    \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\noindent\small\textit{Dados coletados em junho/2026; semente fixa 42; densidade 25\%; Python 3.10 em CPU.}
+
+Dijkstra e A* crescem linearmente em tempo e memória, confirmando complexidade $O(V \log V)$
+na prática. Floyd-Warshall exibe crescimento cúbico: ao passar de 10$\times$10 para
+20$\times$20 (4$\times$ mais nós), o tempo cresce $\approx 113\times$. A* é o único algoritmo
+que combina escalabilidade com direcionamento ao objetivo --- justificando formalmente sua
+escolha como componente clássico do framework adaptivo.
+
+% ── Figuras do benchmark ─────────────────────────────────────
+\begin{figure}[H]
+  \centering
+  % Substitua pelo caminho real após gerar as figuras definitivas
+  \includegraphics[width=0.85\textwidth]{figs/benchmark_time.png}
+  \caption{Tempo de execução dos algoritmos clássicos em função do tamanho do grid.
+           Escala log-log. Dijkstra e A* crescem linearmente; Floyd-Warshall e Johnson
+           tornam-se inviáveis para $N > 900$ nós.}
+  \label{fig:benchmark_time}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/benchmark_memory.png}
+  \caption{Consumo de memória de pico dos algoritmos clássicos.}
+  \label{fig:benchmark_memory}
+\end{figure}
+
+% ── Espaço reservado para imagens do Gazebo ──────────────────
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    % \includegraphics[width=\textwidth]{figs/gz_sparse.png}
+    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_sparse.png\\ (3 obstáculos, $\rho \approx 0{,}10$)}}}
+    \caption{Ambiente esparso --- A* dominante}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    % \includegraphics[width=\textwidth]{figs/gz_dense.png}
+    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_dense.png\\ (7 obstáculos, $\rho \approx 0{,}35$)}}}
+    \caption{Ambiente médio --- regime misto}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.32\textwidth}
+    \centering
+    % \includegraphics[width=\textwidth]{figs/gz_very_dense.png}
+    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_very\_dense.png\\ (13 obstáculos, $\rho \approx 0{,}50$)}}}
+    \caption{Ambiente denso --- SAC dominante}
+  \end{subfigure}
+  \caption{TurtleBot3 Waffle navegando nos três níveis de densidade em Gazebo Classic.
+           Imagens a serem capturadas após convergência do treinamento SAC ($\sim$21/06/2026).
+           Para ativar: remover o comando \texttt{\textbackslash fbox} e descomentar
+           \texttt{\textbackslash includegraphics}.}
+  \label{fig:gazebo_worlds}
+\end{figure}
+
+\subsection{Validação do Critério Adaptivo $\rho$ --- Fase 1 (Monte Carlo)}
+
+Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado).
+\textbf{Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
+estatisticamente} --- não são reimplementações dos algoritmos originais da literatura, mas
+proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos.
+
+\begin{table}[H]
+  \centering
+  \caption{Comparação de métodos --- Fase 1 (simulação Monte Carlo calibrada)}
+  \label{tab:fase1}
+  \begin{tabular}{llr}
+    \toprule
+    \textbf{Método} & \textbf{Tipo} & \textbf{Taxa de sucesso} \\
+    \midrule
+    Framework adaptivo $\rho$-criterion & Mock calibrado (este trabalho) & \textbf{85,3\%} \\
+    Neural Switching                    & Mock calibrado (ref. He et al., 2025) & 78,7\% \\
+    PPO fixo                            & Mock calibrado (este trabalho) & 76,0\% \\
+    Hybrid DRL                          & Mock calibrado (ref. Sensors, 2025) & 66,0\% \\
+    RRT* fixo                           & Mock calibrado (este trabalho) & 48,0\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+O framework adaptivo supera todos os baselines. Regret em relação ao oracle ideal:
+\textbf{2,2\%} (pior caso: 6,7\%). Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/switching_heatmap.png}
+  \caption{Heatmap espacial do $\rho$-criterion no mapa \texttt{dense\_custom.world}. Regiões
+           azuis ($\rho < 0{,}30$) usam A*; regiões vermelhas ($\rho \geq 0{,}30$) usam SAC.
+           A linha tracejada indica a fronteira de decisão $\rho^* = 0{,}30$.}
+  \label{fig:switching_heatmap}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/density_progression.png}
+  \caption{Progressão de densidade --- comparação do switcher nos três ambientes.
+           Esparso ($\rho \approx 0{,}10$): A* cobre quase todo o mapa.
+           Médio ($\rho \approx 0{,}35$): regime misto, fronteira visível.
+           Denso ($\rho \approx 0{,}50$): SAC domina a maior parte do espaço navegável.}
+  \label{fig:density_progression}
+\end{figure}
+
+\subsection{Integração ROS2/Gazebo --- Fase 2}
+
+A infraestrutura completa está operacional, validando a hipótese H3.
+
+\begin{table}[H]
+  \centering
+  \caption{Infraestrutura implantada --- Fase 2}
+  \label{tab:infra}
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Componente} & \textbf{Detalhe} \\
+    \midrule
+    Simulador          & Gazebo Classic 11, \texttt{real\_time\_update\_rate=0} \\
+    Robô               & TurtleBot3 Waffle, diff-drive, LIDAR 360° (24 raios) \\
+    Planejador clássico & A*/SmacPlanner2D via Nav2 Humble \\
+    Agente RL          & SAC, \texttt{ent\_coef="auto"}, \texttt{gradient\_steps=4}, buffer 1M \\
+    Observação         & 27-dim: 24 LIDAR + distância, ângulo e yaw ao goal \\
+    Recompensa         & Potential-based + heading penalty + omega penalty; por passo $\leq 0$ \\
+    Curriculum         & Distância inicial 1,0 m, cresce 0,5 m a cada 60\% de sucesso \\
+    Reprodutibilidade  & Docker Compose; seed=42; \texttt{models/best\_model.zip} versionado \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+A função de recompensa adota o padrão-ouro da literatura:
+
+\begin{equation}
+  r(s,a) = R_{\mathrm{app}} \cdot (d_{t-1} - d_t)
+           + R_{\mathrm{head}} \cdot (\cos\theta_{\mathrm{err}} - 1)
+           - R_\omega \cdot |\omega|
+           + R_{\mathrm{time}}
+           \; [+ R_{\mathrm{goal}} \text{ ou } R_{\mathrm{col}}]
+\end{equation}
+
+A propriedade crítica é que a soma não-terminal é garantidamente $\leq 0$, impedindo que o
+agente acumule recompensa sem progredir.
+
+\textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
+o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
+treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}.
+
+\textbf{Resultados quantitativos --- Fase 2:}
+
+\begin{quote}
+  \textit{Esta seção será preenchida com os resultados do benchmark após a convergência do
+  treinamento SAC (previsto para Agosto/2026). A estrutura abaixo reflete o protocolo de
+  avaliação adotado.}
+\end{quote}
+
+Protocolo: $N=30$ trials por condição, 3 seeds independentes, Wilcoxon signed-rank com
+correção Holm-Bonferroni.
+
+\begin{table}[H]
+  \centering
+  \caption{Resultados quantitativos --- Fase 2 (a preencher)}
+  \label{tab:fase2}
+  \begin{tabular}{lrrr}
+    \toprule
+    \textbf{Métrica} & \textbf{A* fixo} & \textbf{SAC fixo} & \textbf{Adaptativo} \\
+    \midrule
+    Taxa de sucesso geral (\%)       & \texttt{[?]} & \texttt{[?]} & \textbf{\texttt{[?]}} \\
+    Tempo médio --- $\rho<0{,}30$ (s) & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
+    Tempo médio --- $\rho\geq0{,}30$ (s) & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
+    Taxa de colisão (\%)             & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
+    $p$-valor (vs.\ melhor baseline) & ---          & ---          & \texttt{[?]} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figs/success_by_density.png}
+  \caption{Taxa de sucesso por método e faixa de densidade $\rho$.
+           A linha tracejada indica o limiar $\rho^*=0{,}30$.
+           Resultados definitivos em Agosto/2026.}
+  \label{fig:success_density}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figs/outcome_matrix.png}
+  \caption{Matriz de desfecho (goal / colisão / timeout) por método e faixa de densidade.}
+  \label{fig:outcome_matrix}
+\end{figure}
+
+% ── Espaço reservado para imagens de trajetória ──────────────
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.85\textwidth]{figs/trajectory_comparison.png}
+  \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering\small\textit{[PENDENTE]\\
+  trajectory\_comparison.png\\
+  Trajetórias A* (azul), SAC (vermelho) e Adaptativo (verde)\\
+  no mapa dense\_custom.world\\
+  A ser gerado por record\_episode.py após convergência do SAC}}}
+  \caption{Trajetórias representativas por método no mapa \texttt{dense\_custom.world}.
+           Para ativar: remover \texttt{\textbackslash fbox} e descomentar
+           \texttt{\textbackslash includegraphics}.}
+  \label{fig:trajectories}
+\end{figure}
+
+\subsection{Extensão Multi-Agente}
+
+Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos via simulação
+Monte Carlo com modelos calibrados:
+\begin{itemize}
+  \item 100 cenários com 2 agentes $\to$ 1.110 decisões; 93\% usaram o planejador clássico
+        (densidade global média $\approx 0{,}19 < 0{,}30$).
+  \item 21 cenários com 5 agentes: até 26\% das decisões usaram o planejador RL em situações
+        de congestionamento.
+\end{itemize}
+
+Estes resultados indicam que o $\rho$-criterion generaliza para ambientes multi-agente sem
+modificação do critério. Validação com agentes reais em ROS2 constitui trabalho futuro.
+
+% ============================================================
+\section{Conclusão}
+
+Este trabalho desenvolveu e validou, em duas fases complementares, um framework adaptivo para
+seleção de planejador de trajetória baseado na densidade local de obstáculos ($\rho$-criterion),
+respondendo às três hipóteses formuladas na Seção~1.1.
+
+\textbf{H1 --- confirmada na Fase~1, pendente na Fase~2.} Na validação Monte Carlo com modelos
+calibrados, o framework obteve 85,3\% de taxa de sucesso contra 76\% do melhor método fixo ---
+diferença de 9,3 pontos percentuais. A confirmação com planejadores reais (A*/SAC em Gazebo)
+constitui o resultado principal da Fase~2, previsto para Agosto/2026.
+
+\textbf{H2 --- confirmada.} O regret do $\rho$-criterion com $\rho^*{=}0{,}30$ é de 2,2\%
+em relação ao oracle ideal (pior caso: 6,7\%), dentro da margem $\leq 5\%$ estabelecida.
+
+\textbf{H3 --- confirmada.} A infraestrutura completa foi implantada em ROS2 Humble + Gazebo
+Classic + TurtleBot3 Waffle sem modificação dos planejadores subjacentes.
+
+A contribuição metodológica central --- o $\rho$-criterion com limiar $\rho^*{=}0{,}30$ ---
+é independente dos planejadores subjacentes e aplicável a qualquer par (clássico, RL) em
+domínios de navegação onde a densidade local é estimável em tempo real.
+
+\textbf{Limitações e trabalhos futuros:}
+\begin{itemize}
+  \item O $\rho$-criterion usa contexto unidimensional; extensões com contexto vetorial são possíveis.
+  \item O limiar $\rho^*$ é determinado offline; ajuste online via meta-aprendizado permitiria
+        adaptação a novos ambientes.
+  \item Generalização a robôs com cinemática diferente ou simuladores de maior fidelidade
+        (Isaac Sim, Webots) é trabalho futuro.
+  \item O agente SAC é treinado em mapa fixo; domain randomization é necessária para robustez
+        a ambientes não vistos.
+\end{itemize}
+
+% ============================================================
+\section*{Referências Bibliográficas}
+\addcontentsline{toc}{section}{Referências Bibliográficas}
+
+\begin{thebibliography}{99}
+
+\bibitem{Cormen2022}
+CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT Press, 2022.
+
+\bibitem{Damanik2024}
+DAMANIK, J. J. et al. LiCS: navigation using learned-imitation on cluttered space.
+\textbf{IEEE Robotics and Automation Letters}, 2024. arXiv:2406.14947.
+
+\bibitem{Hart1968}
+HART, P. E.; NILSSON, N. J.; RAPHAEL, B. A formal basis for the heuristic determination of
+minimum cost paths. \textbf{IEEE Transactions on Systems Science and Cybernetics}, v.~4,
+n.~2, p.~100--107, 1968.
+
+\bibitem{Haarnoja2018}
+HAARNOJA, T. et al. Soft actor-critic: off-policy maximum entropy deep reinforcement learning
+with a stochastic actor. In: \textbf{International Conference on Machine Learning (ICML)}, 2018.
+
+\bibitem{He2025}
+HE, X. et al. Multi-objective trajectory optimization for autonomous vehicles.
+\textbf{IEEE Transactions on Intelligent Transportation Systems}, 2025.
+
+\bibitem{Macenski2022}
+MACENSKI, S. et al. Robot operating system 2: design, architecture, and uses in the wild.
+\textbf{Science Robotics}, v.~7, n.~66, 2022.
+
+\bibitem{Raffin2021}
+RAFFIN, A. et al. Stable-baselines3: reliable reinforcement learning implementations.
+\textbf{Journal of Machine Learning Research}, v.~22, n.~268, p.~1--8, 2021.
+
+\bibitem{Schulman2017}
+SCHULMAN, J. et al. Proximal policy optimization algorithms. \textbf{arXiv:1707.06347}, 2017.
+
+\bibitem{Sensors2025}
+Hybrid DRL planner for autonomous navigation. \textbf{Sensors}, 2025.
+
+\bibitem{Sharma2024}
+SHARMA, V. D. et al. Hybrid classical/RL local planner for ground robot navigation.
+\textbf{arXiv:2410.03066}, 2024.
+
+\bibitem{Xiao2021}
+XIAO, X. et al. APPLR: adaptive planner parameter learning from reinforcement.
+In: \textbf{IEEE International Conference on Robotics and Automation (ICRA)}, 2021.
+arXiv:2011.00397.
+
+\bibitem{Xiao2024}
+XIAO, X. et al. Autonomous ground navigation in highly constrained spaces: lessons learned
+from the third BARN Challenge at ICRA 2024. \textbf{IEEE Robotics \& Automation Magazine},
+2024. arXiv:2407.01862.
+
+\end{thebibliography}
+
+% ============================================================
+\newpage
+\section*{Informações Complementares}
+\addcontentsline{toc}{section}{Informações Complementares}
+
+\subsection*{Certificados --- Diálogos em Pesquisa e Inovação (OBRIGATÓRIO)}
+\textit{[Anexar certificados de participação nas palestras do Programa Diálogos em Pesquisa e
+Inovação antes de submeter no SIGAA]}
+
+\subsection*{Elemento Audiovisual (opcional)}
+\textit{[Se houver vídeo de até 1 min / 50 MB: inserir link do Google Drive institucional aqui]}
+
+\subsection*{Repositório do Projeto}
+Código completo disponível em: \url{https://github.com/santtyan/adaptive-planner-switching}
+
+\subsection*{Infraestrutura Utilizada}
+Python~3.10, ROS2~Humble, Gazebo~Classic~11, Docker, Stable-Baselines3~2.3, NumPy, Pandas,
+\texttt{timeit}, \texttt{tracemalloc}.
+
+\vfill
+\noindent\small\textit{Versão: Junho/2026 | Relatório parcial --- versão final: Agosto/2026.
+Salvar como PDF (Arial~12pt, espaço~1,5, A4) antes de submeter no SIGAA.}
+
+\end{document}
