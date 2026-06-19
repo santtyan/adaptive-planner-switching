@@ -108,6 +108,15 @@ Em depósitos densamente obstruídos ou cruzamentos urbanos, políticas aprendid
 --- treinadas para reagir localmente --- superam abordagens analíticas que pressupõem grafos
 esparsos e bem comportados.
 
+A ideia de \textit{seleção adaptiva} não é nova no grupo de pesquisa onde este trabalho foi
+desenvolvido. Sistemas anteriores do PEQUI Mecânico (EMC/INF -- UFG) já adotavam comutação
+dinâmica de comportamento: no VSSS-INF (2016) e no VSSS-EMC (2018--2022), a estratégia de
+futebol robótico alternava em tempo real entre papéis de atacante, goleiro e defensor com
+base no estado global do campo. Esse padrão --- decidir \textit{qual} comportamento usar,
+não apenas \textit{como} executá-lo --- é o núcleo do presente trabalho, aqui formalizado
+como critério de seleção baseado em densidade local de obstáculos e validado com garantias
+formais de performance.
+
 A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto.
 Trabalhos recentes como \cite{He2025} otimizam pesos de um único planejador; abordagens
 híbridas em \cite{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
@@ -594,6 +603,28 @@ validando empiricamente o limiar $\rho^* = 0{,}30$ como fronteira de fase robust
 independente do número de agentes.
 
 Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
+
+Um aspecto prático relevante para execução em robôs reais é a diferença entre o plano CBS
+(discreto, em passos de grid) e um \textit{schedule} cinemático executável. O CBS assume
+que cada agente pode ocupar exatamente uma célula por passo de tempo, desconsiderando
+inércia e restrições de velocidade. O pós-processamento por \textbf{Grafo de Plano Temporal
+(TPG)} \cite{Honig2016} resolve essa lacuna: para cada par de agentes que compartilha uma
+mesma célula em passos adjacentes, o TPG insere um buffer de segurança $\delta$ (tipicamente
+$0{,}20$\,m), garantindo separação mínima e viabilidade cinemática. A
+Figura~\ref{fig:cbs_tpg} ilustra essa transformação para um cenário de 3 agentes em grid
+5$\times$5: o painel central mostra os atrasos adicionados pelo TPG; o painel direito exibe
+as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/cbs_tpg_comparison.png}
+  \caption{Transformação CBS $\to$ TPG: plano discreto (passos de grid, painel esquerdo)
+           convertido em schedule cinemático com buffers de segurança $\delta=0{,}20$\,m
+           (painéis central e direito). As setas no painel central indicam atrasos inseridos
+           pelo TPG onde dois agentes passariam pelo mesmo ponto em momentos adjacentes.
+           Esta etapa de pós-processamento é necessária antes da execução em ROS2/Nav2.}
+  \label{fig:cbs_tpg}
+\end{figure}
 
 \begin{figure}[H]
   \centering
