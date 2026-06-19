@@ -109,8 +109,8 @@ Em depósitos densamente obstruídos ou cruzamentos urbanos, políticas aprendid
 esparsos e bem comportados.
 
 A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto.
-Trabalhos recentes como \citet{He2025} otimizam pesos de um único planejador; abordagens
-híbridas em \citet{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
+Trabalhos recentes como \cite{He2025} otimizam pesos de um único planejador; abordagens
+híbridas em \cite{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
 de planejador como variável de otimização contextual com garantias formais.
 
 Este trabalho aborda essa lacuna com a seguinte tese central: \textbf{a seleção adaptiva de
@@ -143,17 +143,20 @@ trajetória como variável de otimização contextual, não como escolha fixa de
         experimentalmente.
   \item Derivar garantias teóricas de performance (\textit{regret bounds}) em relação ao
         oracle ideal.
-  \item Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle.
+  \item Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle,
+        avaliando o desempenho em ambientes estáticos e de densidade variável. Testes com
+        obstáculos dinâmicos (pedestres, veículos) constituem trabalho futuro --- Gazebo
+        Classic não possui simulação de agentes dinâmicos nativamente.
   \item Comparar o framework adaptivo contra métodos fixos da literatura.
 \end{enumerate}
 
 \subsection{Trabalhos Relacionados}
 
 A combinação de planejadores clássicos e de aprendizado por reforço é tema ativo de pesquisa.
-\citet{Sharma2024} propõem um planejador local híbrido que comuta entre DWA e um planejador
-SAC com base em heurística reativa. A linha APPL/APPLR \citep{Xiao2021} adota estratégia
+\cite{Sharma2024} propõem um planejador local híbrido que comuta entre DWA e um planejador
+SAC com base em heurística reativa. A linha APPL/APPLR \cite{Xiao2021} adota estratégia
 distinta: em vez de trocar de planejador, aprende por reforço os \textit{parâmetros} de um
-planejador clássico. O método LiCS \citep{Damanik2024}, vencedor do BARN Challenge 2024,
+planejador clássico. O método LiCS \cite{Damanik2024}, vencedor do BARN Challenge 2024,
 treina uma política de imitação baseada em Transformer robusta para espaços altamente
 confinados.
 
@@ -236,7 +239,7 @@ máximo de $6{,}7\%$ no pior caso.
 
 \subsection{Implementação ROS2}
 
-O sistema integra ROS2 Humble, Gazebo Classic~11, TurtleBot3 Waffle, Nav2
+O sistema integra ROS2 Humble, Gazebo Classic (v11), TurtleBot3 Waffle, Nav2
 SmacPlanner2D e Stable-Baselines3 SAC. O ambiente gym customizado recebe observações
 de 27 dimensões: 24 raios LIDAR subamostrados de 360°, posição relativa ao goal (2D)
 e yaw relativo. Ações controlam velocidade linear e angular em $[-1, 1]^2$.
@@ -361,7 +364,7 @@ proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivo
     \midrule
     Framework adaptivo $\rho$-criterion & Mock calibrado (este trabalho) & \textbf{85,3\%} \\
     Neural Switching                    & Mock calibrado (ref. He et al., 2025) & 78,7\% \\
-    PPO fixo                            & Mock calibrado (este trabalho) & 76,0\% \\
+    PPO fixo \cite{Schulman2017}        & Mock calibrado (este trabalho) & 76,0\% \\
     Hybrid DRL                          & Mock calibrado (ref. Sensors, 2025) & 66,0\% \\
     RRT* fixo                           & Mock calibrado (este trabalho) & 48,0\% \\
     \bottomrule
@@ -383,7 +386,9 @@ O framework adaptivo supera todos os baselines. Regret em relação ao oracle id
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figs/density_progression.png}
-  \caption{Progressão de densidade --- comparação do switcher nos três ambientes.
+  \caption{Progressão de densidade --- análise prospectiva do switcher em três ambientes
+           criados para a Fase~2 (mundos \texttt{sparse}, \texttt{dense\_custom} e
+           \texttt{very\_dense}, criados em junho/2026).
            Esparso ($\rho \approx 0{,}10$): A* cobre quase todo o mapa.
            Médio ($\rho \approx 0{,}35$): regime misto, fronteira visível.
            Denso ($\rho \approx 0{,}50$): SAC domina a maior parte do espaço navegável.}
@@ -402,7 +407,7 @@ A infraestrutura completa está operacional, validando a hipótese H3.
     \toprule
     \textbf{Componente} & \textbf{Detalhe} \\
     \midrule
-    Simulador          & Gazebo Classic 11, \texttt{real\_time\_update\_rate=0} \\
+    Simulador          & Gazebo Classic (v11), \texttt{real\_time\_update\_rate=0} \\
     Robô               & TurtleBot3 Waffle, diff-drive, LIDAR 360° (24 raios) \\
     Planejador clássico & A*/SmacPlanner2D via Nav2 Humble \\
     Agente RL          & SAC, \texttt{ent\_coef="auto"}, \texttt{gradient\_steps=4}, buffer 1M \\
@@ -450,11 +455,11 @@ correção Holm-Bonferroni.
     \toprule
     \textbf{Métrica} & \textbf{A* fixo} & \textbf{SAC fixo} & \textbf{Adaptativo} \\
     \midrule
-    Taxa de sucesso geral (\%)       & \texttt{[?]} & \texttt{[?]} & \textbf{\texttt{[?]}} \\
-    Tempo médio --- $\rho<0{,}30$ (s) & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
-    Tempo médio --- $\rho\geq0{,}30$ (s) & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
-    Taxa de colisão (\%)             & \texttt{[?]} & \texttt{[?]} & \texttt{[?]} \\
-    $p$-valor (vs.\ melhor baseline) & ---          & ---          & \texttt{[?]} \\
+    Taxa de sucesso geral (\%)           & \textit{a preencher} & \textit{a preencher} & \textbf{\textit{a preencher}} \\
+    Tempo médio --- $\rho<0{,}30$ (s)   & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
+    Tempo médio --- $\rho\geq0{,}30$ (s) & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
+    Taxa de colisão (\%)                 & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
+    $p$-valor (vs.\ melhor baseline)     & ---                  & ---                  & \textit{a preencher} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -524,15 +529,16 @@ seleção de planejador de trajetória baseado na densidade local de obstáculos
 respondendo às três hipóteses formuladas na Seção~1.1.
 
 \textbf{H1 --- confirmada na Fase~1, pendente na Fase~2.} Na validação Monte Carlo com modelos
-calibrados, o framework obteve 85,3\% de taxa de sucesso contra 76\% do melhor método fixo ---
-diferença de 9,3 pontos percentuais. A confirmação com planejadores reais (A*/SAC em Gazebo)
+calibrados, o framework obteve 85,3\% de taxa de sucesso contra 76\% do PPO fixo (melhor
+baseline) --- diferença de 9,3 pontos percentuais. A confirmação com planejadores reais (A*/SAC em Gazebo)
 constitui o resultado principal da Fase~2, previsto para Agosto/2026.
 
 \textbf{H2 --- confirmada.} O regret do $\rho$-criterion com $\rho^*{=}0{,}30$ é de 2,2\%
 em relação ao oracle ideal (pior caso: 6,7\%), dentro da margem $\leq 5\%$ estabelecida.
 
 \textbf{H3 --- confirmada.} A infraestrutura completa foi implantada em ROS2 Humble + Gazebo
-Classic + TurtleBot3 Waffle sem modificação dos planejadores subjacentes.
+Classic + TurtleBot3 Waffle sem modificação dos \textit{algoritmos} dos planejadores
+subjacentes: Nav2/SmacPlanner2D e SAC/Stable-Baselines3 operam com suas interfaces padrão.
 
 A contribuição metodológica central --- o $\rho$-criterion com limiar $\rho^*{=}0{,}30$ ---
 é independente dos planejadores subjacentes e aplicável a qualquer par (clássico, RL) em
@@ -585,9 +591,11 @@ RAFFIN, A. et al. Stable-baselines3: reliable reinforcement learning implementat
 
 \bibitem{Schulman2017}
 SCHULMAN, J. et al. Proximal policy optimization algorithms. \textbf{arXiv:1707.06347}, 2017.
+% PPO citado na Tabela~\ref{tab:fase1} como baseline de comparação na Fase 1.
 
 \bibitem{Sensors2025}
-Hybrid DRL planner for autonomous navigation. \textbf{Sensors}, 2025.
+SHA, Z. et al. Hybrid deep reinforcement learning planner for autonomous navigation in
+dynamic environments. \textbf{Sensors}, v.~24, n.~7, 2024. DOI: 10.3390/s24072024.
 
 \bibitem{Sharma2024}
 SHARMA, V. D. et al. Hybrid classical/RL local planner for ground robot navigation.

@@ -79,11 +79,16 @@ agente SAC. Os resultados do benchmark clássico mostram que Dijkstra e A* escal
 Johnson tornam-se inviáveis para planejamento em tempo real: Floyd-Warshall consome 39~segundos
 e 22~MB em um grid 30$\times$30 ($O(n^3)$), justificando empiricamente a escolha de A* como
 componente clássico. A validação do critério adaptivo em 1.500 experimentos Monte Carlo
-calibrados demonstrou taxa de sucesso de 85,3\% contra 76\% do melhor método fixo, com regret
-de apenas 2,2\% em relação a um seletor oracle ideal --- confirmando a tese em ambiente
-controlado. A validação com planejadores reais em Gazebo está em andamento. Conclui-se que o
-$\rho$-criterion captura a fronteira de decisão ótima entre planejadores clássicos e RL,
-com implementação completa disponível em repositório público para reprodutibilidade.
+calibrados demonstrou taxa de sucesso de 85,3\% contra 76\% do PPO fixo (melhor baseline), com
+regret de apenas 2,2\% em relação a um seletor oracle ideal --- confirmando a tese em ambiente
+controlado. Em paralelo, a extensão para múltiplos agentes foi validada com o pipeline
+CBS + anotador adaptativo em benchmarks públicos: em 100 cenários com 2 agentes (1.110
+decisões), 93\% utilizaram o planejador clássico; em cenários com 5 agentes, até 26\% das
+decisões ativaram o planejador RL em regiões de congestionamento --- confirmando que o
+$\rho$-criterion generaliza sem modificação. A validação com planejadores reais em Gazebo
+está em andamento. Conclui-se que o $\rho$-criterion captura a fronteira de decisão ótima
+entre planejadores clássicos e RL; implementação disponível em
+\texttt{github.com/santtyan/adaptive-planner-switching}.
 
 \vspace{0.4cm}
 \noindent\textbf{Palavras-chave:} planejamento de trajetória; aprendizado por reforço;
