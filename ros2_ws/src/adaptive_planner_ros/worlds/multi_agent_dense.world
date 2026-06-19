@@ -1,0 +1,238 @@
+<?xml version="1.0" ?>
+<!--
+  multi_agent_dense.world — mundo para experimento multi-agente (3 robôs, ρ≈0.38).
+
+  Características:
+    - Arena 6m × 6m (maior que os mundos de treino 4m×4m — espaço para 3 robôs)
+    - 16 obstáculos cilíndricos distribuídos para ρ≈0.38 na área navegável
+    - 3 zonas de spawn separadas nos cantos (sem obstáculos nas posições iniciais)
+    - Câmera overhead a z=8m (cobre arena 6m com FOV 70°)
+    - real_time_update_rate=1000 (tempo real, para observação/gravação)
+
+  Posições de spawn sugeridas (livres de obstáculos):
+    robot1: (-2.5, -2.5, 0)   canto SW
+    robot2: ( 2.5, -2.5, 0)   canto SE
+    robot3: ( 0.0,  2.5, 0)   centro N
+
+  NÃO modificar dense_custom.world — treino SAC em andamento nesse mundo.
+-->
+<sdf version="1.6">
+  <world name="multi_agent_dense">
+
+    <physics type="ode">
+      <real_time_update_rate>1000.0</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>150</iters>
+          <sor>1.400000</sor>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000.0</contact_max_correcting_vel>
+          <contact_surface_layer>0.01</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <!-- Paredes (arena 6m × 6m) -->
+    <model name="wall_north"><static>true</static><pose>0 3.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_south"><static>true</static><pose>0 -3.1 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_east"><static>true</static><pose>3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="wall_west"><static>true</static><pose>-3.1 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.2 0.1 1.0</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.2 0.1 1.0</size></box></geometry>
+          <material><script><name>Gazebo/Grey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- 16 obstáculos cilíndricos — ρ≈0.38 na área navegável (6×6=36m², raio=0.18m)
+         Distribuídos para forçar desvio mas deixar caminhos viáveis.
+         Zonas de spawn (raio 0.6m) protegidas: SW(-2.5,-2.5), SE(2.5,-2.5), N(0,2.5) -->
+
+    <!-- Corredor central (força cruzamento entre robôs) -->
+    <model name="obs_0"><static>true</static><pose>-0.8  0.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_1"><static>true</static><pose> 0.0  0.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_2"><static>true</static><pose> 0.8  0.0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Quadrante NE -->
+    <model name="obs_3"><static>true</static><pose> 1.5  1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_4"><static>true</static><pose> 2.2  0.8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_5"><static>true</static><pose> 1.8  2.2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Quadrante NW -->
+    <model name="obs_6"><static>true</static><pose>-1.5  1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_7"><static>true</static><pose>-2.2  0.8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_8"><static>true</static><pose>-1.8  2.2 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Quadrante SE (livre zona spawn robot2 em 2.5,-2.5) -->
+    <model name="obs_9"><static>true</static><pose> 1.5 -0.8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_10"><static>true</static><pose> 2.2 -1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Quadrante SW (livre zona spawn robot1 em -2.5,-2.5) -->
+    <model name="obs_11"><static>true</static><pose>-1.5 -0.8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_12"><static>true</static><pose>-2.2 -1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Obstáculos adicionais para atingir ρ≈0.38 -->
+    <model name="obs_13"><static>true</static><pose>-0.4  1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_14"><static>true</static><pose> 0.4  1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+    <model name="obs_15"><static>true</static><pose> 0.0 -1.5 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry></collision>
+        <visual name="vis"><geometry><cylinder><radius>0.18</radius><length>1.0</length></cylinder></geometry>
+          <material><script><name>Gazebo/DarkGrey</name></script></material></visual>
+      </link>
+    </model>
+
+    <!-- Câmera overhead a z=8m (cobre arena 6m com FOV 70°) -->
+    <model name="camera_overhead">
+      <static>true</static>
+      <pose>0 0 8 0 1.5708 0</pose>
+      <link name="link">
+        <visual name="vis">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+        </visual>
+        <sensor type="camera" name="camera_overhead">
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.2217</horizontal_fov>
+            <image><width>640</width><height>640</height><format>R8G8B8</format></image>
+            <clip><near>0.1</near><far>20</far></clip>
+          </camera>
+          <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+            <ros>
+              <remapping>camera_overhead/image_raw:=camera/image_raw</remapping>
+              <remapping>camera_overhead/camera_info:=camera/camera_info</remapping>
+            </ros>
+            <camera_name>camera_overhead</camera_name>
+            <frame_name>camera_overhead_link</frame_name>
+          </plugin>
+        </sensor>
+      </link>
+    </model>
+
+    <!-- GUI — visão top-down -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>0 0 10 0 1.5708 0</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+  </world>
+</sdf>
