@@ -177,6 +177,19 @@ com conectividade 4-direcional:
         $O(V \cdot E \cdot \log V)$.
 \end{itemize}
 
+\subsection{Nota sobre o Componente C++}
+
+O Plano de Trabalho PI08078-2024 menciona Python e C++ como linguagens de implementação.
+O framework adaptivo e os quatro algoritmos clássicos de benchmark são implementados em
+Python~3.10. O componente C++ está presente \textbf{estruturalmente} via
+Nav2/SmacPlanner2D --- planejador clássico escrito em C++ otimizado, parte do stack
+ROS2~Humble, acionado pelo framework através da interface padrão \texttt{action\_msgs/NavigateToPose}.
+Esta arquitetura é a prática consolidada em sistemas ROS2 de produção: a lógica de alto nível
+(seleção, orquestração, RL) em Python; os núcleos computacionalmente críticos (planejamento
+de caminho, controle de baixo nível) em C++ via bibliotecas do ecossistema Nav2.
+A barreira de reprodutibilidade é reduzida sem comprometer performance, dado que o gargalo
+está na simulação física (Gazebo), não no planejamento em si.
+
 \subsection{Critério Adaptivo $\rho$}
 
 A densidade local de obstáculos é calculada em uma janela $w$ ao redor da pose atual do
