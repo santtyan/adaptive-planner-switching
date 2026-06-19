@@ -496,6 +496,7 @@ correção Holm-Bonferroni.
 \end{figure}
 
 \subsection{Extensão Multi-Agente}
+\label{sec:multiagente}
 
 Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com dados
 \textbf{reais} do pipeline CBS + \texttt{adaptive\_annotator.py} sobre benchmarks públicos
@@ -593,6 +594,11 @@ domínios de navegação onde a densidade local é estimável em tempo real.
         (Isaac Sim, Webots) é trabalho futuro.
   \item O agente SAC é treinado em mapa fixo; domain randomization é necessária para robustez
         a ambientes não vistos.
+  \item A extensão multi-agente (Seção~\ref{sec:multiagente}) trata cada agente como tomador
+        de decisão independente. Um enquadramento em \textbf{teoria dos jogos cooperativos}
+        permitiria verificar formalmente se o $\rho$-criterion constitui um equilíbrio de Nash
+        em jogos de coordenação com informação local, ou se mecanismos de leilão melhorariam
+        a alocação de planejadores em cenários com recursos computacionais limitados.
 \end{itemize}
 
 % ============================================================
