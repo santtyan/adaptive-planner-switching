@@ -239,11 +239,14 @@ A Figura abaixo mostra, para cada célula do mapa, qual planejador o ρ-criterio
 
 ### 3.4 Extensão Multi-Agente
 
-Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos via simulação Monte Carlo com modelos calibrados (mesma metodologia da Fase 1, Seção 3.2):
-- 100 cenários com 2 agentes → 1.110 decisões de planejamento; 93% usaram o planejador clássico (densidade global média ~0,19 < limiar 0,30)
-- 21 cenários com 5 agentes: até 26% das decisões usaram o planejador RL em situações de congestionamento (densidade local elevada)
+Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com dados **reais** do pipeline CBS + `adaptive_annotator.py` sobre benchmarks públicos do repositório `atb033/multi_agent_path_planning` (mapas 8×8, 12 obstáculos fixos):
 
-Estes resultados indicam que o ρ-criterion generaliza para ambientes multi-agente sem modificação do critério. Validação com agentes reais em ROS2 constitui trabalho futuro.
+- **100 cenários com 2 agentes** → 1.110 passos anotados; 1.039 (93%) selecionaram RRT* e 71 (6%) selecionaram PPO. Resultado esperado: densidade global dos mapas ≈ 0,19 < limiar 0,30, portanto o planejador clássico domina.
+- **21 cenários com 5 agentes**: com mais agentes, a densidade local supera o limiar em regiões de congestionamento. No cenário ex13, 8 de 30 passos (26%) foram anotados com PPO; nos demais, a proporção variou entre 0% e 24%.
+
+**Nota de transição:** no Relatório Parcial, o planejador clássico de referência era o RRT* (espaço contínuo). No período seguinte, a integração com ROS2/Nav2 adotou o A*/SmacPlanner2D como componente clássico do framework, por ser o planejador padrão do stack Nav2 e possuir implementação C++ otimizada. O critério ρ e o limiar 0,30 permanecem inalterados — a mudança é apenas na implementação do componente clássico.
+
+Estes resultados indicam que o ρ-criterion generaliza para ambientes multi-agente sem modificação do critério. Validação com múltiplos agentes reais em ROS2 constitui trabalho futuro.
 
 ---
 

@@ -492,17 +492,29 @@ correção Holm-Bonferroni.
 
 \subsection{Extensão Multi-Agente}
 
-Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos via simulação
-Monte Carlo com modelos calibrados:
+Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com dados
+\textbf{reais} do pipeline CBS + \texttt{adaptive\_annotator.py} sobre benchmarks públicos
+do repositório \texttt{atb033/multi\_agent\_path\_planning} (mapas 8$\times$8, 12 obstáculos
+fixos):
+
 \begin{itemize}
-  \item 100 cenários com 2 agentes $\to$ 1.110 decisões; 93\% usaram o planejador clássico
-        (densidade global média $\approx 0{,}19 < 0{,}30$).
-  \item 21 cenários com 5 agentes: até 26\% das decisões usaram o planejador RL em situações
-        de congestionamento.
+  \item \textbf{100 cenários com 2 agentes} $\to$ 1.110 passos anotados; 1.039 (93\%)
+        selecionaram RRT* e 71 (6\%) selecionaram PPO. Resultado esperado: densidade global
+        dos mapas $\approx 0{,}19 < 0{,}30$, portanto o planejador clássico domina.
+  \item \textbf{21 cenários com 5 agentes}: com mais agentes, a densidade local supera o
+        limiar em regiões de congestionamento. No cenário ex13, 8 de 30 passos (26\%) foram
+        anotados com PPO; nos demais, a proporção variou entre 0\% e 24\%.
 \end{itemize}
 
+\textbf{Nota de transição:} no Relatório Parcial, o planejador clássico de referência era o
+RRT* (espaço contínuo). No período seguinte, a integração com ROS2/Nav2 adotou o
+A*/SmacPlanner2D como componente clássico do framework, por ser o planejador padrão do
+stack Nav2 com implementação C++ otimizada. O critério $\rho$ e o limiar $0{,}30$ permanecem
+inalterados --- a mudança é apenas na implementação do componente clássico.
+
 Estes resultados indicam que o $\rho$-criterion generaliza para ambientes multi-agente sem
-modificação do critério. Validação com agentes reais em ROS2 constitui trabalho futuro.
+modificação do critério. Validação com múltiplos agentes reais em ROS2 constitui trabalho
+futuro.
 
 % ============================================================
 \section{Conclusão}
