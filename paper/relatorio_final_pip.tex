@@ -596,11 +596,53 @@ Em nenhum cenário um agente isolado reduziria seu custo individual ao desviar u
 do $\rho$-criterion — condição necessária para equilíbrio de Nash. A prova formal desse
 resultado, sob hipóteses de independência de caminhos, constitui trabalho futuro.
 
+Esse resultado permite ainda uma leitura em termos de \textbf{Preço da Anarquia} (\textit{Price
+of Anarchy}, PoA), métrica clássica de teoria dos jogos que mede a razão entre o custo do pior
+equilíbrio e o ótimo social. Tomando o $\rho$-criterion como ótimo social (custo normalizado
+$1{,}0$) e a pior estratégia pura uniforme como cota superior (sempre-SAC, $+14{,}1\%$), obtém-se
+$\mathrm{PoA} \approx 1{,}141$. O valor próximo da unidade indica que mesmo a pior política fixa
+incorre em degradação modesta frente à seleção adaptiva — coerente com a hipótese de que o
+$\rho$-criterion é um ponto de operação eficiente do jogo de coordenação.
+
 A Figura~\ref{fig:cbs_density_sweep} apresenta a \textbf{varredura sistemática} de densidade
 ($\rho \in [0{,}04,\, 0{,}52]$, grid 10$\times$10, 8 trials por ponto): a transição de regime
 ocorre consistentemente em $\rho \approx 0{,}28$--$0{,}32$ para 2, 3 e 5 agentes,
 validando empiricamente o limiar $\rho^* = 0{,}30$ como fronteira de fase robusta,
 independente do número de agentes.
+
+\subsubsection*{Escalabilidade do CBS e Motivação para Decisão Local}
+
+Embora o CBS produza soluções ótimas livres de colisão, seu custo computacional cresce
+de forma \textbf{super-linear} com o número de agentes $N$ --- comportamento inerente ao
+espaço de busca combinatorial do algoritmo \cite{Sharon2015}. Para quantificar esse efeito
+no contexto do presente trabalho, foi conduzido um experimento de escalabilidade: cenários
+aleatórios em grid $10{\times}10$ com $\rho \approx 0{,}20$ foram resolvidos pelo CBS para
+$N \in \{2, 3, 4, 5, 6, 7, 8\}$ agentes (5 trials por ponto, timeout de 30\,s).
+A Figura~\ref{fig:cbs_scalability} apresenta os resultados: o tempo de solução cresce de
+${\approx}5$\,ms em $N{=}2$ para ${\approx}160$\,ms em $N{=}8$, com ocorrência de timeout
+já em $N{=}8$ (1 de 5 trials censurado). O crescimento super-linear confirma que o CBS
+torna-se inviável para coordenação em tempo real à medida que $N$ aumenta.
+
+Esse resultado motiva diretamente a decisão local do $\rho$-criterion: cada agente avalia
+sua vizinhança e seleciona o planejador individualmente em tempo $O(1)$, sem comunicação
+centralizada. Essa propriedade é precisamente o que a formalização Dec-POMDP captura:
+a política $\pi_i(\rho_i)$ de cada agente depende apenas da observação local $\rho_i$,
+tornando o sistema escalável para qualquer $N$. O próximo passo natural --- treino conjunto
+das políticas com recompensa de coordenação --- corresponde ao paradigma de
+\textit{Aprendizado por Reforço Multi-Agente} (MARL) e constitui a Fase~3 deste programa
+de pesquisa (trabalho futuro).
+
+\begin{figure}[H]
+  \centering
+  \fbox{\includegraphics[width=0.78\textwidth]{figs/cbs_scalability.png}}
+  \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$
+           (grid $10{\times}10$, $\rho=0{,}20$, 5 trials por ponto, timeout 30\,s).
+           O crescimento super-linear contrasta com o custo $O(1)$ por agente do
+           $\rho$-criterion, motivando a decisão local como abordagem escalável.
+           O trial censurado em $N{=}8$ ilustra a impraticabilidade do CBS centralizado
+           em tempo real para frotas maiores.}
+  \label{fig:cbs_scalability}
+\end{figure}
 
 Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
 
@@ -750,6 +792,10 @@ CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT
 \bibitem{Damanik2024}
 DAMANIK, J. J. et al. LiCS: navigation using learned-imitation on cluttered space.
 \textbf{IEEE Robotics and Automation Letters}, 2024. arXiv:2406.14947.
+
+\bibitem{Sharon2015}
+SHARON, G. et al. Conflict-based search for optimal multi-agent pathfinding.
+\textbf{Artificial Intelligence}, v.~219, p.~40--66, 2015.
 
 \bibitem{Honig2016}
 HÖNIG, W. et al. Multi-agent path finding with kinematic constraints.
