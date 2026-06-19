@@ -518,28 +518,46 @@ stack Nav2 com implementação C++ otimizada. O critério $\rho$ e o limiar $0{,
 inalterados --- a mudança é apenas na implementação do componente clássico.
 
 Estes resultados indicam que o $\rho$-criterion generaliza para ambientes multi-agente sem
-modificação do critério. Validação com múltiplos agentes reais em ROS2 constitui trabalho
-futuro.
+modificação do critério: cada agente avalia $\rho$ independentemente a partir de sua própria
+pose, sem comunicação entre agentes, e o CBS garante a ausência de colisões inter-agentes.
+
+Para investigar o comportamento em \textbf{alta densidade}, foi construído um cenário
+\textit{canyon} (grid 12$\times$10, 28 obstáculos, 5 agentes) em que paredes laterais
+forçam todos os agentes a atravessar um corredor central com $\rho \geq 0{,}30$. Neste
+cenário, \textbf{38 de 87 passos (44\%) ativaram o planejador RL} --- contra apenas 6\%
+nos benchmarks de densidade global baixa ($\rho \approx 0{,}19$). A Figura~\ref{fig:cbs_canyon}
+ilustra a transição espacial entre regimes: pontos azuis nas abordagens esparsas e vermelhos
+concentrados no canyon.
+
+Validação com múltiplos agentes reais em ROS2 constitui trabalho futuro.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figs/cbs_spatial_annotation.png}
-  \caption{Visualização espacial do CBS com anotação adaptiva: 3 agentes em grid 10$\times$10
-           com 13 obstáculos. \textbf{Esquerda:} heatmap de densidade local $\rho$ e caminhos
-           planejados pelo CBS. \textbf{Direita:} decisão passo a passo do $\rho$-criterion
-           (azul = A*/RRT* selecionado, vermelho = SAC/PPO selecionado). Os pontos vermelhos
-           concentram-se na zona densa (colunas 5--8), confirmando que o critério identifica
-           corretamente o regime de alta densidade.}
+  \caption{Cenário de referência: 3 agentes em grid 10$\times$10 com 13 obstáculos.
+           \textbf{Esquerda:} heatmap de densidade local $\rho$.
+           \textbf{Direita:} decisão passo a passo (azul = A*/RRT*, vermelho = SAC/PPO).
+           19\% dos passos ativam o planejador RL na zona densa (colunas 5--8).}
   \label{fig:cbs_spatial}
 \end{figure}
 
 \begin{figure}[H]
   \centering
+  \includegraphics[width=\textwidth]{figs/cbs_canyon_annotation.png}
+  \caption{Cenário canyon de alta densidade: 5 agentes, grid 12$\times$10, 28 obstáculos.
+           Paredes laterais forçam passagem pelo corredor central ($\rho \geq 0{,}30$).
+           \textbf{44\% dos passos ativam SAC/PPO} no canyon (pontos vermelhos), confirmando
+           que o $\rho$-criterion responde corretamente ao aumento de densidade.}
+  \label{fig:cbs_canyon}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
   \includegraphics[width=\textwidth]{figs/cbs_ppo_ratio_comparison.png}
-  \caption{Proporção de passos com SAC/PPO selecionado por cenário nos benchmarks públicos
-           (100 cenários com 2 agentes e 21 cenários com 5 agentes). A maioria dos cenários
-           opera abaixo do limiar $\rho^* = 0{,}30$ (linha tracejada); picos acima indicam
-           regiões de congestionamento onde o RL é ativado.}
+  \caption{Proporção de passos com SAC/PPO por cenário nos benchmarks públicos
+           (100 cenários com 2 agentes e 21 cenários com 5 agentes, densidade global
+           $\rho \approx 0{,}19$). A maioria opera abaixo de $\rho^* = 0{,}30$
+           (linha tracejada); picos acima indicam regiões de congestionamento.}
   \label{fig:cbs_bars}
 \end{figure}
 
