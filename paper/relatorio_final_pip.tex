@@ -250,6 +250,28 @@ Sob o modelo de simulação calibrado (Monte Carlo), demonstramos que
 $\mathrm{Regret}(\pi^*) \leq 2{,}2\%$ de $\mathbb{E}[R_{\mathrm{oracle}}]$, com regret
 máximo de $6{,}7\%$ no pior caso.
 
+A Figura~\ref{fig:planner_time_density} apresenta a motivação empírica para o limiar
+$\rho^*{=}0{,}30$: o painel esquerdo mostra a taxa de sucesso de cada planejador no regime
+onde é selecionado (dados calibrados Fase~1), com extrapolação linear indicando que o RRT*
+decai de 96\% ($\rho{=}0{,}10$) a 86\% ($\rho{=}0{,}30$), enquanto o PPO se mantém em
+${\approx}79\%$ na faixa de alta densidade. O painel direito evidencia o custo computacional:
+o tempo do RRT* cresce de 16\,ms a 115\,ms em $\rho{=}0{,}30$ contra ${\approx}12$\,ms
+constantes do PPO --- diferença de 10$\times$, que justifica a comutação antes do cruzamento
+de taxa de sucesso.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/planner_time_vs_density.png}
+  \caption{Regime de atuação por planejador (dados calibrados Fase~1, mocks RRT*/PPO;
+           Fase~2 usa A*/SAC real). \textbf{Esquerda:} taxa de sucesso por densidade ---
+           RRT* excelente em baixa densidade (96\% em $\rho{=}0{,}10$), PPO estável em
+           alta densidade. \textbf{Direita:} tempo de planejamento --- RRT* cresce de
+           16\,ms a 115\,ms em $\rho{=}0{,}30$ vs PPO ${\approx}12$\,ms constante.
+           O limiar $\rho^*{=}0{,}30$ (linha laranja) é conservador: comuta antes do
+           cruzamento de sucesso para evitar degradação computacional de 10$\times$.}
+  \label{fig:planner_time_density}
+\end{figure}
+
 \subsection{Implementação ROS2}
 
 O sistema integra ROS2 Humble, Gazebo Classic (v11), TurtleBot3 Waffle, Nav2
