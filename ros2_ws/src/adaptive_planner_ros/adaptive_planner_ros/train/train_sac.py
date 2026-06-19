@@ -27,7 +27,6 @@ import os
 import rclpy
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import (
-    EvalCallback,
     CheckpointCallback,
     BaseCallback,
 )
@@ -81,6 +80,40 @@ class PlanBCallback(BaseCallback):
         return True
 
 
+class BestRolloutModelCallback(BaseCallback):
+    """Salva o melhor modelo pelo ``rollout/ep_rew_mean`` do treino.
+
+    Substitui o EvalCallback: o env de avaliação compartilhava o mesmo
+    _GazeboEnvNode do treino (um único publisher /cmd_vel e subscriber /scan),
+    então a eval corrompia o estado e selecionava o best_model com base em
+    reward de avaliação inválido. Aqui usamos só a métrica de rollout do treino,
+    sem segundo env.
+    """
+
+    def __init__(self, save_path: str, check_freq: int = 2_000,
+                 verbose: int = 1) -> None:
+        super().__init__(verbose)
+        self._save_path = os.path.join(save_path, "best_model.zip")
+        self._check_freq = check_freq
+        self._best = float("-inf")
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps % self._check_freq != 0:
+            return True
+        mean_reward = self.logger.name_to_value.get(
+            "rollout/ep_rew_mean", float("-inf")
+        )
+        if mean_reward > self._best:
+            self._best = mean_reward
+            self.model.save(self._save_path)
+            if self.verbose:
+                print(
+                    f"[BestModel] novo melhor ep_rew_mean={mean_reward:.1f} "
+                    f"@ step {self.num_timesteps} → {self._save_path}"
+                )
+        return True
+
+
 def main() -> None:
     args = parse_args()
     os.makedirs(args.models_dir, exist_ok=True)
@@ -90,17 +123,12 @@ def main() -> None:
     node = _GazeboEnvNode()
 
     train_env = Monitor(TurtleBot3GazeboEnv(node=node, seed=args.seed))
-    eval_env = Monitor(TurtleBot3GazeboEnv(node=node, seed=args.seed + 1))
 
     model_name = f"sac_{args.seed}_{args.steps}"
 
-    eval_cb = EvalCallback(
-        eval_env,
-        best_model_save_path=args.models_dir,
-        log_path=os.path.join(args.logs_dir, f"sac_{args.seed}"),
-        eval_freq=args.eval_freq,
-        n_eval_episodes=args.eval_episodes,
-        deterministic=True,
+    best_cb = BestRolloutModelCallback(
+        save_path=args.models_dir,
+        check_freq=args.eval_freq,
         verbose=1,
     )
     ckpt_cb = CheckpointCallback(
@@ -142,7 +170,7 @@ def main() -> None:
 
     model.learn(
         total_timesteps=args.steps,
-        callback=[eval_cb, ckpt_cb, planb_cb],
+        callback=[best_cb, ckpt_cb, planb_cb],
         tb_log_name=f"sac_{args.seed}",
         progress_bar=False,
     )
@@ -152,7 +180,6 @@ def main() -> None:
     print(f"Saved final model: {final_path}")
 
     train_env.close()
-    eval_env.close()
     rclpy.shutdown()
 
 

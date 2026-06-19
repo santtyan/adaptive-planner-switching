@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections import deque
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -77,10 +78,30 @@ CONTROL_HZ = 5.0            # Hz — how fast step() publishes and reads
 SCAN_TIMEOUT = 1.0          # seconds — max wait for a fresh /scan message
 
 # Reward shaping coefficients
-R_APPROACH = 10.0           # reward per metre closer to goal
+#
+# Princípio (padrão-ouro p/ navegação DRL — reward shaping TurtleBot3, Wiley 2024):
+# a recompensa NÃO-terminal por passo é ≤ 0, exceto o termo de progresso, que é
+# potencial (telescópico) e portanto não pode ser "farmado" por oscilação.
+#   - R_APPROACH: progresso de distância (único termo positivo; soma telescópica).
+#   - R_HEADING : penalidade de alinhamento — 0 apontando p/ o goal, negativa fora.
+#                 Quebra o ótimo local de "vagar em segurança sem ir ao objetivo".
+#   - R_OMEGA   : penalidade por girar em falso.
+#   - R_TIME    : penalidade leve por passo.
+R_APPROACH = 10.0           # reward per metre closer to goal (potential-based)
+R_HEADING = 0.5             # heading penalty scale: R_HEADING*(cos(err)-1) ≤ 0
+R_OMEGA = 0.1               # angular-velocity penalty scale (per |omega_norm|)
 R_TIME = -0.02              # per step alive penalty
 R_COLLISION = -20.0         # terminal collision penalty
 R_GOAL = 50.0               # terminal goal reward
+
+# Curriculum de distância do goal: começa com goals próximos (sinal terminal
+# alcançável) e expande conforme a taxa de sucesso recente sobe. Sem isso, o
+# raio de 0.25 m raramente é atingido por exploração e o +R_GOAL nunca aprende.
+CURRICULUM_START_DIST = 1.0     # m — distância máx. inicial start→goal
+CURRICULUM_MAX_DIST = 10.0      # m — distância máx. final (na prática, todo o mapa)
+CURRICULUM_STEP = 0.5           # m — incremento por promoção
+CURRICULUM_WINDOW = 10          # episódios na janela de avaliação
+CURRICULUM_SUCCESS_RATE = 0.6   # taxa de sucesso p/ promover o currículo
 
 # Spawn candidates validated for dense_custom.world:
 # - min 0.30m from cylinder surfaces (radius 0.18m)
@@ -244,6 +265,7 @@ class TurtleBot3GazeboEnv(gym.Env):
         density_range: Tuple[float, float] = (0.1, 0.5),
         max_steps: int = MAX_STEPS,
         seed: Optional[int] = None,
+        curriculum: bool = True,
     ) -> None:
         super().__init__()
 
@@ -251,6 +273,14 @@ class TurtleBot3GazeboEnv(gym.Env):
         self._goal_candidates = goal_candidates or DEFAULT_SPAWN_CANDIDATES
         self._density_range = density_range
         self._max_steps = max_steps
+
+        # Curriculum de distância do goal (ver constantes CURRICULUM_*).
+        # Desligado (curriculum=False) → amostra do mapa inteiro, como antes.
+        self._curriculum = curriculum
+        self._curr_max_dist = (
+            CURRICULUM_START_DIST if curriculum else CURRICULUM_MAX_DIST
+        )
+        self._recent_outcomes: deque = deque(maxlen=CURRICULUM_WINDOW)
 
         self.observation_space = spaces.Box(
             low=0.0, high=1.0, shape=(OBS_DIM,), dtype=np.float32
@@ -275,6 +305,9 @@ class TurtleBot3GazeboEnv(gym.Env):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
 
+        # Promove o currículo se a taxa de sucesso recente cruzou o limiar.
+        self._maybe_advance_curriculum()
+
         # Sample start and goal (must be different positions)
         start, goal = self._sample_start_goal()
         self._goal = goal
@@ -292,9 +325,7 @@ class TurtleBot3GazeboEnv(gym.Env):
             if _min_scan_range(scan) >= SAFE_SPAWN_MARGIN:
                 break
             # Position is in collision — try a different candidate
-            idxs = self._rng.choice(len(self._goal_candidates), size=2, replace=False)
-            start = self._goal_candidates[int(idxs[0])]
-            goal = self._goal_candidates[int(idxs[1])]
+            start, goal = self._sample_start_goal()
             self._goal = goal
         self._node.clear_costmap()
         self._last_scan = scan
@@ -332,8 +363,16 @@ class TurtleBot3GazeboEnv(gym.Env):
         terminated = collision or goal_reached
         truncated = timeout
 
-        # Reward
-        reward = R_APPROACH * (self._prev_dist - dist) + R_TIME
+        # Reward (ver bloco de constantes p/ a racional do padrão-ouro):
+        #   - progresso de distância (potencial, único termo positivo)
+        #   - penalidade de heading: 0 apontando p/ goal, negativa fora
+        #   - penalidade de giro em falso
+        #   - penalidade leve por passo
+        heading_err = _wrap_angle(math.atan2(gy - y, gx - x) - yaw)
+        r_progress = R_APPROACH * (self._prev_dist - dist)
+        r_heading = R_HEADING * (math.cos(heading_err) - 1.0)   # ≤ 0
+        r_omega = -R_OMEGA * abs(float(action[1]))              # ≤ 0
+        reward = r_progress + r_heading + r_omega + R_TIME
         if collision:
             reward += R_COLLISION
         if goal_reached:
@@ -347,10 +386,12 @@ class TurtleBot3GazeboEnv(gym.Env):
             "min_scan": min_range,
             "collision": collision,
             "goal_reached": goal_reached,
+            "heading_err": heading_err,
         }
 
-        if terminated:
+        if terminated or truncated:
             self._node.stop_robot()
+            self._record_episode_outcome(goal_reached)
 
         return obs, reward, terminated, truncated, info
 
@@ -369,11 +410,50 @@ class TurtleBot3GazeboEnv(gym.Env):
     def _sample_start_goal(
         self,
     ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        """Sample start and goal from candidate list (must differ)."""
-        idxs = self._rng.choice(len(self._goal_candidates), size=2, replace=False)
-        start = self._goal_candidates[int(idxs[0])]
-        goal = self._goal_candidates[int(idxs[1])]
+        """Sample start and goal from candidate list (must differ).
+
+        Respeita o currículo: o par escolhido tem dist(start, goal) ≤
+        self._curr_max_dist. Se nenhum par couber no limite (currículo muito
+        apertado p/ os candidatos disponíveis), cai no par válido mais próximo.
+        """
+        n = len(self._goal_candidates)
+        cand = self._goal_candidates
+        # Todos os pares (i, j) i≠j com sua distância euclidiana.
+        pairs = [
+            (i, j, math.hypot(cand[i][0] - cand[j][0], cand[i][1] - cand[j][1]))
+            for i in range(n) for j in range(n) if i != j
+        ]
+        within = [p for p in pairs if p[2] <= self._curr_max_dist]
+        pool = within if within else [min(pairs, key=lambda p: p[2])]
+        choice = pool[int(self._rng.integers(len(pool)))]
+        start = cand[int(choice[0])]
+        goal = cand[int(choice[1])]
         return start, goal
+
+    # ---- curriculum -------------------------------------------------------
+
+    def _record_episode_outcome(self, goal_reached: bool) -> None:
+        """Registra o resultado do episódio p/ a janela do currículo."""
+        self._recent_outcomes.append(1 if goal_reached else 0)
+
+    def _maybe_advance_curriculum(self) -> None:
+        """Expande a distância máx. de goal se a taxa de sucesso recente é alta."""
+        if not self._curriculum:
+            return
+        if self._curr_max_dist >= CURRICULUM_MAX_DIST:
+            return
+        if len(self._recent_outcomes) < CURRICULUM_WINDOW:
+            return
+        success_rate = sum(self._recent_outcomes) / len(self._recent_outcomes)
+        if success_rate >= CURRICULUM_SUCCESS_RATE:
+            self._curr_max_dist = min(
+                self._curr_max_dist + CURRICULUM_STEP, CURRICULUM_MAX_DIST
+            )
+            self._recent_outcomes.clear()
+            self._node.get_logger().info(
+                f"[Curriculum] taxa={success_rate:.0%} → max_dist "
+                f"promovida p/ {self._curr_max_dist:.1f} m"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +492,11 @@ def _smoketest(n_episodes: int = 3) -> None:
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+def _wrap_angle(angle: float) -> float:
+    """Normaliza um ângulo para o intervalo [-π, π]."""
+    return math.atan2(math.sin(angle), math.cos(angle))
+
 
 def _quat_to_yaw(qx: float, qy: float, qz: float, qw: float) -> float:
     """Extract yaw from quaternion."""
