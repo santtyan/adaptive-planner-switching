@@ -62,7 +62,9 @@ O presente trabalho difere dessas abordagens por adotar um critério *preditivo*
 
 ### 2.1 Algoritmos Clássicos Implementados
 
-Os quatro algoritmos foram implementados em Python puro (módulos `heapq` e `math` apenas), operando sobre listas de adjacências construídas por `grid_to_graph()` com conectividade 4-direcional:
+Os quatro algoritmos foram implementados em Python puro com **estruturas de dados otimizadas** — atendendo à observação do Consultor SIGAA (13/06/2025) de que a comparação deve envolver implementações otimizadas, não apenas didáticas. Dijkstra e A* utilizam `heapq` (heap binário mínimo), que é a estrutura ótima para fila de prioridade em grafos esparsos e garante complexidade O(V log V + E) na prática. Floyd-Warshall usa matriz densa de adjacência (acesso O(1) por par), e Johnson usa lista de adjacências com rebalanceamento por Bellman-Ford. O componente A* em tempo de execução (framework real) utiliza Nav2/SmacPlanner2D — implementação C++ altamente otimizada e validada pela comunidade ROS2, reforçando o caráter de comparação com implementações de produção.
+
+Os algoritmos operam sobre listas de adjacências construídas por `grid_to_graph()` com conectividade 4-direcional:
 
 - **Dijkstra** — busca de caminho mínimo de fonte única, O(V log V + E), com heap binário.
 - **A*** — Dijkstra com heurística euclidiana admissível; reduz o espaço de busca quando orientado a um objetivo específico.

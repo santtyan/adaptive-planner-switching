@@ -166,7 +166,17 @@ a densidade local de obstáculos $\rho$ --- que antecipa a necessidade de comuta
 
 \subsection{Algoritmos Clássicos Implementados}
 
-Os quatro algoritmos foram implementados em Python puro, operando sobre listas de adjacências
+Os quatro algoritmos foram implementados em Python puro com \textbf{estruturas de dados
+otimizadas} --- atendendo à observação do Consultor SIGAA (13/06/2025) de que a comparação
+deve envolver implementações otimizadas, não apenas didáticas. Dijkstra e A* utilizam
+\texttt{heapq} (heap binário mínimo), estrutura ótima para fila de prioridade em grafos
+esparsos, garantindo complexidade $O(V \log V + E)$ na prática. Floyd-Warshall usa matriz
+densa de adjacência (acesso $O(1)$ por par); Johnson usa lista de adjacências com
+rebalanceamento por Bellman-Ford. O componente A* em tempo de execução (framework real)
+utiliza Nav2/SmacPlanner2D --- implementação C++ altamente otimizada e validada pela
+comunidade ROS2, reforçando o caráter de comparação com implementações de produção.
+
+Os algoritmos operam sobre listas de adjacências construídas por \texttt{grid\_to\_graph()}
 com conectividade 4-direcional:
 
 \begin{itemize}
