@@ -327,7 +327,7 @@ class TurtleBot3GazeboEnv(gym.Env):
                 self._rng.uniform(-math.pi, math.pi)
             ))
             time.sleep(0.3)          # allow Gazebo physics to settle
-            scan = self._node.wait_for_scan(timeout=0.6)
+            scan = self._node.wait_for_scan(timeout=1.5)  # scan novo pós-teleport (não stale)
             if _min_scan_range(scan) >= SAFE_SPAWN_MARGIN:
                 break
             # Position is in collision — try a different candidate
