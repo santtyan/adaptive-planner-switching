@@ -47,6 +47,7 @@ from gymnasium import spaces
 from geometry_msgs.msg import Twist, Pose, Point, Quaternion
 from sensor_msgs.msg import LaserScan
 from gazebo_msgs.msg import ModelStates
+from nav_msgs.msg import Odometry
 from gazebo_msgs.srv import SetEntityState
 from std_srvs.srv import Empty
 from nav2_msgs.srv import ClearEntireCostmap
@@ -145,6 +146,7 @@ class _GazeboEnvNode(Node):
         self._model_states: Optional[ModelStates] = None
         self._scan_seq: int = -1
         self._cached_pose: tuple = (0.0, 0.0, 0.0)  # (x, y, yaw) from last teleport
+        self._odom_pose: Optional[tuple] = None       # (x, y, yaw) from /odom (live)
 
         # Publishers
         self._cmd_pub = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
@@ -154,6 +156,8 @@ class _GazeboEnvNode(Node):
                                  self._scan_cb, 10)
         self.create_subscription(ModelStates, MODEL_STATES_TOPIC,
                                  self._model_states_cb, 10)
+        self.create_subscription(Odometry, "/odom",
+                                 self._odom_cb, 10)
 
         # Service clients
         self._set_entity_cli = self.create_client(SetEntityState,
@@ -175,6 +179,12 @@ class _GazeboEnvNode(Node):
 
     def _model_states_cb(self, msg: ModelStates) -> None:
         self._model_states = msg
+
+    def _odom_cb(self, msg: Odometry) -> None:
+        p = msg.pose.pose
+        yaw = _quat_to_yaw(p.orientation.x, p.orientation.y,
+                           p.orientation.z, p.orientation.w)
+        self._odom_pose = (p.position.x, p.position.y, yaw)
 
     # ---- helpers ----------------------------------------------------------
 
@@ -198,11 +208,12 @@ class _GazeboEnvNode(Node):
         return self._scan  # return stale if timeout
 
     def get_robot_pose(self) -> Tuple[float, float, float]:
-        """Return (x, y, yaw). Uses model_states if available, else cached teleport pose.
+        """Return (x, y, yaw) — priority: model_states > odom > cached teleport.
 
-        /gazebo/model_states requires libgazebo_ros_state.so which is not loaded in
-        the headless training gzserver — so we fall back to the last known teleport
-        position immediately without waiting (eliminates 0.5s spin_once per call).
+        /gazebo/model_states requires libgazebo_ros_state.so (not loaded in headless
+        training). /odom is always available via turtlebot3_diff_drive plugin and
+        tracks the actual robot motion during each episode. Falls back to the cached
+        teleport position only before the first odom message arrives.
         """
         if self._model_states is not None:
             try:
@@ -213,6 +224,8 @@ class _GazeboEnvNode(Node):
                                      p.orientation.z, p.orientation.w))
             except ValueError:
                 pass
+        if self._odom_pose is not None:
+            return self._odom_pose
         return self._cached_pose
 
     def pause_physics(self) -> None:
