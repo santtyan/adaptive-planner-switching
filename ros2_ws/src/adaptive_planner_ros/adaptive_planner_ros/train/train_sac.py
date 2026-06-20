@@ -53,6 +53,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--planb-step", type=int, default=300_000,
                    help="Check ep_rew_mean at this step; abort if < planb-threshold")
     p.add_argument("--planb-threshold", type=float, default=50.0)
+    # Early-stop por sucesso (corta horas pós-convergência; 500k é teto, não alvo).
+    p.add_argument("--stop-success-rate", type=float, default=0.85,
+                   help="Encerra se success_rate ≥ isto no goal mais distante")
+    p.add_argument("--stop-patience", type=int, default=3,
+                   help="Checagens consecutivas acima do limiar p/ encerrar")
     return p.parse_args()
 
 
@@ -83,6 +88,49 @@ class PlanBCallback(BaseCallback):
                 )
                 self._triggered = True
                 return False  # stops training
+        return True
+
+
+class StopOnSuccessCallback(BaseCallback):
+    """Encerra o treino quando o agente domina o goal mais distante do curriculum.
+
+    Motivação (20/06/2026): 500k steps é um TETO de segurança, não um alvo. Com a
+    arena 4×4m + curriculum até 3.0m + gradient_steps=4, a convergência esperada é
+    ~150-250k. Rodar 500k cegamente desperdiça horas após o platô de sucesso.
+
+    Critério: success_rate ≥ `threshold` na janela do curriculum, COM
+    `at_max_curriculum=True` (curr_max_dist já no máximo), sustentado por
+    `patience` checagens consecutivas. Lê de info[] exposto pelo env.
+    """
+
+    def __init__(self, threshold: float = 0.85, patience: int = 3,
+                 check_freq: int = 2_000, verbose: int = 1) -> None:
+        super().__init__(verbose)
+        self._threshold = threshold
+        self._patience = patience
+        self._check_freq = check_freq
+        self._hits = 0
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps % self._check_freq != 0:
+            return True
+        infos = self.locals.get("infos") or []
+        if not infos:
+            return True
+        info = infos[0]
+        at_max = info.get("at_max_curriculum", False)
+        sr = info.get("success_rate", 0.0)
+        if at_max and sr >= self._threshold:
+            self._hits += 1
+            if self.verbose:
+                print(f"[StopOnSuccess] sr={sr:.0%} @ max-curriculum "
+                      f"({self._hits}/{self._patience}) step {self.num_timesteps}")
+            if self._hits >= self._patience:
+                print(f"\n[StopOnSuccess] CONVERGIU — sr={sr:.0%} sustentado. "
+                      f"Encerrando em {self.num_timesteps} steps (teto era {self.locals.get('total_timesteps','?')}).\n")
+                return False
+        else:
+            self._hits = 0
         return True
 
 
@@ -189,7 +237,13 @@ def main() -> None:
         seed=args.seed,
     )
 
-    callbacks = [best_cb, ckpt_cb]
+    callbacks = [best_cb, ckpt_cb, StopOnSuccessCallback(
+        threshold=args.stop_success_rate,
+        patience=args.stop_patience,
+        check_freq=args.eval_freq,
+    )]
+    print(f"[StopOnSuccess] ativo: encerra se sr≥{args.stop_success_rate:.0%} "
+          f"@ max-curriculum por {args.stop_patience} checagens.")
     if args.planb_enable:
         callbacks.append(PlanBCallback(
             check_step=args.planb_step,

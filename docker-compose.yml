@@ -20,6 +20,9 @@ version: "3.9"
 #
 # Shell interativo dentro do container:
 #   docker compose run --rm shell
+#
+# Visualizar Gazebo enquanto treino roda (inspirado no padrão VSSS firasim_gui):
+#   DISPLAY=:1 docker compose up gzclient
 
 services:
 
@@ -53,7 +56,7 @@ services:
           echo \"Spawn tentativa \$i falhou, retentando...\" && sleep 5
         done
         echo 'Robô spawnado. Iniciando treino SAC...' &&
-        python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps ${TRAIN_STEPS:-100000} --seed 42 --models-dir /workspace/models/ --logs-dir /workspace/logs/
+        python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps ${TRAIN_STEPS:-500000} --seed ${TRAIN_SEED:-42} --models-dir /workspace/models/ --logs-dir /workspace/logs/ --planb-enable --planb-step ${PLANB_STEP:-300000} --planb-threshold ${PLANB_THRESHOLD:-50.0}
         wait \$GZPID
       "
 
@@ -154,6 +157,36 @@ services:
       - ./models:/workspace/models:ro               # lê modelos (read-only)
       - ./results_ros2:/workspace/results_ros2      # escreve master.csv
     command: bash -c "source /opt/ros/humble/setup.bash && source /workspace/ros2_ws/install/setup.bash && sleep 15 && python3 /workspace/ros2_ws/src/adaptive_planner_ros/benchmark/run_benchmark.py --trials 30 --maps open dense mixed --ppo-model /workspace/models/ppo_42_500k.zip --sac-model /workspace/models/sac_42_500k.zip --output /workspace/results_ros2/master.csv"
+
+  # ── Visualização Gazebo (gzclient) — conecta ao gzserver do train-all ────
+  #
+  # Uso (enquanto train-all estiver rodando):
+  #   DISPLAY=:1 docker compose up gzclient     # Wayland com XWayland
+  #   DISPLAY=:0 docker compose up gzclient     # X11 puro
+  #
+  # O gzserver já está em localhost:11345 (network_mode: host do train-all).
+  # O gzclient carrega os modelos do TurtleBot3 de dentro do container
+  # para garantir que as meshes aparecem corretamente.
+  gzclient:
+    image: adaptive-planner:latest
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY:-:1}
+      - GAZEBO_MASTER_URI=http://localhost:11345
+      - GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models:/opt/ros/humble/share/turtlebot3_description/meshes
+      - GAZEBO_RESOURCE_PATH=/opt/ros/humble/share/turtlebot3_description
+      - TURTLEBOT3_MODEL=waffle
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./ros2_ws/src:/workspace/ros2_ws/src:ro
+    command: >-
+      bash -c "
+        source /opt/ros/humble/setup.bash &&
+        source /workspace/ros2_ws/install/setup.bash &&
+        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
+        export GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models:/opt/ros/humble/share:/opt/ros/humble/share/turtlebot3_description:\${GAZEBO_MODEL_PATH} &&
+        gzclient --verbose
+      "
 
   # ── Shell interativo ──────────────────────────────────────────────────────
   shell:

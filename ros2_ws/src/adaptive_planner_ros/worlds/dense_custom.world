@@ -14,14 +14,18 @@
     <!-- Physics -->
     <physics type="ode">
       <!-- real_time_update_rate=0 → roda a física tão rápido quanto a CPU permitir
-           (destrava o treino RL do limite de 1x wall-clock). max_step_size mantido. -->
+           (destrava o treino RL do limite de 1x wall-clock).
+           20/06/2026: max_step_size MANTIDO em 0.001 — testar 0.004 piorou fps 7→1
+           (o LIDAR a 5 Hz sim deixa de disparar com passo grosso → step espera o
+           SCAN_TIMEOUT=1.0s inteiro). O gargalo NÃO é custo de física, é entrega de scan.
+           ODE iters 150→50: redução segura (não afeta timing de sensor). -->
       <real_time_update_rate>0.0</real_time_update_rate>
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
       <ode>
         <solver>
           <type>quick</type>
-          <iters>150</iters>
+          <iters>50</iters>
           <precon_iters>0</precon_iters>
           <sor>1.400000</sor>
         </solver>

@@ -390,12 +390,21 @@ class TurtleBot3GazeboEnv(gym.Env):
         self._prev_dist = dist
 
         obs = self._build_obs()
+        # success_rate da janela do curriculum — usado pelo StopOnSuccessCallback
+        # p/ encerrar o treino quando o agente domina o goal mais distante.
+        sr = (
+            sum(self._recent_outcomes) / len(self._recent_outcomes)
+            if self._recent_outcomes else 0.0
+        )
         info: Dict[str, Any] = {
             "dist_to_goal": dist,
             "min_scan": min_range,
             "collision": collision,
             "goal_reached": goal_reached,
             "heading_err": heading_err,
+            "success_rate": sr,
+            "curr_max_dist": self._curr_max_dist,
+            "at_max_curriculum": self._curr_max_dist >= CURRICULUM_MAX_DIST,
         }
 
         if terminated or truncated:
@@ -481,9 +490,17 @@ def _smoketest(n_episodes: int = 3) -> None:
     rclpy.init()
     env = TurtleBot3GazeboEnv(seed=42)
 
+    spawn_collisions = 0
     for ep in range(args.episodes):
         obs, info = env.reset()
         assert obs.shape == (OBS_DIM,), f"Bad obs shape: {obs.shape}"
+        # Gate: o robô NÃO pode nascer em colisão (tunneling / spawn ruim).
+        # min_scan no 1º passo válido deve ser ≥ COLLISION_DIST.
+        first = env._build_obs()  # noqa: SLF001 — checagem de sanidade do spawn
+        min0 = _min_scan_range(env._last_scan)
+        if min0 < COLLISION_DIST:
+            spawn_collisions += 1
+            print(f"[SMOKETEST][WARN] ep{ep+1}: spawn em colisão (min_scan={min0:.2f})")
         total_reward = 0.0
         for _ in range(50):
             action = env.action_space.sample()
@@ -492,7 +509,12 @@ def _smoketest(n_episodes: int = 3) -> None:
             if terminated or truncated:
                 break
         print(f"Episode {ep+1}: reward={total_reward:.1f} "
-              f"goal={info['goal_reached']} collision={info['collision']}")
+              f"goal={info['goal_reached']} collision={info['collision']} "
+              f"min_scan0={min0:.2f}")
+    assert spawn_collisions == 0, (
+        f"{spawn_collisions}/{args.episodes} spawns em colisão — "
+        f"revisar DEFAULT_SPAWN_CANDIDATES ou max_step_size do .world"
+    )
 
     env.close()
     rclpy.shutdown()
