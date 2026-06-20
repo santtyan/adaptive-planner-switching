@@ -13,7 +13,9 @@ from typing import Sequence
 LIDAR_MAX_RANGE = 3.5          # metres
 LIDAR_N_RAYS = 360
 LIDAR_N_DOWNSAMPLED = 24       # 15° per bucket
-GOAL_DISTANCE_MAX = 6.0        # metres — normalise goal distance
+GOAL_DISTANCE_MAX = 3.5        # metres — normalise goal distance
+# 20/06/2026: era 6.0, mas a arena dense_custom (4×4m) tem dist máx entre spawn
+# candidates de 2,92m → r_norm saturava em ≤0.5. 3.5 cobre toda a diagonal útil.
 
 # TB3 Waffle velocity limits used during training
 LINEAR_VEL_MAX = 0.22          # m/s

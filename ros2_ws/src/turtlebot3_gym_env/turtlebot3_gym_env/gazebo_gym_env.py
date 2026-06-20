@@ -98,7 +98,9 @@ R_GOAL = 50.0               # terminal goal reward
 # alcançável) e expande conforme a taxa de sucesso recente sobe. Sem isso, o
 # raio de 0.25 m raramente é atingido por exploração e o +R_GOAL nunca aprende.
 CURRICULUM_START_DIST = 1.0     # m — distância máx. inicial start→goal
-CURRICULUM_MAX_DIST = 10.0      # m — distância máx. final (na prática, todo o mapa)
+# 20/06/2026: era 10.0, irrealista — spawn candidates da arena 4×4m têm dist máx
+# entre pares de 2,92m. O currículo nunca chegava perto. 3.0 ≈ diagonal útil real.
+CURRICULUM_MAX_DIST = 3.0       # m — distância máx. final (≈ diagonal da arena)
 CURRICULUM_STEP = 0.5           # m — incremento por promoção
 CURRICULUM_WINDOW = 10          # episódios na janela de avaliação
 CURRICULUM_SUCCESS_RATE = 0.6   # taxa de sucesso p/ promover o currículo

@@ -43,7 +43,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-episodes", type=int, default=5)
     p.add_argument("--models-dir", default="models")
     p.add_argument("--logs-dir", default="logs")
-    # Early abort threshold: if mean reward < this at step planb_step, stop
+    # Early abort (Plan B) — DESLIGADO por padrão (20/06/2026).
+    # O threshold antigo (ep_rew_mean<50 @ 300k) era inatingível em mundo denso
+    # (R_GOAL=50 exigiria quase todo episódio fechando goal) → matava o run.
+    # Ativar explicitamente com --planb-enable se desejar o early-abort.
+    p.add_argument("--planb-enable", action="store_true",
+                   help="Habilita o early-abort Plan B (desligado por padrão)")
     p.add_argument("--planb-step", type=int, default=300_000,
                    help="Check ep_rew_mean at this step; abort if < planb-threshold")
     p.add_argument("--planb-threshold", type=float, default=50.0)
@@ -81,35 +86,44 @@ class PlanBCallback(BaseCallback):
 
 
 class BestRolloutModelCallback(BaseCallback):
-    """Salva o melhor modelo pelo ``rollout/ep_rew_mean`` do treino.
+    """Salva o melhor modelo pela média de recompensa dos episódios recentes.
 
     Substitui o EvalCallback: o env de avaliação compartilhava o mesmo
     _GazeboEnvNode do treino (um único publisher /cmd_vel e subscriber /scan),
     então a eval corrompia o estado e selecionava o best_model com base em
     reward de avaliação inválido. Aqui usamos só a métrica de rollout do treino,
     sem segundo env.
+
+    FIX (20/06/2026): a versão anterior lia ``logger.name_to_value`` apenas em
+    ``num_timesteps % check_freq == 0``, instante em que a chave costuma estar
+    ausente (o SB3 só popula no dump por episódio) → ficava ``-inf`` e o
+    best_model nunca era salvo. Agora a média vem de ``model.ep_info_buffer``,
+    que o SB3 mantém populado com os últimos episódios encerrados.
     """
 
     def __init__(self, save_path: str, check_freq: int = 2_000,
-                 verbose: int = 1) -> None:
+                 min_episodes: int = 20, verbose: int = 1) -> None:
         super().__init__(verbose)
         self._save_path = os.path.join(save_path, "best_model.zip")
         self._check_freq = check_freq
+        self._min_episodes = min_episodes
         self._best = float("-inf")
 
     def _on_step(self) -> bool:
         if self.num_timesteps % self._check_freq != 0:
             return True
-        mean_reward = self.logger.name_to_value.get(
-            "rollout/ep_rew_mean", float("-inf")
-        )
+        buf = self.model.ep_info_buffer
+        if buf is None or len(buf) < self._min_episodes:
+            return True
+        mean_reward = sum(ep["r"] for ep in buf) / len(buf)
         if mean_reward > self._best:
             self._best = mean_reward
             self.model.save(self._save_path)
             if self.verbose:
                 print(
                     f"[BestModel] novo melhor ep_rew_mean={mean_reward:.1f} "
-                    f"@ step {self.num_timesteps} → {self._save_path}"
+                    f"(janela {len(buf)} eps) @ step {self.num_timesteps} "
+                    f"→ {self._save_path}"
                 )
         return True
 
@@ -150,7 +164,7 @@ def main() -> None:
         train_env,
         learning_rate=3e-4,
         buffer_size=1_000_000,
-        learning_starts=1_000,
+        learning_starts=10_000,   # padrão-ouro off-policy: + exploração inicial
         batch_size=256,
         tau=0.005,
         gamma=0.99,
@@ -163,14 +177,20 @@ def main() -> None:
         seed=args.seed,
     )
 
-    planb_cb = PlanBCallback(
-        check_step=args.planb_step,
-        threshold=args.planb_threshold,
-    )
+    callbacks = [best_cb, ckpt_cb]
+    if args.planb_enable:
+        callbacks.append(PlanBCallback(
+            check_step=args.planb_step,
+            threshold=args.planb_threshold,
+        ))
+        print(f"[PlanB] habilitado: abort se ep_rew_mean<{args.planb_threshold} "
+              f"@ step {args.planb_step}")
+    else:
+        print("[PlanB] desabilitado (default) — treino corre até o fim.")
 
     model.learn(
         total_timesteps=args.steps,
-        callback=[best_cb, ckpt_cb, planb_cb],
+        callback=callbacks,
         tb_log_name=f"sac_{args.seed}",
         progress_bar=False,
     )
