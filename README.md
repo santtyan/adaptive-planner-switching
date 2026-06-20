@@ -1,128 +1,145 @@
-﻿# Adaptive Context-Based Planner Switching Framework
+# Adaptive Planner Switching — IC PIBIC/FAPEG UFG
 
-Framework adaptativo para seleção dinâmica entre RRT* e PPO baseado em densidade de obstáculos. Projeto de Iniciação Científica - UFG.
+Framework adaptivo para seleção dinâmica de planejador de trajetória baseado em densidade local de obstáculos (ρ-criterion). Projeto de Iniciação Científica — EMC/UFG, bolsa FAPEG PI08078-2024.
 
-## Resultados Principais
+**Estudante:** Yan Santos Leite | **Orientador:** Prof. Dr. Aldo André Diaz Salazar (INF/UFG)
+**Período:** Set/2025 – Ago/2026 | **Stack:** ROS2 Humble · Gazebo Classic · TurtleBot3 Waffle · Stable-Baselines3
 
-- **85.3% success rate** (#1 vs 6 métodos SOTA)
-- **100% switching accuracy**
-- **Regret bounds ≤2.2%** vs oracle
-- **1500+ experimentos** validados
+---
 
-## Problema
+## Tese Central
 
-Métodos clássicos (RRT*, A*) ou modernos (PPO, SAC) são usados isoladamente. Trabalhos recentes (He et al. 2025, Sensors 2025) usam switching heurístico ou pesos fixos. Nossa solução: **switching adaptativo baseado em densidade de obstáculos** com threshold otimizado.
-
-## Método
+> A seleção adaptiva de planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes heterogêneos, com ganho mensurável e garantias formais de performance.
 
 **Política de seleção:**
-- RRT* quando densidade < 0.30 (ambientes abertos)
-- PPO quando densidade ≥ 0.30 (ambientes densos)
-
-**Componentes:**
-- SimpleEnvironment (grid 100×100)
-- RRTStarPlanner (implementação própria)
-- PPOPlanner (Stable-Baselines3)
-- AdaptiveSwitcher (threshold 0.30)
-
-## Resultados vs SOTA
-
-| Método | Success Rate |
-|--------|--------------|
-| **Adaptive (ours)** | **85.3%** |
-| Neural Switching | 78.7% |
-| Fixed PPO | 76.0% |
-| Hybrid DRL | 66.0% |
-| He Multi-opt | 54.0% |
-| Fixed RRT* | 48.0% |
-
-**Performance por densidade:**
-- Baixa (ρ<0.30): RRT* 88-92%, PPO 73-76% → seleciona RRT*
-- Alta (ρ≥0.30): RRT* 45-62%, PPO 71-78% → seleciona PPO
-
-**Garantias teóricas:**
-- Average regret: 2.2% vs oracle
-- Optimality gap: 1.7%
-- Performance: ≥93.3% do oracle
-
-## Instalação
-
-```bash
-git clone https://github.com/santtyan/adaptive-planner-switching
-cd adaptive-planner-switching
-python -m venv venv_ic
-.\venv_ic\Scripts\activate  # Windows
-pip install -r requirements.txt
-```
-
-## Uso Rápido
-
-```python
-from src.environment import SimpleEnvironment
-from src.adaptive_switcher import AdaptiveSwitcher
-
-env = SimpleEnvironment(obstacle_density=0.35)
-switcher = AdaptiveSwitcher(threshold=0.30)
-switcher.set_environment(env)
-
-success, time_ms, trajectory, selected = switcher.plan((10,10), (90,90), env)
-print(f"{selected}: {success} em {time_ms:.2f}ms")
-```
-
-## Experimentos
-
-```bash
-python experiments/comprehensive_experiments.py  # 1500 trials
-python experiments/sota_comparison.py           # 6 métodos
-python experiments/theoretical_analysis.py      # regret bounds
-python experiments/realistic_scenario_validation.py  # cenários automotivos
-```
-
-## Estrutura
 
 ```
-src/                # Código core
-├── environment.py
-├── adaptive_switcher.py
-└── planners/      # RRT* + PPO
-experiments/       # 10 scripts validação
-results/          # 8 CSVs + figuras
-docs/             # Relatórios
+π(ρ) = { A* (Nav2 SmacPlanner2D)  se ρ < 0,30  — ambientes abertos
+        { SAC (Stable-Baselines3)  se ρ ≥ 0,30  — ambientes densos
 ```
 
-## Publicações Planejadas
+onde ρ é a fração de células ocupadas em uma janela 2×2 m ao redor da pose do robô.
 
-1. **IEEE Access (A4)** - Framework + experimentos (Jan 2026)
-2. **Applied Sciences (B1)** - Multi-objetivo (Mar 2026)
-3. **Sensors (A4)** - Teoria + SOTA (Abr 2026)
+---
 
-## Limitações
+## Resultados
 
-- Contexto unidimensional (densidade)
-- Threshold fixo offline
-- Ambiente 2D
+### Fase 1 — Validação Monte Carlo (concluída)
 
-## Próximos Passos
+Benchmark com 1.500 trials e modelos de planejamento calibrados estatisticamente:
 
-- Contexto multi-dimensional
-- Threshold adaptativo online
-- ROS 2/Gazebo
+| Método | Taxa de Sucesso |
+|---|---|
+| **ρ-criterion adaptivo (este trabalho)** | **85,3%** |
+| Neural Switching | 78,7% |
+| PPO fixo | 76,0% |
+| Hybrid DRL | 66,0% |
+| RRT* fixo | 48,0% |
 
-## Contribuição
+- **Regret vs oracle ideal:** 2,2% (pior caso: 6,7%)
+- **Limiar otimizado:** ρ* = 0,30 (gap teórico: 1,7%)
+- Benchmark clássico: A* escala linearmente (0,07 ms / 3,7 KB para 100 nós); Floyd-Warshall inviável para tempo real (39 s / 22 MB para grid 30×30)
 
-Primeira abordagem sistemática para switching adaptivo com garantias formais entre planners clássicos e modernos.
+### Fase 2 — Integração ROS2/Gazebo (em andamento)
 
-## Citação
+Validação com planejadores reais em simulação física:
 
-```bibtex
-@misc{santos2025adaptive,
-  title={Adaptive Context-Based Planner Switching for Autonomous Navigation},
-  author={Santos, Yan and Aldo},
-  year={2025},
-  institution={Universidade Federal de Goiás}
-}
+- **Ambiente:** Gazebo Classic, TurtleBot3 Waffle, arena 4×4 m, `dense_custom.world` (ρ≈0,38)
+- **Agente RL:** SAC com obs 29-dim (24 LIDAR + 3 goal-polar + 2 vel/ação), curriculum de distância 1→3 m, reward shaping potencial + heading
+- **Treinamento:** em andamento (~500k steps teto, convergência esperada ~150–250k steps)
+- **Resultados quantitativos:** previstos para Agosto/2026 (30 trials × 3 worlds)
+
+---
+
+## Hipóteses
+
+| ID | Enunciado | Status |
+|---|---|---|
+| **H1** | ρ-criterion supera melhor método fixo em ambientes heterogêneos | ✅ Confirmada (Fase 1) |
+| **H2** | ρ*=0,30 captura fronteira ótima com regret ≤ 5% | ✅ Confirmada (Fase 1, regret=2,2%) |
+| **H3** | Framework realizável em ROS2/Nav2/Gazebo sem modificar planejadores | 🔄 Em validação (Fase 2) |
+
+---
+
+## Estrutura do Projeto
+
+```
+ros2_ws/
+├── src/adaptive_planner_ros/     # Switcher ROS2, nó RL, critério ρ
+└── src/turtlebot3_gym_env/       # Ambiente Gymnasium sobre Gazebo
+
+eval/                             # Scripts de benchmark e figuras científicas
+paper/figs/                       # 16 figuras (.png + .pdf) para artigo
+models/                           # Modelos treinados (best_model.zip)
+results_abstract/                 # Dados Fase 1 (Monte Carlo calibrado)
+results_ros2/                     # Dados Fase 2 (benchmark real — preencher pós-convergência)
 ```
 
 ---
 
-**Estudante:** Yan Santos | **Orientador:** Prof. Aldo | **UFG** - Nov 2025
+## Reprodução
+
+### Treino SAC (Fase 2)
+
+```bash
+# Requer Docker com imagem adaptive-planner:latest
+docker compose run --rm train-all
+
+# Monitorar
+docker compose logs -f train-all
+```
+
+### Benchmark (após convergência)
+
+```bash
+docker compose run --rm benchmark
+```
+
+### Figuras científicas
+
+```bash
+python3 eval/plot_sac_architecture_figures.py --out paper/figs/
+python3 eval/plot_training_optimization_figures.py --out paper/figs/
+python3 eval/plot_planner_time_vs_density.py
+python3 eval/cbs_tpg_visualization.py
+```
+
+### Fase 1 (Monte Carlo)
+
+```bash
+# Requer venv Python (sem ROS2)
+python -m venv venv_ic && source venv_ic/bin/activate
+pip install -r requirements.txt
+python experiments/comprehensive_experiments.py  # 1.500 trials
+```
+
+---
+
+## Limitações Declaradas
+
+1. Fase 1 usa modelos calibrados (mocks), não planejadores reais
+2. Fase 2 limitada a ambiente simulado (Gazebo Classic) — sem testes em robô físico
+3. Contexto unidimensional (densidade ρ) — sem curvatura, velocidade de obstáculos, etc.
+4. Treinamento SAC em CPU (i5-1235U) — sem GPU
+5. Single-agente — extensão MARL fora do escopo desta IC
+
+---
+
+## Publicações / Apresentações
+
+- **CONPEEX 2026** — Seminário de Iniciação à Pesquisa PIP (26/06/2026)
+- **Relatório Final SIGAA** — prazo 31/08/2026
+
+---
+
+## Citação
+
+```bibtex
+@misc{santos2026adaptive,
+  title={Framework Adaptivo para Seleção de Algoritmos de Planejamento de Trajetória em Navegação Autônoma},
+  author={Santos Leite, Yan and Diaz Salazar, Aldo André},
+  year={2026},
+  institution={Universidade Federal de Goiás},
+  note={IC PIBIC/FAPEG PI08078-2024}
+}
+```
