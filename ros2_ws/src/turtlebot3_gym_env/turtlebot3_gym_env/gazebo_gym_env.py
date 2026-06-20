@@ -222,19 +222,19 @@ class _GazeboEnvNode(Node):
         req.state.reference_frame = "world"
 
         future = self._set_entity_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
         if future.done():
             return future.result().success
         return False
 
     def clear_costmap(self) -> None:
         """Clear the global costmap (removes stale obstacle marks after reset)."""
-        if not self._clear_costmap_cli.wait_for_service(timeout_sec=1.0):
+        if not self._clear_costmap_cli.wait_for_service(timeout_sec=0.1):
             return  # Nav2 may not be running during unit tests
         future = self._clear_costmap_cli.call_async(
             ClearEntireCostmap.Request()
         )
-        rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +327,7 @@ class TurtleBot3GazeboEnv(gym.Env):
                 self._rng.uniform(-math.pi, math.pi)
             ))
             time.sleep(0.3)          # allow Gazebo physics to settle
-            scan = self._node.wait_for_scan(timeout=2.0)
+            scan = self._node.wait_for_scan(timeout=0.6)
             if _min_scan_range(scan) >= SAFE_SPAWN_MARGIN:
                 break
             # Position is in collision — try a different candidate
