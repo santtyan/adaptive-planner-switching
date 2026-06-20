@@ -82,15 +82,26 @@ def goal_to_polar(robot_x: float, robot_y: float, robot_yaw: float,
 
 def make_observation(ranges: Sequence[float],
                      robot_x: float, robot_y: float, robot_yaw: float,
-                     goal_x: float, goal_y: float) -> np.ndarray:
-    """Build the 27-dim observation vector used during training and inference.
+                     goal_x: float, goal_y: float,
+                     v_norm: float = 0.0, omega_norm: float = 0.0) -> np.ndarray:
+    """Build the 29-dim observation vector used during training and inference.
 
-    Layout: [24 normalised lidar rays | r_norm | sin_theta | cos_theta]
+    Layout: [24 normalised lidar rays | r_norm | sin_theta | cos_theta
+             | v_norm | omega_norm]
+
+    v_norm/omega_norm são a última ação NORMALIZADA (∈ [-1, 1]) — a velocidade
+    comandada no passo anterior. Sem isso a obs é POMDP (não dá p/ inferir
+    inércia de um único scan). CRÍTICO: treino (gazebo_gym_env) e inferência
+    (rl_controller_node) devem alimentar os MESMOS valores, ou a política
+    diverge em silêncio.
     """
     scan_obs = downsample_scan(ranges)                               # (24,)
     goal_obs = goal_to_polar(robot_x, robot_y, robot_yaw,           # (3,)
                              goal_x, goal_y)
-    return np.concatenate([scan_obs, goal_obs])                      # (27,)
+    vel_obs = np.array([float(np.clip(v_norm, -1.0, 1.0)),         # (2,)
+                        float(np.clip(omega_norm, -1.0, 1.0))],
+                       dtype=np.float32)
+    return np.concatenate([scan_obs, goal_obs, vel_obs])            # (29,)
 
 
-OBS_DIM = LIDAR_N_DOWNSAMPLED + 3   # 27
+OBS_DIM = LIDAR_N_DOWNSAMPLED + 3 + 2   # 29 (lidar + goal-polar + last-action)

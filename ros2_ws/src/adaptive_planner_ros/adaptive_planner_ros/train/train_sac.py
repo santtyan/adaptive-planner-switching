@@ -31,6 +31,7 @@ from stable_baselines3.common.callbacks import (
     BaseCallback,
 )
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNode
 
@@ -136,7 +137,16 @@ def main() -> None:
     rclpy.init()
     node = _GazeboEnvNode()
 
-    train_env = Monitor(TurtleBot3GazeboEnv(node=node, seed=args.seed))
+    # DummyVecEnv + VecNormalize SÓ de recompensa (norm_obs=False): estabiliza o
+    # crítico do SAC sem alterar a observação — assim a inferência NÃO precisa
+    # das stats do VecNormalize (a política observa obs cruas).
+    train_env = DummyVecEnv([
+        lambda: Monitor(TurtleBot3GazeboEnv(node=node, seed=args.seed))
+    ])
+    train_env = VecNormalize(
+        train_env, norm_obs=False, norm_reward=True, clip_reward=10.0,
+        gamma=0.99,
+    )
 
     model_name = f"sac_{args.seed}_{args.steps}"
 
@@ -172,6 +182,8 @@ def main() -> None:
         gradient_steps=4,         # 4 updates por passo — passos de sim são caros
         ent_coef="auto",          # automatic entropy tuning
         target_entropy="auto",
+        use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
+        sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
         verbose=1,
         tensorboard_log=tb_log,
         seed=args.seed,
@@ -197,7 +209,12 @@ def main() -> None:
 
     final_path = os.path.join(args.models_dir, f"{model_name}_final.zip")
     model.save(final_path)
+    # Salva stats do VecNormalize (recompensa). Não é necessário p/ inferência
+    # (norm_obs=False), mas permite retomar o treino com normalização consistente.
+    vecnorm_path = os.path.join(args.models_dir, f"{model_name}_vecnormalize.pkl")
+    train_env.save(vecnorm_path)
     print(f"Saved final model: {final_path}")
+    print(f"Saved VecNormalize stats: {vecnorm_path}")
 
     train_env.close()
     rclpy.shutdown()

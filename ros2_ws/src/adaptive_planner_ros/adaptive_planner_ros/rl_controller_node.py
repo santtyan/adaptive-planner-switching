@@ -76,6 +76,9 @@ class RLControllerNode(Node):
         self._goal: Optional[PoseStamped] = None
         self._active = False  # only publish cmd_vel when activated
         self._safety_stops = 0  # count of safety-guard overrides (metric)
+        # Última ação normalizada publicada (v_norm, omega_norm) ∈ [-1,1].
+        # DEVE casar com gazebo_gym_env._last_action, senão a política diverge.
+        self._last_action = (0.0, 0.0)
 
         # Publishers / subscribers
         self._cmd_pub = self.create_publisher(Twist, "/cmd_vel_rl", 10)
@@ -119,14 +122,19 @@ class RLControllerNode(Node):
                 throttle_duration_sec=1.0,
             )
             self._cmd_pub.publish(Twist())  # zero velocity
+            self._last_action = (0.0, 0.0)  # robô parado → próxima obs reflete isso
             return
 
         x, y, yaw = self._get_pose()
         gx = self._goal.pose.position.x
         gy = self._goal.pose.position.y
 
-        obs = make_observation(ranges, x, y, yaw, gx, gy)
+        v_norm, omega_norm = self._last_action
+        obs = make_observation(ranges, x, y, yaw, gx, gy, v_norm, omega_norm)
         action, _ = self._model.predict(obs, deterministic=True)
+
+        # Guarda a ação normalizada p/ a próxima obs (espelha o treino).
+        self._last_action = (float(action[0]), float(action[1]))
 
         v = float(action[0]) * LINEAR_VEL_MAX
         omega = float(action[1]) * ANGULAR_VEL_MAX

@@ -284,8 +284,10 @@ class TurtleBot3GazeboEnv(gym.Env):
         )
         self._recent_outcomes: deque = deque(maxlen=CURRICULUM_WINDOW)
 
+        # low=-1.0: a obs inclui sin_theta e a última ação (v_norm, omega_norm),
+        # ambos ∈ [-1, 1]. Lidar e r_norm ∈ [0, 1] cabem dentro do intervalo.
         self.observation_space = spaces.Box(
-            low=0.0, high=1.0, shape=(OBS_DIM,), dtype=np.float32
+            low=-1.0, high=1.0, shape=(OBS_DIM,), dtype=np.float32
         )
         self.action_space = spaces.Box(
             low=-1.0, high=1.0, shape=(2,), dtype=np.float32
@@ -296,6 +298,8 @@ class TurtleBot3GazeboEnv(gym.Env):
         self._goal: Tuple[float, float] = (0.0, 0.0)
         self._prev_dist: float = 0.0
         self._last_scan: Optional[LaserScan] = None
+        # Última ação normalizada (v_norm, omega_norm) ∈ [-1,1], alimentada na obs.
+        self._last_action: Tuple[float, float] = (0.0, 0.0)
 
     # ---- Gymnasium API ----------------------------------------------------
 
@@ -331,6 +335,7 @@ class TurtleBot3GazeboEnv(gym.Env):
             self._goal = goal
         self._node.clear_costmap()
         self._last_scan = scan
+        self._last_action = (0.0, 0.0)   # robô parado no início do episódio
 
         obs = self._build_obs()
         x, y, _ = self._node.get_robot_pose()
@@ -346,6 +351,8 @@ class TurtleBot3GazeboEnv(gym.Env):
         v = float(action[0]) * LINEAR_VEL_MAX
         omega = float(action[1]) * ANGULAR_VEL_MAX
         self._node.publish_cmd(v, omega)
+        # Guarda a ação normalizada p/ alimentar a próxima obs (resolve POMDP).
+        self._last_action = (float(action[0]), float(action[1]))
 
         # Advance simulation one control step
         scan = self._node.wait_for_scan(timeout=SCAN_TIMEOUT)
@@ -407,7 +414,8 @@ class TurtleBot3GazeboEnv(gym.Env):
         ranges = list(scan.ranges) if scan is not None else [LIDAR_MAX_RANGE] * 360
         x, y, yaw = self._node.get_robot_pose()
         gx, gy = self._goal
-        return make_observation(ranges, x, y, yaw, gx, gy)
+        v_norm, omega_norm = self._last_action
+        return make_observation(ranges, x, y, yaw, gx, gy, v_norm, omega_norm)
 
     def _sample_start_goal(
         self,
