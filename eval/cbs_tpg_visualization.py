@@ -95,9 +95,9 @@ def draw_grid_plan(ax, cbs_plans, obstacles, grid_dim, title):
     ax.set_xlim(-0.5, gx - 0.5)
     ax.set_ylim(-0.5, gy - 0.5)
     ax.set_aspect("equal")
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=6)
-    ax.set_xlabel("x (células)", fontsize=9)
-    ax.set_ylabel("y (células)", fontsize=9)
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=8)
+    ax.set_xlabel("x (células)", fontsize=10)
+    ax.set_ylabel("y (células)", fontsize=10)
 
     # Grid lines
     for x in range(gx + 1):
@@ -132,9 +132,9 @@ def draw_grid_plan(ax, cbs_plans, obstacles, grid_dim, title):
 
 def draw_tpg_timeline(ax, cbs_plans, tpg_schedule, title):
     """Desenha timeline: CBS discreto vs TPG cinemático."""
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=6)
-    ax.set_xlabel("Tempo (s)", fontsize=9)
-    ax.set_ylabel("Agente", fontsize=9)
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=8)
+    ax.set_xlabel("Tempo (s)", fontsize=10)
+    ax.set_ylabel("Agente", fontsize=10)
 
     agents = list(cbs_plans.keys())
     y_positions = {a: i for i, a in enumerate(agents)}
@@ -183,9 +183,9 @@ def draw_tpg_timeline(ax, cbs_plans, tpg_schedule, title):
 
 def draw_safety_buffer(ax, tpg_schedule, title):
     """Trajetórias contínuas no plano x-y com buffers de segurança."""
-    ax.set_title(title, fontsize=11, fontweight="bold", pad=6)
-    ax.set_xlabel("x (m)", fontsize=9)
-    ax.set_ylabel("y (m)", fontsize=9)
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=8)
+    ax.set_xlabel("x (m)", fontsize=10)
+    ax.set_ylabel("y (m)", fontsize=10)
     ax.set_aspect("equal")
     ax.set_xlim(-0.3, 4.3)
     ax.set_ylim(-0.5, 4.5)
@@ -220,30 +220,28 @@ def main():
 
     tpg_schedule = compute_tpg_schedule(CBS_PLANS)
 
-    fig = plt.figure(figsize=(18, 6))
+    fig = plt.figure(figsize=(17, 6), constrained_layout=True)
     fig.suptitle(
-        "CBS Discreto → TPG Cinemático: adição de buffers de segurança para execução em robô real\n"
-        f"(grid 5×5, 3 agentes, δ={DELTA}m, {DT}s/passo)",
-        fontsize=12, fontweight="bold", y=1.02
+        f"CBS Discreto → TPG Cinemático  (δ={DELTA}m, grid 5×5, 3 agentes)",
+        fontsize=13, fontweight="bold"
     )
 
-    gs = GridSpec(1, 3, figure=fig, wspace=0.35)
+    gs = GridSpec(1, 3, figure=fig)
 
     ax1 = fig.add_subplot(gs[0])
     draw_grid_plan(ax1, CBS_PLANS,
                    SCENARIO["map"]["obstacles"],
                    SCENARIO["map"]["dimensions"],
-                   "① Plano CBS (discreto, grid)\nCoordena colisões no tempo de grid")
+                   "① Plano CBS (discreto)")
 
     ax2 = fig.add_subplot(gs[1])
     draw_tpg_timeline(ax2, CBS_PLANS, tpg_schedule,
-                      "② Timeline: CBS vs TPG\nBuffers adicionados onde há conflito cinemático")
+                      "② Timeline: CBS vs TPG")
 
     ax3 = fig.add_subplot(gs[2])
     draw_safety_buffer(ax3, tpg_schedule,
-                       "③ Schedule TPG no espaço\nRaio δ = zona de segurança por waypoint")
+                       "③ Schedule TPG no espaço")
 
-    plt.tight_layout()
     plt.savefig(OUT_PNG, dpi=150, bbox_inches="tight")
     plt.savefig(OUT_PNG.replace(".png", ".pdf"), bbox_inches="tight")
     print(f"Salvo: {OUT_PNG}")

@@ -66,9 +66,10 @@ def fig_lidar_downsampling(out):
     ax2.set_yticklabels(["1m", "2m", "3m"], fontsize=8)
     ax2.grid(True, alpha=0.3)
 
-    fig.suptitle("Downsampling LIDAR: 360→24 raios uniformes\n"
-                 "Preserva estrutura do ambiente; reduz obs de 360→24-dim",
-                 fontsize=11)
+    fig.suptitle("Downsampling LIDAR: 360 → 24 raios uniformes\n"
+                 "Preserva a estrutura do ambiente; reduz dimensão da obs de 360 → 24",
+                 fontsize=12, fontweight="bold", y=1.03)
+    fig.tight_layout()
     _save(fig, out, "fig_lidar_downsampling")
 
 
@@ -119,7 +120,9 @@ def fig_curriculum_schedule(out):
     ax2.set_ylabel("y (m)")
     ax2.grid(True, alpha=0.2)
 
-    fig.suptitle("Curriculum Learning por distância — SAC adaptive planner", fontsize=11)
+    fig.suptitle("Curriculum Learning por distância — SAC adaptive planner",
+                 fontsize=12, fontweight="bold", y=1.02)
+    fig.tight_layout()
     _save(fig, out, "fig_curriculum_schedule")
 
 

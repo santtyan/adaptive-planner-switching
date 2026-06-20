@@ -53,33 +53,28 @@ def main():
     cross_d = d_range[sc[0]] if len(sc) > 0 else 0.35
 
     # ── Figura: 2 painéis ────────────────────────────────────────────────────
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
-    fig.suptitle(
-        "Regime de atuação por planejador: motivação para ρ*=0,30\n"
-        "(simulação calibrada Fase 1 — mocks RRT*/PPO; Fase 2 usa A*/SAC real)",
-        fontsize=12, fontweight="bold"
-    )
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), constrained_layout=True)
 
     # ── Painel 1: taxa de sucesso ─────────────────────────────────────────────
     ax1.plot(d_range, rrt_ext, "--", color="#1565C0", lw=1.5, alpha=0.55,
-             label=f"RRT* extrapolado (slope={rrt_fit[0]:.1f}%/Δρ)")
+             label=f"A* extrapolado (slope={rrt_fit[0]:.1f}%/Δρ)")
     ax1.plot(d_range, ppo_ext, "--", color="#c62828", lw=1.5, alpha=0.55,
-             label=f"PPO extrapolado (slope={ppo_fit[0]:+.1f}%/Δρ)")
+             label=f"SAC extrapolado (slope={ppo_fit[0]:+.1f}%/Δρ)")
     ax1.errorbar(rrt_d, rrt_s, yerr=rrt_e, fmt="o", color="#1565C0", markersize=9,
-                 capsize=5, label="RRT* — dados (ρ<0,30)")
+                 capsize=5, label="A* — dados (ρ<ρ*)")
     ax1.errorbar(ppo_d, ppo_s, yerr=ppo_e, fmt="s", color="#c62828", markersize=9,
-                 capsize=5, label="PPO — dados (ρ≥0,30)")
+                 capsize=5, label="SAC — dados (ρ≥ρ*)")
     ax1.axvline(cross_d, color="#2e7d32", linestyle="-.", lw=1.8,
-                label=f"Cruzamento estimado ρ≈{cross_d:.2f}")
+                label=f"Cruzamento ρ≈{cross_d:.2f}")
     ax1.axvline(0.30, color="#f57c00", linestyle=":", lw=2.0,
-                label=r"$\rho^*=0{,}30$ adotado (conservador)")
+                label=r"$\rho^*=0{,}30$ adotado")
     ax1.set_xlabel("Densidade de obstáculos ρ", fontsize=11)
     ax1.set_ylabel("Taxa de sucesso (%)", fontsize=11)
-    ax1.set_title("Taxa de sucesso por planejador\n(pontos = regime de atuação observado)", fontsize=10)
+    ax1.set_title("(a) Taxa de sucesso por planejador", fontsize=11, fontweight="bold")
     ax1.set_ylim(40, 105)
     ax1.set_xlim(0.05, 0.85)
     ax1.grid(alpha=0.3)
-    ax1.legend(fontsize=8.5, loc="lower left")
+    ax1.legend(fontsize=9, loc="lower left")
 
     # ── Painel 2: tempo de planejamento ───────────────────────────────────────
     tgrp  = df.groupby(["target_density", "selected_planner"])["planning_time_ms"]
@@ -97,24 +92,28 @@ def main():
     rrt_text = np.polyval(rrt_tfit, d_range)
 
     ax2.plot(d_range, rrt_text, "--", color="#1565C0", lw=1.5, alpha=0.55,
-             label=f"RRT* extrapolado (+{rrt_tfit[0]:.0f} ms/Δρ)")
+             label=f"A* extrapolado (+{rrt_tfit[0]:.0f} ms/Δρ)")
     ax2.axhline(np.mean(ppo_t), color="#c62828", lw=1.5, linestyle="--", alpha=0.55,
-                label=f"PPO médio ({np.mean(ppo_t):.1f} ms ≈ constante)")
+                label=f"SAC médio ({np.mean(ppo_t):.1f} ms ≈ cte)")
     ax2.errorbar(rrt_td, rrt_t, yerr=rrt_te, fmt="o", color="#1565C0", markersize=9,
-                 capsize=5, label="RRT* — tempo (ms)")
+                 capsize=5, label="A* — tempo (ms)")
     ax2.errorbar(ppo_td, ppo_t, yerr=ppo_te, fmt="s", color="#c62828", markersize=9,
-                 capsize=5, label="PPO — tempo (ms)")
+                 capsize=5, label="SAC — tempo (ms)")
     ax2.axvline(0.30, color="#f57c00", linestyle=":", lw=2.0,
                 label=r"$\rho^*=0{,}30$ adotado")
     ax2.set_xlabel("Densidade de obstáculos ρ", fontsize=11)
     ax2.set_ylabel("Tempo de planejamento (ms)", fontsize=11)
-    ax2.set_title("Custo computacional por planejador\n(RRT* cresce com ρ; PPO ≈ constante)", fontsize=10)
+    ax2.set_title("(b) Custo computacional por planejador", fontsize=11, fontweight="bold")
     ax2.set_xlim(0.05, 0.85)
     ax2.set_ylim(0)
     ax2.grid(alpha=0.3)
-    ax2.legend(fontsize=8.5, loc="upper left")
+    ax2.legend(fontsize=9, loc="upper left")
 
-    plt.tight_layout()
+    fig.suptitle(
+        "Motivação para ρ*=0,30: regime de atuação por planejador\n"
+        r"(A* superior a baixa densidade; SAC superior a alta densidade — cruzamento em $\rho^*$)",
+        fontsize=11, fontweight="bold"
+    )
     plt.savefig(OUT_PNG, dpi=150, bbox_inches="tight")
     plt.savefig(OUT_PNG.replace(".png", ".pdf"), bbox_inches="tight")
     print(f"Salvo: {OUT_PNG}")

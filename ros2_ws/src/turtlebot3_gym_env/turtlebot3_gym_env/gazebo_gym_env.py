@@ -144,6 +144,7 @@ class _GazeboEnvNode(Node):
         self._scan: Optional[LaserScan] = None
         self._model_states: Optional[ModelStates] = None
         self._scan_seq: int = -1
+        self._cached_pose: tuple = (0.0, 0.0, 0.0)  # (x, y, yaw) from last teleport
 
         # Publishers
         self._cmd_pub = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
@@ -197,21 +198,22 @@ class _GazeboEnvNode(Node):
         return self._scan  # return stale if timeout
 
     def get_robot_pose(self) -> Tuple[float, float, float]:
-        """Return (x, y, yaw) from /gazebo/model_states ground truth."""
-        if self._model_states is None:
-            rclpy.spin_once(self, timeout_sec=0.5)
-        if self._model_states is None:
-            return 0.0, 0.0, 0.0
-        try:
-            idx = self._model_states.name.index(ROBOT_NAME)
-        except ValueError:
-            return 0.0, 0.0, 0.0
-        p = self._model_states.pose[idx]
-        x = p.position.x
-        y = p.position.y
-        yaw = _quat_to_yaw(p.orientation.x, p.orientation.y,
-                           p.orientation.z, p.orientation.w)
-        return x, y, yaw
+        """Return (x, y, yaw). Uses model_states if available, else cached teleport pose.
+
+        /gazebo/model_states requires libgazebo_ros_state.so which is not loaded in
+        the headless training gzserver — so we fall back to the last known teleport
+        position immediately without waiting (eliminates 0.5s spin_once per call).
+        """
+        if self._model_states is not None:
+            try:
+                idx = self._model_states.name.index(ROBOT_NAME)
+                p = self._model_states.pose[idx]
+                return (p.position.x, p.position.y,
+                        _quat_to_yaw(p.orientation.x, p.orientation.y,
+                                     p.orientation.z, p.orientation.w))
+            except ValueError:
+                pass
+        return self._cached_pose
 
     def pause_physics(self) -> None:
         """Pausa a física do Gazebo — elimina race condition teleport vs scan."""
@@ -244,8 +246,9 @@ class _GazeboEnvNode(Node):
 
         future = self._set_entity_cli.call_async(req)
         rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
-        if future.done():
-            return future.result().success
+        if future.done() and future.result().success:
+            self._cached_pose = (x, y, yaw)
+            return True
         return False
 
     def clear_costmap(self) -> None:
