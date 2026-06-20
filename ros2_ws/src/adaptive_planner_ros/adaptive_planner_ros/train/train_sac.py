@@ -228,8 +228,7 @@ def main() -> None:
         gamma=0.99,
         train_freq=1,
         gradient_steps=4,         # 4 updates por passo — passos de sim são caros
-        ent_coef="auto",          # automatic entropy tuning
-        target_entropy=-1.0,      # fixo: -dim(action)/2 garante exploração em navegação
+        ent_coef=0.1,             # fixo: gSDE colapsa entropia com auto, 0.1 mantém exploração
         use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
         sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
         verbose=1,
