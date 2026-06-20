@@ -93,6 +93,13 @@ R_OMEGA = 0.1               # angular-velocity penalty scale (per |omega_norm|)
 R_TIME = -0.02              # per step alive penalty
 R_COLLISION = -20.0         # terminal collision penalty
 R_GOAL = 50.0               # terminal goal reward
+# Obstacle reward direcional (padrão-ouro ROBOTIS 2026):
+# penalidade contínua proporcional à proximidade de obstáculos À FRENTE do robô.
+# Dá gradiente antes da colisão (binário só penaliza quando já colidiu).
+# range: [-(1+4), 0] = [-5, 0] por step próximo a obstáculo frontal.
+R_OBSTACLE_RANGE = 0.5      # m — só considera obstáculos neste raio
+R_OBSTACLE_DECAY = 3.0      # decaimento exponencial: exp(-3*dist)
+R_OBSTACLE_WEIGHT_POW = 6   # cos(angle)^6 — frente pesa >>lateral
 
 # Curriculum de distância do goal: começa com goals próximos (sinal terminal
 # alcançável) e expande conforme a taxa de sucesso recente sobe. Sem isso, o
@@ -398,7 +405,8 @@ class TurtleBot3GazeboEnv(gym.Env):
         r_progress = R_APPROACH * (self._prev_dist - dist)
         r_heading = R_HEADING * (math.cos(heading_err) - 1.0)   # ≤ 0
         r_omega = -R_OMEGA * abs(float(action[1]))              # ≤ 0
-        reward = r_progress + r_heading + r_omega + R_TIME
+        r_obstacle = _obstacle_reward(scan)                      # ≤ 0, contínuo
+        reward = r_progress + r_heading + r_omega + r_obstacle + R_TIME
         if collision:
             reward += R_COLLISION
         if goal_reached:
@@ -566,6 +574,41 @@ def _min_scan_range(scan: Optional[LaserScan]) -> float:
         return LIDAR_MAX_RANGE
     ranges = [r for r in scan.ranges if math.isfinite(r) and r > 0.0]
     return min(ranges) if ranges else LIDAR_MAX_RANGE
+
+
+def _obstacle_reward(scan: Optional[LaserScan]) -> float:
+    """Penalidade direcional contínua para obstáculos próximos À FRENTE.
+
+    Padrão-ouro ROBOTIS turtlebot3_machine_learning (2026):
+    - só penaliza obstáculos dentro de R_OBSTACLE_RANGE metros
+    - peso direcional cos(angle)^6 → frente pesa ~10x mais que lateral
+    - decaimento exp(-3*dist) → 0.1m penaliza ~10x mais que 0.3m
+    - resultado: -(1 + 4*weighted_decay) ∈ [-5, 0]
+
+    Complementa R_COLLISION (binário) dando gradiente antes da colisão.
+    """
+    if scan is None:
+        return 0.0
+    n = len(scan.ranges)
+    if n == 0:
+        return 0.0
+    angle_increment = scan.angle_increment
+    angle_min = scan.angle_min
+    ranges = np.array(scan.ranges, dtype=np.float32)
+    angles = angle_min + np.arange(n) * angle_increment  # ângulos em rad (frame robô)
+    valid = np.isfinite(ranges) & (ranges > 0.0) & (ranges <= R_OBSTACLE_RANGE)
+    if not np.any(valid):
+        return 0.0
+    r = ranges[valid]
+    a = angles[valid]
+    # Peso direcional: frente (a≈0) tem peso máximo
+    raw_w = np.cos(a) ** R_OBSTACLE_WEIGHT_POW + 0.1
+    raw_w = np.clip(raw_w, 0.0, None)
+    w = raw_w / (np.sum(raw_w) + 1e-8)
+    safe_dist = np.clip(r - 0.25, 1e-2, 3.5)
+    decay = np.exp(-R_OBSTACLE_DECAY * safe_dist)
+    weighted_decay = float(np.dot(w, decay))
+    return -(1.0 + 4.0 * weighted_decay)
 
 
 if __name__ == "__main__":
