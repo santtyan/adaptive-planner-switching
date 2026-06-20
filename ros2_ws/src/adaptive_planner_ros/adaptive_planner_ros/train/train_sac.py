@@ -113,8 +113,8 @@ class StopOnSuccessCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.num_timesteps % self._check_freq != 0:
-            return True
-        infos = self.locals.get("infos") or []
+            return True  # gate rápido — só lê infos em check_freq
+        infos = self.locals.get("infos")
         if not infos:
             return True
         info = infos[0]
