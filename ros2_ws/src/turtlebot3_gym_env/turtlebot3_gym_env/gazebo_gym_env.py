@@ -154,6 +154,8 @@ class _GazeboEnvNode(Node):
             ClearEntireCostmap,
             "/global_costmap/clear_entirely",
         )
+        self._pause_cli = self.create_client(Empty, "/gazebo/pause_physics")
+        self._unpause_cli = self.create_client(Empty, "/gazebo/unpause_physics")
 
         self.get_logger().info("TurtleBot3GazeboEnv node initialised")
 
@@ -203,6 +205,18 @@ class _GazeboEnvNode(Node):
         yaw = _quat_to_yaw(p.orientation.x, p.orientation.y,
                            p.orientation.z, p.orientation.w)
         return x, y, yaw
+
+    def pause_physics(self) -> None:
+        """Pausa a física do Gazebo — elimina race condition teleport vs scan."""
+        if self._pause_cli.wait_for_service(timeout_sec=0.5):
+            future = self._pause_cli.call_async(Empty.Request())
+            rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
+
+    def unpause_physics(self) -> None:
+        """Retoma a física — o próximo scan publicado é garantidamente pós-teleport."""
+        if self._unpause_cli.wait_for_service(timeout_sec=0.5):
+            future = self._unpause_cli.call_async(Empty.Request())
+            rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
 
     def teleport_robot(self, x: float, y: float, yaw: float) -> bool:
         """Move robot to (x, y, yaw) via /gazebo/set_entity_state.
@@ -318,19 +332,22 @@ class TurtleBot3GazeboEnv(gym.Env):
         start, goal = self._sample_start_goal()
         self._goal = goal
 
-        # Teleport with collision validation — resample if spawn is inside obstacle
+        # Teleport com pause/unpause — padrão ROBOTIS turtlebot3_machine_learning.
+        # pause garante que o scan seguinte ao unpause é da nova posição (sem stale).
         SAFE_SPAWN_MARGIN = COLLISION_DIST + 0.10   # 0.25 m clearance required
         MAX_SPAWN_TRIES = len(self._goal_candidates)
         self._node.stop_robot()
+        self._node.pause_physics()
         for _try in range(MAX_SPAWN_TRIES):
             self._node.teleport_robot(start[0], start[1], yaw=float(
                 self._rng.uniform(-math.pi, math.pi)
             ))
-            time.sleep(0.3)          # allow Gazebo physics to settle
-            scan = self._node.wait_for_scan(timeout=1.5)  # scan novo pós-teleport (não stale)
+            self._node.unpause_physics()
+            scan = self._node.wait_for_scan(timeout=1.5)  # scan garantidamente pós-teleport
             if _min_scan_range(scan) >= SAFE_SPAWN_MARGIN:
                 break
-            # Position is in collision — try a different candidate
+            # Posição em colisão — resampa e tenta novamente
+            self._node.pause_physics()
             start, goal = self._sample_start_goal()
             self._goal = goal
         self._node.clear_costmap()
