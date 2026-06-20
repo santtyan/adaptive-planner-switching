@@ -142,6 +142,99 @@ def fig_optimization_roi(out):
     _save(fig, out, "fig_optimization_roi")
 
 
+def fig_obstacle_reward(out):
+    """Obstacle reward direcional (ROBOTIS 2026) vs reward binário tradicional."""
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Painel 1: reward vs distância para ângulo=0 (frente)
+    ax = axes[0]
+    dists = np.linspace(0.01, 0.6, 200)
+    # Binário: só penaliza abaixo de COLLISION_DIST=0.15
+    binary = np.where(dists < 0.15, -20.0, 0.0)
+    # Direcional (ângulo=0, peso=1): -(1 + 4*exp(-3*(d-0.25)))
+    safe = np.clip(dists - 0.25, 1e-2, 3.5)
+    directional = np.where(dists <= 0.5, -(1.0 + 4.0 * np.exp(-3.0 * safe)), 0.0)
+    ax.plot(dists, binary, color=RED, lw=2, label="Binário (atual anterior)", ls="--")
+    ax.plot(dists, directional, color=GREEN, lw=2, label="Direcional ROBOTIS (novo)")
+    ax.axvline(0.15, ls=":", c=RED, alpha=0.7, label="COLLISION_DIST=0.15m")
+    ax.axvline(0.50, ls=":", c=GRAY, alpha=0.7, label="Raio de influência=0.5m")
+    ax.set_xlabel("Distância ao obstáculo (m)")
+    ax.set_ylabel("Reward por step")
+    ax.set_title("Reward vs distância (ângulo=0°, frente)")
+    ax.legend(fontsize=8)
+    ax.set_ylim(-6, 1)
+
+    # Painel 2: peso direcional cos(angle)^6
+    ax2 = axes[1]
+    angles = np.linspace(-np.pi/2, np.pi/2, 300)
+    weights = np.cos(angles)**6 + 0.1
+    weights /= weights.max()
+    ax2.fill_between(np.degrees(angles), weights, alpha=0.4, color=BLUE)
+    ax2.plot(np.degrees(angles), weights, color=BLUE, lw=2)
+    ax2.set_xlabel("Ângulo relativo ao robô (graus)")
+    ax2.set_ylabel("Peso normalizado")
+    ax2.set_title("Peso direcional cos(θ)⁶\n(frente=max, lateral=mín)")
+    ax2.axvline(0, ls="--", c=GRAY, alpha=0.5, label="Frente do robô")
+    ax2.legend(fontsize=8)
+    fig.suptitle("Obstacle Reward Direcional — padrão-ouro ROBOTIS (2026)\n"
+                 "Gradiente contínuo antes da colisão vs penalidade binária", fontsize=11)
+    _save(fig, out, "fig_obstacle_reward_directional")
+
+
+def fig_reset_race_condition(out):
+    """Diagrama timeline: race condition teleport vs scan (bug) vs pause/unpause (fix)."""
+    fig, axes = plt.subplots(2, 1, figsize=(11, 5))
+
+    for ax, title, events, colors in [
+        (axes[0], "❌ BUG: sem pause/unpause — scan stale causa colisão no 1º step",
+         [("teleport(t)", 0, 0.3), ("scan_old (stale)", 0.35, 0.65),
+          ("step() → collision!", 0.7, 1.0)],
+         [RED, "#e67e22", RED]),
+        (axes[1], "✅ FIX ROBOTIS: pause → teleport → unpause → scan fresco",
+         [("pause_physics()", 0, 0.2), ("teleport(t)", 0.2, 0.45),
+          ("unpause_physics()", 0.45, 0.6), ("scan_NEW ✓", 0.6, 0.85),
+          ("step() OK", 0.85, 1.0)],
+         [BLUE, GREEN, BLUE, GREEN, GREEN]),
+    ]:
+        for (label, start, end), c in zip(events, colors):
+            ax.barh(0, end - start, left=start, height=0.5, color=c, alpha=0.85,
+                    edgecolor="black", lw=0.7)
+            ax.text((start + end) / 2, 0, label, ha="center", va="center",
+                    fontsize=8, color="white", fontweight="bold")
+        ax.set_xlim(0, 1)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        ax.set_title(title, fontsize=9)
+        ax.grid(False)
+    fig.suptitle("Race condition teleport vs scan — diagnóstico e fix (20/06/2026)", fontsize=11)
+    _save(fig, out, "fig_reset_race_condition")
+
+
+def fig_reward_components(out):
+    """Decomposição dos componentes de reward por step (valores típicos)."""
+    fig, ax = plt.subplots(figsize=(9, 4))
+    components = [
+        ("R_progress\n(≥0 se aprox.)", 1.5, GREEN),
+        ("R_heading\n(cos(err)-1)", -0.3, RED),
+        ("R_omega\n(-|ω|)", -0.1, "#e67e22"),
+        ("R_obstacle\n(direcional)", -1.2, "#8e44ad"),
+        ("R_time\n(por passo)", -0.02, GRAY),
+    ]
+    labels = [c[0] for c in components]
+    vals = [c[1] for c in components]
+    colors = [c[2] for c in components]
+    bars = ax.bar(labels, vals, color=colors, edgecolor="black", lw=0.6)
+    for b, v in zip(bars, vals):
+        ax.text(b.get_x() + b.get_width()/2, v + (0.05 if v >= 0 else -0.12),
+                f"{v:+.2f}", ha="center", fontsize=9, fontweight="bold")
+    ax.axhline(0, c="black", lw=0.8)
+    ax.set_ylabel("Valor típico por step")
+    ax.set_title("Decomposição do reward por step (valores típicos em aproximação ao goal)\n"
+                 "Soma = +1.5 - 0.3 - 0.1 - 1.2 - 0.02 = -0.12 (drive toward goal)")
+    ax.set_ylim(-2, 2.2)
+    _save(fig, out, "fig_reward_components")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="paper/figs/")
@@ -153,7 +246,10 @@ def main():
     fig_obs_space(args.out)
     fig_sample_efficiency_ladder(args.out)
     fig_optimization_roi(args.out)
-    print("OK — 5 figuras (.png + .pdf).")
+    fig_obstacle_reward(args.out)
+    fig_reset_race_condition(args.out)
+    fig_reward_components(args.out)
+    print("OK — 8 figuras (.png + .pdf).")
 
 
 if __name__ == "__main__":
