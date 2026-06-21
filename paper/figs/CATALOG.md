@@ -104,13 +104,25 @@ Legenda de uso:
 | `density_heatmap.png` | 💤 | Heatmap de densidade |
 | `duration_boxplot.png` | 💤 | Boxplot de duração de episódio |
 
-## 9. Apresentação
+## 9. Justificativa formal de τ*=0,30 — Pareto e retorno marginal (21/06/2026)
+
+| Figura | Uso | Notas |
+|---|---|---|
+| `fig_pareto_threshold.png` | 📄 | Curva joelho: sucesso × uso de SAC por τ — τ*=0,30 é o ponto de retorno marginal decrescente |
+| `fig_pareto_detail.png` | 📄 | Painel 3-em-1: fração SAC / regret / retorno marginal |
+| `fig_pareto_boxplot_main.png` | 📄 | **FIGURA CHAVE**: boxplot sucesso por τ (50 trials) + caixa de equações (τ*=argmin R(τ), ROI=dS/df_SAC) |
+| `fig_pareto_boxplot_time.png` | 📄 | Boxplot tempo de planejamento SAC vs A* + T(ρ)∝ρ·N² anotada |
+| `fig_pareto_equations_panel.png` | 📄 | Painel 5-em-1 completo para o relatório (boxplot+equações+joelho+regret+ROI) |
+
+## 10. Apresentação
 
 | Figura | Uso | Notas |
 |---|---|---|
 | `conpeex_slide.png` | 🖼️ | Slide único CONPEEX (regenerar após fotos Gazebo) |
 
 ---
+
+## 11. Screenshote Gazebo (pendentes)
 
 ## Pendências de figuras
 
