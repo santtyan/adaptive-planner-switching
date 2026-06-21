@@ -368,7 +368,7 @@ def task3_cbs_scalability():
             if scenario is None:
                 continue
             env = Environment(
-                GRID_SIZE, scenario["agents"],
+                [GRID_SIZE, GRID_SIZE], scenario["agents"],
                 [(o["x"], o["y"]) for o in scenario["obstacles"]]
             )
             cbs = CBS(env)

@@ -222,12 +222,12 @@ def main() -> None:
         train_env,
         learning_rate=3e-4,
         buffer_size=1_000_000,
-        learning_starts=10_000,   # padrão-ouro off-policy: + exploração inicial
+        learning_starts=10_000,   # mundo esparso: sinal mais limpo, 10k suficiente
         batch_size=256,
         tau=0.005,
         gamma=0.99,
         train_freq=1,
-        gradient_steps=4,         # 4 updates por passo — passos de sim são caros
+        gradient_steps=1,         # 1 update/passo: evita divergência de Q-values com R_APPROACH=10
         ent_coef=0.1,             # fixo: gSDE colapsa entropia com auto, 0.1 mantém exploração
         use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
         sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
