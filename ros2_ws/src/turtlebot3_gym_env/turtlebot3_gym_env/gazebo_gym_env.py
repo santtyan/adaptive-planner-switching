@@ -74,33 +74,30 @@ MODEL_STATES_TOPIC = "/gazebo/model_states"
 
 GOAL_RADIUS = 0.25          # metres — episode success threshold
 # COLLISION_DIST imported from obs_utils (single source of truth)
-MAX_STEPS = 600             # ~120 s at 5 Hz control loop
+MAX_STEPS = 200             # reduzido: mundo esparso, episódios curtos → mais resets/hora
 CONTROL_HZ = 5.0            # Hz — how fast step() publishes and reads
 SCAN_TIMEOUT = 1.0          # seconds — max wait for a fresh /scan message
 
 # Reward shaping coefficients
 #
-# Princípio (padrão-ouro p/ navegação DRL — reward shaping TurtleBot3, Wiley 2024):
-# a recompensa NÃO-terminal por passo é ≤ 0, exceto o termo de progresso, que é
-# potencial (telescópico) e portanto não pode ser "farmado" por oscilação.
-#   - R_APPROACH: progresso de distância (único termo positivo; soma telescópica).
-#   - R_HEADING : penalidade de alinhamento — 0 apontando p/ o goal, negativa fora.
-#                 Quebra o ótimo local de "vagar em segurança sem ir ao objetivo".
-#   - R_OMEGA   : penalidade por girar em falso.
-#   - R_TIME    : penalidade leve por passo.
-R_APPROACH = 10.0           # reward per metre closer to goal (potential-based)
-R_HEADING = 0.5             # heading penalty scale: R_HEADING*(cos(err)-1) ≤ 0
-R_OMEGA = 0.1               # angular-velocity penalty scale (per |omega_norm|)
-R_TIME = -0.02              # per step alive penalty
-R_COLLISION = -20.0         # terminal collision penalty
-R_GOAL = 50.0               # terminal goal reward
-# Obstacle reward direcional (padrão-ouro ROBOTIS 2026):
-# penalidade contínua proporcional à proximidade de obstáculos À FRENTE do robô.
-# Dá gradiente antes da colisão (binário só penaliza quando já colidiu).
-# range: [-(1+4), 0] = [-5, 0] por step próximo a obstáculo frontal.
-R_OBSTACLE_RANGE = 0.5      # m — só considera obstáculos neste raio
-R_OBSTACLE_DECAY = 3.0      # decaimento exponencial: exp(-3*dist)
-R_OBSTACLE_WEIGHT_POW = 6   # cos(angle)^6 — frente pesa >>lateral
+# Reward REAL implementada em step() (linhas ~419-430):
+#   - andando:  R_SURVIVAL + R_APPROACH·max(0, prev_dist - dist)   (progresso telescópico ≥0)
+#   - colisão:  R_COLLISION + rprox        (rprox = 1 - dist/init_dist, crédito parcial)
+#   - goal:     R_GOAL
+#   - timeout:  rprox
+# (NÃO há termo "+v/2" de Cimurs no código — versões antigas do comentário mentiam.)
+#
+# CAUSA-RAIZ do não-convergir (21/06/2026): com R_APPROACH=2.0 o atrator "ficar parado"
+# vencia. Sobreviver MAX_STEPS sem agir rende R_SURVIVAL·MAX_STEPS = 0.1·200 = +20 garantido,
+# sem risco de colisão. Para navegar compensar é preciso R_APPROACH·dist > R_SURVIVAL·MAX_STEPS,
+# i.e. R_APPROACH > (0.1·200)/3m ≈ 6.67. Com 2.0 o gradiente apontava p/ NÃO se mover; o robô
+# aprendia a girar parado (o falso "breakthrough" +19.9 era exatamente 200·0.1=20).
+# FIX provado pelo gêmeo 2D (eval/env2d/): com R_APPROACH=10.0 e o resto idêntico, o SAC
+# convergiu a 90% em 14k steps. Replicamos esse valor aqui.
+R_APPROACH = 10.0           # progresso potencial clipado ≥0; >6.67 p/ vencer o atrator ocioso
+R_SURVIVAL = 0.1            # bônus por passo; sozinho cria atrator "parado" (+20) — ver acima
+R_COLLISION = -100.0        # terminal collision penalty
+R_GOAL = 100.0              # terminal goal reward
 
 # Curriculum de distância do goal: começa com goals próximos (sinal terminal
 # alcançável) e expande conforme a taxa de sucesso recente sobe. Sem isso, o
@@ -334,6 +331,7 @@ class TurtleBot3GazeboEnv(gym.Env):
         self._step_count: int = 0
         self._goal: Tuple[float, float] = (0.0, 0.0)
         self._prev_dist: float = 0.0
+        self._init_dist: float = 1.0     # dist start→goal no reset (p/ crédito parcial Rprox)
         self._last_scan: Optional[LaserScan] = None
         # Última ação normalizada (v_norm, omega_norm) ∈ [-1,1], alimentada na obs.
         self._last_action: Tuple[float, float] = (0.0, 0.0)
@@ -380,6 +378,7 @@ class TurtleBot3GazeboEnv(gym.Env):
         obs = self._build_obs()
         x, y, _ = self._node.get_robot_pose()
         self._prev_dist = math.hypot(goal[0] - x, goal[1] - y)
+        self._init_dist = max(self._prev_dist, 1e-3)   # baseline p/ crédito parcial Rprox
         self._step_count = 0
 
         return obs, {"goal": goal, "start": start}
@@ -418,15 +417,21 @@ class TurtleBot3GazeboEnv(gym.Env):
         #   - penalidade de giro em falso
         #   - penalidade leve por passo
         heading_err = _wrap_angle(math.atan2(gy - y, gx - x) - yaw)
-        r_progress = R_APPROACH * (self._prev_dist - dist)
-        r_heading = R_HEADING * (math.cos(heading_err) - 1.0)   # ≤ 0
-        r_omega = -R_OMEGA * abs(float(action[1]))              # ≤ 0
-        r_obstacle = _obstacle_reward(scan)                      # ≤ 0, contínuo
-        reward = r_progress + r_heading + r_omega + r_obstacle + R_TIME
+        # Reward: progresso potencial por passo + terminais grandes.
+        # Único shaping = aproximação do goal (telescópico, sem piso, sem integral explosiva).
+        # Colidir step 5 ≈ -100; timeout divagando ≈ 0; goal ≈ +100. Incentivo suicida = 0.
+        rprox = max(0.0, 1.0 - dist / max(self._init_dist, 1e-3))
+        # Progresso clipado em 0: só recompensa aproximação, nunca pune afastamento.
+        # Integral por passo >= 0 sempre → nunca compete com R_COLLISION → suicidal agent impossível.
+        r_progress = max(0.0, R_APPROACH * (self._prev_dist - dist))
         if collision:
-            reward += R_COLLISION
-        if goal_reached:
-            reward += R_GOAL
+            reward = R_COLLISION + rprox
+        elif goal_reached:
+            reward = R_GOAL
+        elif timeout:
+            reward = rprox
+        else:
+            reward = R_SURVIVAL + r_progress
 
         self._prev_dist = dist
 
@@ -590,41 +595,6 @@ def _min_scan_range(scan: Optional[LaserScan]) -> float:
         return LIDAR_MAX_RANGE
     ranges = [r for r in scan.ranges if math.isfinite(r) and r > 0.0]
     return min(ranges) if ranges else LIDAR_MAX_RANGE
-
-
-def _obstacle_reward(scan: Optional[LaserScan]) -> float:
-    """Penalidade direcional contínua para obstáculos próximos À FRENTE.
-
-    Padrão-ouro ROBOTIS turtlebot3_machine_learning (2026):
-    - só penaliza obstáculos dentro de R_OBSTACLE_RANGE metros
-    - peso direcional cos(angle)^6 → frente pesa ~10x mais que lateral
-    - decaimento exp(-3*dist) → 0.1m penaliza ~10x mais que 0.3m
-    - resultado: -(1 + 4*weighted_decay) ∈ [-5, 0]
-
-    Complementa R_COLLISION (binário) dando gradiente antes da colisão.
-    """
-    if scan is None:
-        return 0.0
-    n = len(scan.ranges)
-    if n == 0:
-        return 0.0
-    angle_increment = scan.angle_increment
-    angle_min = scan.angle_min
-    ranges = np.array(scan.ranges, dtype=np.float32)
-    angles = angle_min + np.arange(n) * angle_increment  # ângulos em rad (frame robô)
-    valid = np.isfinite(ranges) & (ranges > 0.0) & (ranges <= R_OBSTACLE_RANGE)
-    if not np.any(valid):
-        return 0.0
-    r = ranges[valid]
-    a = angles[valid]
-    # Peso direcional: frente (a≈0) tem peso máximo
-    raw_w = np.cos(a) ** R_OBSTACLE_WEIGHT_POW + 0.1
-    raw_w = np.clip(raw_w, 0.0, None)
-    w = raw_w / (np.sum(raw_w) + 1e-8)
-    safe_dist = np.clip(r - 0.25, 1e-2, 3.5)
-    decay = np.exp(-R_OBSTACLE_DECAY * safe_dist)
-    weighted_decay = float(np.dot(w, decay))
-    return -(1.0 + 4.0 * weighted_decay)
 
 
 if __name__ == "__main__":
