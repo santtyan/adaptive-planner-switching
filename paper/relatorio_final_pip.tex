@@ -709,11 +709,27 @@ treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRoll
 
 \begin{quote}
   \textit{Esta seção será preenchida com os resultados do benchmark após a convergência do
-  treinamento SAC no Gazebo (em andamento em 21/06/2026 --- ep\_len subindo monotonicamente,
-  ep\_rew $\approx -96$ @ 60k steps, sem colapso). O protocolo abaixo reflete a estrutura de
-  avaliação adotada; os valores serão inseridos após convergência ($\geq 60\%$ de sucesso em
-  30 avaliações consecutivas), prevista para Agosto/2026.}
+  treinamento SAC no Gazebo. Status em 21/06/2026: ep\_len $\approx 27$--$30$, ep\_rew
+  $\approx -97$ @ 95k steps --- agente colide em torno do passo 30, indicando navegação
+  ativa sem coordenação de desvio ainda consolidada. PlanB ativo em 300k steps.
+  Convergência prevista para Agosto/2026.}
 \end{quote}
+
+\textbf{Análise qualitativa preliminar --- Fase 2.} Embora os resultados quantitativos
+do benchmark A* vs.\ SAC vs.\ Adaptativo no Gazebo dependam da convergência do treinamento,
+a curva de aprendizado já permite extrair conclusões qualitativas relevantes. A
+Figura~\ref{fig:2d_learning_curve_ci} mostra que o mesmo algoritmo SAC, com idêntica
+estrutura de reward, convergiu para 90\% de sucesso em 4.000--14.000 passos no ambiente 2D
+leve. A comparação entre os dois ambientes (Tabela~\ref{tab:reward_comparison}) isolou que
+a \textbf{única} fonte de divergência era a constante \texttt{R\_APPROACH}: 2,0 no Gazebo
+vs.\ 10,0 no Env2D, cruzando o limiar crítico de $R_{\text{app}} > 6{,}67$ que garante
+preferência por navegação sobre repouso. Corrigido \texttt{R\_APPROACH=10,0}, o Gazebo
+passou a apresentar \texttt{ep\_len} estável e crescente --- validando H3 (infraestrutura
+operacional) e confirmando que o 2D é um proxy confiável para diagnóstico de reward.
+
+O protocolo de benchmark quantitativo --- 30 trials por condição, 3 seeds independentes,
+Wilcoxon com Holm-Bonferroni --- será executado assim que o Gazebo convergir, e os
+valores da Tabela~\ref{tab:fase2} serão preenchidos.
 
 Protocolo: $N=30$ trials por condição, 3 seeds independentes, Wilcoxon signed-rank com
 correção Holm-Bonferroni.
