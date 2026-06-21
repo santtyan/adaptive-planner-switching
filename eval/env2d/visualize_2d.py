@@ -276,35 +276,50 @@ def plot_heatmap(world: str = "dense"):
 # ══════════════════════════════════════════════════════════════
 # MODO 4 — GIF animado (para apresentação)
 # ══════════════════════════════════════════════════════════════
-def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10):
+def _rollout(model, world, seed):
+    """Roda um episódio e retorna (frames, desfecho)."""
+    env = Env2D(world=world, seed=seed)
+    obs, _ = env.reset()
+    frames = [(env._x, env._y, env._yaw, env._gx, env._gy, False, False)]
+    done = goal = coll = False
+    while not done:
+        action, _ = model.predict(obs, deterministic=True) if model else (env.action_space.sample(), None)
+        obs, r, term, trunc, info = env.step(action)
+        goal = goal or info.get("goal_reached", False)
+        coll = coll or info.get("collision", False)
+        frames.append((env._x, env._y, env._yaw, env._gx, env._gy, goal, coll))
+        done = term or trunc
+    outcome = "goal" if goal else "collision" if coll else "timeout"
+    return frames, outcome
+
+
+def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10,
+             cherry_pick: bool = True, suffix: str = ""):
+    """Gera GIF de um episódio.
+
+    cherry_pick=True  → tenta até 50 seeds até achar um episódio vencedor (vitrine).
+    cherry_pick=False → usa o seed fixo e mostra o desfecho REAL (diagnóstico honesto:
+                        colisão no denso, timeout no muito denso).
+    """
     cfg  = WORLDS[world]
     half = cfg["size"] / 2
 
-    # Tenta até 50 seeds para achar um episódio vencedor
-    frames_data = None
-    for try_seed in range(seed, seed + 50):
-        env = Env2D(world=world, seed=try_seed)
-        obs, _ = env.reset()
-        candidate = [(env._x, env._y, env._yaw, env._gx, env._gy, False, False)]
-        done = False
-        reached = False
-        while not done:
-            action, _ = model.predict(obs, deterministic=True) if model else (env.action_space.sample(), None)
-            obs, r, term, trunc, info = env.step(action)
-            candidate.append((env._x, env._y, env._yaw,
-                               env._gx, env._gy,
-                               info.get("goal_reached", False),
-                               info.get("collision", False)))
-            done = term or trunc
-            if info.get("goal_reached", False):
-                reached = True
-        if reached:
-            frames_data = candidate
-            print(f"  Episódio vencedor: seed={try_seed} ({len(candidate)} frames)")
-            break
-    if frames_data is None:
-        print("  Aviso: nenhum episódio vencedor em 50 tentativas, usando último")
-        frames_data = candidate
+    if cherry_pick:
+        frames_data, outcome = None, "timeout"
+        for try_seed in range(seed, seed + 50):
+            cand, oc = _rollout(model, world, try_seed)
+            if oc == "goal":
+                frames_data, outcome = cand, oc
+                print(f"  Episódio vencedor: seed={try_seed} ({len(cand)} frames)")
+                break
+        if frames_data is None:
+            print(f"  Aviso: nenhum vencedor em 50 seeds no '{world}', usando seed={seed}")
+            frames_data, outcome = _rollout(model, world, seed)
+    else:
+        frames_data, outcome = _rollout(model, world, seed)
+        oc_label = {"goal": "✓ chegou ao goal", "collision": "✗ colidiu",
+                    "timeout": "✗ não chegou (timeout)"}[outcome]
+        print(f"  [honesto] '{world}' seed={seed}: {oc_label} ({len(frames_data)} frames)")
 
     fig, ax = plt.subplots(figsize=(6, 6))
 
@@ -334,16 +349,24 @@ def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10):
         ax.add_patch(Circle((gx, gy), GOAL_RADIUS,
                              color="#F44336", alpha=0.15))
 
-        status = "✓ GOAL!" if goal else "✗ COLISÃO" if coll else f"passo {i}"
+        last = (i == len(frames_data) - 1)
+        if goal:
+            status = "✓ GOAL!"
+        elif coll:
+            status = "✗ COLISÃO"
+        elif last:
+            status = "✗ TIMEOUT (não chegou)"
+        else:
+            status = f"passo {i}"
         ax.set_title(f"SAC navegando — env 2D ({world})\n{status}", fontsize=11)
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
 
     ani = animation.FuncAnimation(fig, draw_frame,
                                   frames=len(frames_data), interval=1000//fps)
-    gif_path = os.path.join(FIGS, f"fig_2d_episode_{world}.gif")
+    gif_path = os.path.join(FIGS, f"fig_2d_episode_{world}{suffix}.gif")
     ani.save(gif_path, writer="pillow", fps=fps)
     plt.close()
-    print(f"  ✓ fig_2d_episode_{world}.gif ({len(frames_data)} frames)")
+    print(f"  ✓ fig_2d_episode_{world}{suffix}.gif [{outcome}] ({len(frames_data)} frames)")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -358,6 +381,8 @@ if __name__ == "__main__":
     p.add_argument("--seed",  type=int, default=7)
     p.add_argument("--no-model", action="store_true",
                    help="Roda sem modelo (ação aleatória) — útil para testar")
+    p.add_argument("--honest", action="store_true",
+                   help="GIF diagnóstico: seed fixo, mostra desfecho real (sufixo _diag)")
     args = p.parse_args()
 
     model = None
@@ -378,7 +403,10 @@ if __name__ == "__main__":
         plot_heatmap(args.world)
 
     if args.mode in ("gif", "all"):
-        plot_gif(model, args.world, args.seed)
+        if args.honest:
+            plot_gif(model, args.world, args.seed, cherry_pick=False, suffix="_diag")
+        else:
+            plot_gif(model, args.world, args.seed)
 
     print("\nFiguras salvas em paper/figs/:")
     print("  fig_2d_trajectory_<world>.png/pdf  — trajetória com gradiente temporal")

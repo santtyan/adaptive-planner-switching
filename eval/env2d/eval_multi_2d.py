@@ -184,6 +184,35 @@ def plot_snapshot(model, world, n_agents, out, seed=2):
     print("  ✓ fig_2d_multiagent_snapshot.png")
 
 
+def plot_degradation_by_density(dfs_by_world, out):
+    """Figura comparativa: goal/inter_collision/deadlock vs N, 1 curva por densidade."""
+    metrics = [("goal_rate", "Taxa de goal (SAC)"),
+               ("inter_collision", "Colisão inter-robô (SAC)"),
+               ("deadlock", "Deadlock (SAC)")]
+    colors = {"sparse": "#2E7D32", "dense": "#F9A825", "very_dense": "#C62828"}
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
+    for ax, (col, title) in zip(axes, metrics):
+        for world, (df, rho) in dfs_by_world.items():
+            sac = df[df.strategy == "sac"]
+            ns = sorted(sac.n_agents.unique())
+            vals = [sac[sac.n_agents == n][col].mean() for n in ns]
+            ax.plot(ns, vals, "o-", color=colors.get(world, "gray"), lw=2.2, ms=7,
+                    label=f"{world} (ρ≈{rho:.2f})")
+        ax.set_xlabel("Número de robôs (N)")
+        ax.set_title(title, fontsize=10, fontweight="bold")
+        ax.set_ylim(-0.03, 1.05); ax.set_xticks(ns)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0%}"))
+        ax.grid(alpha=0.3); ax.legend(fontsize=8)
+    fig.suptitle("RL independente: degradação por densidade × N robôs (dados REAIS, env 2D)",
+                 fontsize=11, fontweight="bold")
+    fig.tight_layout()
+    for ext in ("png", "pdf"):
+        fig.savefig(Path(out) / "marl" / f"fig_marl_degradation_by_density_2d.{ext}",
+                    dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print("  ✓ marl/fig_marl_degradation_by_density_2d.png")
+
+
 def _density(df):
     return 0.0  # placeholder; sobrescrito no main com densidade real
 
@@ -193,6 +222,9 @@ def main():
     ap.add_argument("--n-agents", nargs="+", type=int, default=[1, 2, 3, 4, 5, 6, 8])
     ap.add_argument("--trials", type=int, default=20)
     ap.add_argument("--world", default="dense")
+    ap.add_argument("--worlds", nargs="+", default=None,
+                    help="Varre múltiplas densidades (ex.: sparse dense very_dense) "
+                         "e gera figura comparativa. Sobrepõe --world.")
     ap.add_argument("--out", default=FIGS)
     args = ap.parse_args()
 
@@ -203,17 +235,45 @@ def main():
         print("Treine antes: python3 -m eval.env2d.train_2d --world sparse")
         sys.exit(1)
     model = SAC.load(model_path, device="cpu")
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    (Path(args.out) / "marl").mkdir(parents=True, exist_ok=True)
 
-    # densidade real do mundo
-    cfg = WORLDS[args.world]
-    rho = sum(np.pi*cr**2 for _,_,cr in cfg["obstacles"]) / (cfg["size"]**2)
+    # ρ nominal da tese (densidade LOCAL vista pelo LIDAR; alinhado a ρ*=0.30),
+    # consistente com env_2d.py e diagnose_density.py. NÃO é a fração de área global.
+    NOMINAL_RHO = {"sparse": 0.05, "dense": 0.30, "very_dense": 0.50}
+
+    def rho_of(world):
+        return NOMINAL_RHO.get(world, 0.0)
+
+    # ── Modo progressivo: varre densidades ────────────────────
+    if args.worlds:
+        dfs = {}
+        for world in args.worlds:
+            rho = rho_of(world)
+            print(f"\n=== world={world}  ρ≈{rho:.2f} ===")
+            df = run_experiment(["astar", "sac"], args.n_agents, args.trials, world, model)
+            df.to_csv(Path(args.out) / f"multiagent_2d_results_{world}.csv", index=False)
+            dfs[world] = (df, rho)
+        print("\nGerando figura comparativa...")
+        plot_degradation_by_density(dfs, args.out)
+        print("\nResumo por densidade (SAC, deadlock/goal):")
+        for world, (df, rho) in dfs.items():
+            sac = df[df.strategy == "sac"]
+            nmax = max(args.n_agents)
+            s = sac[sac.n_agents == nmax]
+            print(f"  {world:11s} N={nmax}: goal={s.goal_rate.mean():.0%}  "
+                  f"inter_coll={s.inter_collision.mean():.0%}  "
+                  f"deadlock={s.deadlock.mean():.0%}")
+        return
+
+    # ── Modo single-world (comportamento original) ────────────
+    rho = rho_of(args.world)
     global _density
     _density = lambda df: rho
 
     print(f"Avaliando RL independente multi-agente (REAL) — world={args.world} ρ≈{rho:.2f}")
     df = run_experiment(["astar", "sac"], args.n_agents, args.trials, args.world, model)
 
-    Path(args.out).mkdir(parents=True, exist_ok=True)
     csv = Path(args.out) / "multiagent_2d_results.csv"
     df.to_csv(csv, index=False)
     print(f"\nCSV: {csv}")
