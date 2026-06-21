@@ -281,7 +281,7 @@ de taxa de sucesso.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/planner_time_vs_density.png}
+  \includegraphics[width=\textwidth]{figs/benchmark/planner_time_vs_density.png}
   \caption{Regime de atuação por planejador (dados calibrados Fase~1, mocks RRT*/PPO;
            Fase~2 usa A*/SAC real). \textbf{Esquerda:} taxa de sucesso por densidade ---
            RRT* excelente em baixa densidade (96\% em $\rho{=}0{,}10$), PPO estável em
@@ -361,7 +361,7 @@ escolha como componente clássico do framework adaptivo.
 \begin{figure}[H]
   \centering
   % Substitua pelo caminho real após gerar as figuras definitivas
-  \includegraphics[width=0.85\textwidth]{figs/benchmark_time.png}
+  \includegraphics[width=0.85\textwidth]{figs/benchmark/benchmark_time.png}
   \caption{Tempo de execução dos algoritmos clássicos em função do tamanho do grid.
            Escala log-log. Dijkstra e A* crescem linearmente; Floyd-Warshall e Johnson
            tornam-se inviáveis para $N > 900$ nós.}
@@ -370,7 +370,7 @@ escolha como componente clássico do framework adaptivo.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/benchmark_memory.png}
+  \includegraphics[width=0.85\textwidth]{figs/benchmark/benchmark_memory.png}
   \caption{Consumo de memória de pico dos algoritmos clássicos.}
   \label{fig:benchmark_memory}
 \end{figure}
@@ -485,7 +485,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/fig_statistical_test.png}
+  \includegraphics[width=0.85\textwidth]{figs/core/fig_statistical_test.png}
   \caption{Taxa de sucesso por método e densidade com IC~95\% (bootstrap binomial).
            O $\rho$-criterion supera o PPO fixo em todas as densidades acima de $\rho=0{,}25$,
            com vantagem máxima de 13,3~pp em $\rho=0{,}45$.
@@ -495,7 +495,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/fig_regret_analysis.png}
+  \includegraphics[width=\textwidth]{figs/core/fig_regret_analysis.png}
   \caption{Regret do $\rho$-criterion em relação ao oracle ideal por densidade (esquerda)
            e comparação direta entre curvas de desempenho (direita). O regret é $\leq 5\%$
            em 4 das 5 faixas de densidade, e $\leq 10\%$ em todas --- dentro do critério H2.}
@@ -504,7 +504,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/fig_summary_panel.png}
+  \includegraphics[width=\textwidth]{figs/core/fig_summary_panel.png}
   \caption{Visão geral dos resultados da Fase~1: (a) taxa de sucesso por método e densidade;
            (b) regret vs oracle; (c) benchmark de algoritmos clássicos em escala log;
            (d) distribuição de uso clássico vs RL por densidade.}
@@ -513,7 +513,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/switching_heatmap.png}
+  \includegraphics[width=0.85\textwidth]{figs/core/switching_heatmap.png}
   \caption{Heatmap espacial do $\rho$-criterion no mapa \texttt{dense\_custom.world}. Regiões
            azuis ($\rho < 0{,}30$) usam A*; regiões vermelhas ($\rho \geq 0{,}30$) usam SAC.
            A linha tracejada indica a fronteira de decisão $\rho^* = 0{,}30$.}
@@ -522,7 +522,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/density_progression.png}
+  \includegraphics[width=\textwidth]{figs/core/density_progression.png}
   \caption{Progressão de densidade --- análise prospectiva do switcher em três ambientes
            criados para a Fase~2 (mundos \texttt{sparse}, \texttt{dense\_custom} e
            \texttt{very\_dense}, criados em junho/2026).
@@ -671,7 +671,7 @@ e ascendente (Fig.~\ref{fig:2d_heatmap}).
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.60\textwidth]{figs/fig_2d_episode_very_dense.gif}
+  \includegraphics[width=0.60\textwidth]{figs/2d/fig_2d_episode_very_dense.gif}
   \caption{Animação de um episódio no ambiente \texttt{very\_dense} ($\rho \approx 0{,}52$):
            o agente SAC navega reativamente entre obstáculos próximos, situação em que o
            planejador global A* falha por ausência de caminho livre. Arquivo gerado por
@@ -713,7 +713,7 @@ correção Holm-Bonferroni.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figs/success_by_density.png}
+  \includegraphics[width=0.75\textwidth]{figs/benchmark/success_by_density.png}
   \caption{Taxa de sucesso por método e faixa de densidade $\rho$.
            A linha tracejada indica o limiar $\rho^*=0{,}30$.
            Resultados definitivos em Agosto/2026.}
@@ -722,7 +722,7 @@ correção Holm-Bonferroni.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\textwidth]{figs/outcome_matrix.png}
+  \includegraphics[width=0.75\textwidth]{figs/benchmark/outcome_matrix.png}
   \caption{Matriz de desfecho (goal / colisão / timeout) por método e faixa de densidade.}
   \label{fig:outcome_matrix}
 \end{figure}
@@ -838,7 +838,7 @@ constitui a Fase~3 deste programa de pesquisa (Seção~4).
 
 \begin{figure}[H]
   \centering
-  \fbox{\includegraphics[width=0.78\textwidth]{figs/cbs_scalability.png}}
+  \fbox{\includegraphics[width=0.78\textwidth]{figs/cbs/cbs_scalability.png}}
   \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$
            (grid $10{\times}10$, $\rho=0{,}20$, 5 trials por ponto, timeout 30\,s).
            O crescimento super-linear contrasta com o custo $O(1)$ por agente do
@@ -861,7 +861,7 @@ coordenação central. 20 trials por configuração, arena densa ($\rho \approx 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/fig_marl_motivation_degradation_2d.png}
+  \includegraphics[width=\textwidth]{figs/marl/fig_marl_motivation_degradation_2d.png}
   \caption{Degradação do SAC independente com $N$ robôs (\textbf{dados REAIS}, env 2D).
            Azul: taxa de goal média por robô (eixo esquerdo, $\downarrow$ com $N$).
            Vermelho: taxa de colisão inter-robô (eixo direito, $\uparrow$ com $N$).
@@ -874,7 +874,7 @@ coordenação central. 20 trials por configuração, arena densa ($\rho \approx 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/fig_marl_motivation_summary_2d.png}
+  \includegraphics[width=\textwidth]{figs/marl/fig_marl_motivation_summary_2d.png}
   \caption{Comparação A* independente vs.\ SAC independente em três métricas
            para $N \in \{1,\ldots,8\}$ agentes (\textbf{dados REAIS}, env 2D).
            \textbf{Esquerda:} colisão inter-robô --- cresce para ambas as estratégias,
@@ -889,7 +889,7 @@ coordenação central. 20 trials por configuração, arena densa ($\rho \approx 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.65\textwidth]{figs/fig_2d_multiagent_snapshot.png}
+  \includegraphics[width=0.65\textwidth]{figs/marl/fig_2d_multiagent_snapshot.png}
   \caption{Snapshot de um trial com 8 robôs SAC independentes na arena densa.
            Cada cor representa um robô distinto; ●=posição inicial, ★=goal.
            As trajetórias mostram comportamento reativo local sem coordenação:
@@ -910,7 +910,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_tpg_comparison.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_tpg_comparison.png}
   \caption{Transformação CBS $\to$ TPG: plano discreto (passos de grid, painel esquerdo)
            convertido em schedule cinemático com buffers de segurança $\delta=0{,}20$\,m
            (painéis central e direito). As setas no painel central indicam atrasos inseridos
@@ -921,7 +921,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_deviation_analysis.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_deviation_analysis.png}
   \caption{Experimento de desvio: custo adicional de não seguir o $\rho$-criterion em 100
            cenários CBS (2 agentes, 8$\times$8, 12 obstáculos). \textbf{Superior:} desvio
            sempre-A* ($+2{,}1\%$, azul) e sempre-SAC ($+14{,}1\%$, vermelho). \textbf{Inferior:}
@@ -932,7 +932,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_density_sweep.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_density_sweep.png}
   \caption{Varredura sistemática densidade $\times$ ativação SAC/PPO (grid 10$\times$10,
            8 trials por ponto, 2/3/5 agentes). A transição de regime ocorre em
            $\rho \approx 0{,}28$--$0{,}32$ independentemente do número de agentes,
@@ -942,7 +942,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_spatial_annotation.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_spatial_annotation.png}
   \caption{Cenário de referência: 3 agentes em grid 10$\times$10 com 13 obstáculos.
            \textbf{Esquerda:} heatmap de densidade local $\rho$.
            \textbf{Direita:} decisão passo a passo (azul = A*/RRT*, vermelho = SAC/PPO).
@@ -952,7 +952,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_canyon_annotation.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_canyon_annotation.png}
   \caption{Cenário canyon de alta densidade: 5 agentes, grid 12$\times$10, 28 obstáculos.
            Paredes laterais forçam passagem pelo corredor central ($\rho \geq 0{,}30$).
            \textbf{44\% dos passos ativam SAC/PPO} no canyon (pontos vermelhos), confirmando
@@ -962,7 +962,7 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/cbs_ppo_ratio_comparison.png}
+  \includegraphics[width=\textwidth]{figs/cbs/cbs_ppo_ratio_comparison.png}
   \caption{Proporção de passos com SAC/PPO por cenário nos benchmarks públicos
            (100 cenários com 2 agentes e 21 cenários com 5 agentes, densidade global
            $\rho \approx 0{,}19$). A maioria opera abaixo de $\rho^* = 0{,}30$
@@ -1039,7 +1039,7 @@ suportar a extensão a $N$ agentes sem refatoração estrutural.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/roadmap_marl_tj.png}
+  \includegraphics[width=\textwidth]{figs/marl/roadmap_marl_tj.png}
   \caption{Roadmap de extensão do framework: Fase~1 (implementada, agente único),
            Fase~2 (CBS + anotação adaptiva, parcialmente implementada) e
            Fase~3 (MARL + teoria dos jogos cooperativos, trabalho futuro).

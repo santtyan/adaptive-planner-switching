@@ -3,6 +3,27 @@
 Índice organizado **por utilidade**. Cada figura tem `.png` (150 dpi) + `.pdf`.
 Todas geradas pelos scripts em `eval/` (saída fixa em `paper/figs/`).
 
+## Estrutura de pastas (reorganizado 21/06/2026)
+
+A raiz de `paper/figs/` foi esvaziada; cada figura vive numa subpasta temática:
+
+| Subpasta | Conteúdo |
+|---|---|
+| `core/` | Núcleo da tese: ρ-criterion, switching, regret, summary, sensibilidade |
+| `benchmark/` | Benchmarks clássicos, tempo/memória, success_by_density, outcome_matrix |
+| `cbs/` | Tudo de CBS (escalabilidade, desvio, sweep, anotações espaciais) |
+| `marl/` | Motivação MARL (degradation/summary), snapshot multi-agente, roadmap |
+| `obs/` | Espaço de observação 29-dim, arquitetura do sistema |
+| `training/` | Diagnóstico de treino, reward, curvas, currículo, throughput |
+| `2d/` | Env2D: trajetórias, heatmaps, compare, learning curve, GIFs |
+| `pareto/` | Justificativa formal τ*=0,30 (Pareto) |
+| `thesis/` | Conteúdo de defesa/tese (ablação, painéis) |
+| `gazebo_screenshots/` | Capturas do Gazebo (pendente) |
+| `misc/` | Slides avulsos |
+
+> Duplicata removida: `fig_2d_learning_curve.{png,pdf}` da raiz (mantida em `2d/`).
+> Nos `.tex`, todos os `\includegraphics` usam `figs/<subpasta>/<arquivo>`.
+
 Legenda de uso:
 - 📄 **Relatório final** (`relatorio_final_pip.tex`/`.md`)
 - 📝 **Resumo CONPEEX** (`resumo_conpeex_2026.tex`/`.md`)
