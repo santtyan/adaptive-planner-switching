@@ -436,13 +436,28 @@ eficiência computacional.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.72\linewidth]{figs/fig_pareto_threshold.png}
+  \includegraphics[width=0.72\linewidth]{figs/pareto/fig_pareto_threshold.png}
   \caption{Curva retorno marginal de SAC $\times$ taxa de sucesso por limiar $\tau$.
            $\tau^* = 0{,}30$ (50\% de uso de SAC) é o ponto joelho: a partir desse ponto
            cada ponto percentual adicional de inferência neural acrescenta menos de
            $0{,}11$~pp de sucesso --- contra $\approx 1{,}5$~pp nas primeiras
            adições de SAC.}
   \label{fig:pareto_threshold}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
+  \caption{Análise comparativa do limiar $\tau^*{=}0{,}30$ com boxplots de distribuição de
+           taxa de sucesso e equações formais de retorno marginal.
+           \textbf{Equações:}
+           $\tau^* = \arg\min_\tau R(\tau)$,
+           $R(\tau) = \mathbb{E}_\rho[\pi^*(\rho) - \pi_\tau(\rho)]$,
+           $\text{ROI} = \Delta S / \Delta f_{\text{SAC}}$.
+           O boxplot confirma que $\tau{=}0{,}30$ maximiza a taxa de sucesso mediana e
+           minimiza a variância, enquanto $\tau{=}0{,}25$ (maior uso de SAC) não oferece
+           ganho estatisticamente significativo --- ROI de $0{,}11$~pp/pp.}
+  \label{fig:pareto_boxplot}
 \end{figure}
 
 \begin{table}[H]
@@ -577,6 +592,77 @@ o episódio (\textit{suicidal agent}, evidenciado pela queda de \texttt{ep\_len\
 ${\sim}55$ para ${\sim}8$ ao ativar o SAC). A correção, seguindo Cimurs et al.\ (2022),
 elimina o piso de penalidade e introduz o bônus de sobrevivência: sobreviver até o timeout
 domina qualquer ganho de colisão precoce, eliminando o incentivo perverso.
+
+\subsection{Validação no Ambiente 2D Leve --- Env2D}
+
+Para acelerar o ciclo de iteração de reward e validar hiperparâmetros antes do Gazebo,
+foi implementado um ambiente 2D leve (\texttt{eval/env2d/}) com raycasting vetorizado
+NumPy, $851\times$ mais rápido que o Gazebo Classic. O ambiente reproduz fielmente a
+cinemática unicycle, a observação de 29 dimensões (via \texttt{obs\_utils} compartilhado)
+e a mesma estrutura de reward do ambiente ROS2.
+
+O SAC convergiu para \textbf{90\% de taxa de sucesso em 14.000 passos (3,3 minutos)}
+no mundo esparso, contra dias de treino no Gazebo. A Figura~\ref{fig:2d_learning_curve}
+mostra a curva de aprendizado; a Figura~\ref{fig:2d_compare} compara as trajetórias de
+A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
+
+\textbf{Diagnóstico de causa-raiz via gêmeo controlado.} O treino SAC no Gazebo não
+convergia por múltiplas sessões. A comparação das constantes entre os dois ambientes
+(Tabela~\ref{tab:reward_comparison}) isolou a causa-raiz: \texttt{R\_APPROACH=2.0} no
+Gazebo vs.\ \texttt{10.0} no Env2D --- única diferença entre os dois ambientes.
+Com $R_{\text{surv}} \cdot T = 0{,}1 \times 200 = 20$ de bônus garantido por ficar parado,
+é necessário $R_{\text{app}} \cdot d > 20$, i.e.\ $R_{\text{app}} > 6{,}67$, para que
+navegar supere a política ociosa. Com $R_{\text{app}}{=}2{,}0$ o gradiente apontava para
+não se mover; corrigido para $10{,}0$, o Gazebo passou a apresentar \texttt{ep\_len} estável
+e ascendente (Fig.~\ref{fig:2d_heatmap}).
+
+\begin{table}[H]
+  \centering
+  \caption{Constantes de reward: Env2D (convergiu) vs.\ Gazebo (não convergia)}
+  \label{tab:reward_comparison}
+  \begin{tabular}{lrr}
+    \toprule
+    \textbf{Constante} & \textbf{Env2D} & \textbf{Gazebo (antes)} \\
+    \midrule
+    \texttt{R\_GOAL}      & $+100$ & $+100$ \\
+    \texttt{R\_COLLISION} & $-100$ & $-100$ \\
+    \texttt{R\_SURVIVAL}  & $0{,}1$/passo & $0{,}1$/passo \\
+    \texttt{MAX\_STEPS}   & 200 & 200 \\
+    \texttt{R\_APPROACH}  & \textbf{10,0} & \textbf{2,0} (corrigido para 10,0) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve.png}
+  \caption{Curva de aprendizado SAC no ambiente 2D leve (world=sparse, seed=42).
+           Convergência em 14.000 passos / 3,3 minutos para taxa de sucesso de 90\%.
+           O ambiente 2D serve como proxy controlado para iterar reward e hiperparâmetros
+           antes do ciclo lento do Gazebo (5~Hz LIDAR).}
+  \label{fig:2d_learning_curve}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+  \caption{Comparação de trajetórias no ambiente denso ($\rho \approx 0{,}35$):
+           A* analítico (linha reta, frequentemente bloqueado), SAC independente
+           (reativo local) e política Adaptativa $\rho$-criterion (A* onde possível,
+           SAC nas regiões congestionadas). As trajetórias são coloridas por instante
+           temporal (azul=início, amarelo=fim).}
+  \label{fig:2d_compare}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: regiões azuis
+           ($\rho < 0{,}30$) usam A*; regiões vermelhas ($\rho \geq 0{,}30$) usam SAC.
+           A fronteira de decisão acompanha a geometria dos obstáculos, ativando o SAC
+           apenas onde a densidade local justifica.}
+  \label{fig:2d_heatmap}
+\end{figure}
 
 \textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
 o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
@@ -748,6 +834,53 @@ constitui a Fase~3 deste programa de pesquisa (Seção~4).
 \end{figure}
 
 Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
+
+\subsubsection*{Experimento de Degradação: RL Independente com N Agentes (Dados Reais)}
+
+Para quantificar empiricamente onde o RL independente quebra --- e motivar o MARL com
+\textbf{dados reais}, não sintéticos --- foi conduzido um experimento no ambiente 2D leve
+com $N \in \{1, 2, 3, 4, 5, 6, 8\}$ robôs, cada um executando a política SAC treinada de
+forma \textbf{independente} (sem comunicação). Cada robô percebe os vizinhos como obstáculos
+circulares dinâmicos no LIDAR (raycasting atualizado a cada passo), mas decide ação sem
+coordenação central. 20 trials por configuração, arena densa ($\rho \approx 0{,}35$).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig_marl_motivation_degradation_2d.png}
+  \caption{Degradação do SAC independente com $N$ robôs (\textbf{dados REAIS}, env 2D).
+           Azul: taxa de goal média por robô (eixo esquerdo, $\downarrow$ com $N$).
+           Vermelho: taxa de colisão inter-robô (eixo direito, $\uparrow$ com $N$).
+           Em $N{=}1$: 25\% de goal, 0\% de colisão inter-robô.
+           Em $N{=}8$: 18\% de goal, 85\% de colisão inter-robô.
+           A degradação empírica confirma que políticas independentes não generalizam
+           para cenários multi-agente --- motivação direta para o MARL.}
+  \label{fig:marl_degradation}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig_marl_motivation_summary_2d.png}
+  \caption{Comparação A* independente vs.\ SAC independente em três métricas
+           para $N \in \{1,\ldots,8\}$ agentes (\textbf{dados REAIS}, env 2D).
+           \textbf{Esquerda:} colisão inter-robô --- cresce para ambas as estratégias,
+           mais rapidamente no A* por ausência de reatividade local.
+           \textbf{Centro:} taxa de goal --- cai com $N$ para ambas.
+           \textbf{Direita:} taxa de deadlock --- SAC exibe menos deadlock por reagir
+           localmente, mas falha em coordenação.
+           Nenhuma estratégia resolve os três problemas simultaneamente: argumento
+           para coordenação emergente via MARL.}
+  \label{fig:marl_summary}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{figs/fig_2d_multiagent_snapshot.png}
+  \caption{Snapshot de um trial com 8 robôs SAC independentes na arena densa.
+           Cada cor representa um robô distinto; ●=posição inicial, ★=goal.
+           As trajetórias mostram comportamento reativo local sem coordenação:
+           robôs convergem para as mesmas regiões congestionadas e colidem.}
+  \label{fig:marl_snapshot}
+\end{figure}
 
 Um aspecto prático relevante para execução em robôs reais é a diferença entre o plano CBS
 (discreto, em passos de grid) e um \textit{schedule} cinemático executável. O CBS assume

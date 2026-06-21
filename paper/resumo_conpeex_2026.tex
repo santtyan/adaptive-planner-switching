@@ -103,19 +103,51 @@ navegação autônoma; ROS2; switching adaptivo.
 \vspace{0.5cm}
 \noindent\textbf{Material visual --- apresentação CONPEEX}
 
+% ── Figura 1: Motivação e critério ──────────────────────────
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{figs/density_progression.png}
-  \caption{Progressão de densidade de obstáculos e decisão do switcher ($\rho^* = 0{,}30$).
-           Azul: A* selecionado ($\rho < 0{,}30$). Vermelho: SAC selecionado ($\rho \geq 0{,}30$).}
-  \label{fig:progression}
+  \includegraphics[width=\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
+  \caption{Justificativa formal de $\rho^*{=}0{,}30$: boxplots de taxa de sucesso por limiar
+           e equações de retorno marginal. ROI$=\Delta S/\Delta f_{\text{SAC}}{=}0{,}11$~pp/pp
+           em $\tau{=}0{,}30$ --- ponto Pareto-ótimo entre eficácia e custo computacional.}
+  \label{fig:pareto_boxplot_conpeex}
 \end{figure}
 
+% ── Figura 2: Mapa de decisão ────────────────────────────────
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{figs/switching_heatmap.png}
-  \caption{Heatmap espacial do critério de switching no mapa de treinamento.}
-  \label{fig:heatmap}
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+    \caption{Mapa de decisão: azul=A*, vermelho=SAC}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+    \caption{Trajetórias A* vs SAC vs Adaptativo}
+  \end{subfigure}
+  \caption{$\rho$-criterion em ação no ambiente denso ($\rho{\approx}0{,}35$). O critério
+           ativa o SAC apenas nas regiões congestionadas, economizando inferência neural
+           nas regiões livres. Validado em ambiente 2D leve (851$\times$ mais rápido que Gazebo).}
+  \label{fig:2d_conpeex}
+\end{figure}
+
+% ── Figura 3: Degradação multi-agente (dados reais) ──────────
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig_marl_motivation_degradation_2d.png}
+  \caption{Degradação empírica de N robôs SAC independentes (\textbf{dados reais}, env 2D).
+           Colisão inter-robô sobe de 0\% ($N{=}1$) para 85\% ($N{=}8$): políticas
+           independentes não garantem coordenação --- motivação para MARL como Fase 3.}
+  \label{fig:marl_conpeex}
+\end{figure}
+
+% ── Figura 4: Curva de aprendizado ───────────────────────────
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve.png}
+  \caption{Curva de aprendizado SAC no env 2D: 90\% de taxa de sucesso em 14.000 passos
+           (3,3 min). Permite iteração rápida de reward antes do ciclo lento do Gazebo.}
+  \label{fig:learning_conpeex}
 \end{figure}
 
 % ── Espaço reservado para imagens do robô no Gazebo ──────────
@@ -151,9 +183,7 @@ navegação autônoma; ROS2; switching adaptivo.
     \caption{Denso --- SAC dominante}
   \end{subfigure}
   \caption{TurtleBot3 Waffle nos três níveis de densidade (Gazebo Classic).
-           Imagens a capturar após convergência do SAC (Julho/2026).
-           Para ativar: remover \texttt{\textbackslash fbox} e descomentar
-           \texttt{\textbackslash includegraphics}.}
+           Imagens a capturar após convergência do SAC (Julho/2026).}
   \label{fig:gazebo}
 \end{figure}
 
