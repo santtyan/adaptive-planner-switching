@@ -144,9 +144,10 @@ navegação autônoma; ROS2; switching adaptivo.
 % ── Figura 4: Curva de aprendizado ───────────────────────────
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve.png}
-  \caption{Curva de aprendizado SAC no env 2D: 90\% de taxa de sucesso em 14.000 passos
-           (3,3 min). Permite iteração rápida de reward antes do ciclo lento do Gazebo.}
+  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+  \caption{Curva de aprendizado SAC no env 2D (média $\pm$ IC~95\%, 3 seeds independentes):
+           90\% de taxa de sucesso em 4.000--14.000 passos (6--13 min). Reprodutível em
+           múltiplas seeds; permite iteração rápida de reward antes do ciclo lento do Gazebo.}
   \label{fig:learning_conpeex}
 \end{figure}
 
