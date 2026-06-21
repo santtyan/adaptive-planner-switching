@@ -322,47 +322,50 @@ def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10,
         print(f"  [honesto] '{world}' seed={seed}: {oc_label} ({len(frames_data)} frames)")
 
     fig, ax = plt.subplots(figsize=(6, 6))
+    cmap_trail = plt.cm.plasma
+    total = len(frames_data)
 
     def draw_frame(i):
         ax.clear()
         _draw_arena(ax, world)
 
-        # Trajetória até agora
+        # Trilha com gradiente temporal
         xs = [f[0] for f in frames_data[:i+1]]
         ys = [f[1] for f in frames_data[:i+1]]
-        ax.plot(xs, ys, "-", color="#4CAF50", lw=2, alpha=0.7, zorder=4)
+        if len(xs) > 1:
+            for k in range(len(xs) - 1):
+                t = k / max(total - 1, 1)
+                ax.plot(xs[k:k+2], ys[k:k+2], "-",
+                        color=cmap_trail(t), lw=2.2, alpha=0.85, zorder=4)
 
         x, y, yaw, gx, gy, goal, coll = frames_data[i]
 
         # Robô
-        color_robot = "#F44336" if coll else "#FFC107" if goal else "#2196F3"
-        robot_c = Circle((x, y), ROBOT_RADIUS, color=color_robot,
-                          zorder=5, alpha=0.9)
-        ax.add_patch(robot_c)
+        color_robot = "#F44336" if coll else "#4CAF50" if goal else "#2196F3"
+        ax.add_patch(Circle((x, y), ROBOT_RADIUS, color=color_robot, zorder=5, alpha=0.92))
         ax.annotate("", xy=(x + 0.25*np.cos(yaw), y + 0.25*np.sin(yaw)),
                     xytext=(x, y),
-                    arrowprops=dict(arrowstyle="->", color="white", lw=2))
+                    arrowprops=dict(arrowstyle="->", color="white", lw=2.2))
 
         # Goal
-        ax.plot(gx, gy, "*", color="#F44336", ms=14, zorder=6,
-                markeredgecolor="white", markeredgewidth=1)
-        ax.add_patch(Circle((gx, gy), GOAL_RADIUS,
-                             color="#F44336", alpha=0.15))
+        ax.plot(gx, gy, "*", color="#FF5722", ms=16, zorder=6,
+                markeredgecolor="white", markeredgewidth=1.2)
+        ax.add_patch(Circle((gx, gy), GOAL_RADIUS, color="#FF5722", alpha=0.18))
 
-        last = (i == len(frames_data) - 1)
+        last = (i == total - 1)
         if goal:
             status = "✓ GOAL!"
         elif coll:
             status = "✗ COLISÃO"
         elif last:
-            status = "✗ TIMEOUT (não chegou)"
+            status = "✗ TIMEOUT"
         else:
-            status = f"passo {i}"
-        ax.set_title(f"SAC navegando — env 2D ({world})\n{status}", fontsize=11)
+            status = f"passo {i}/{total-1}"
+        ax.set_title(f"SAC — env 2D  [{world}]\n{status}", fontsize=11, fontweight="bold")
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
 
     ani = animation.FuncAnimation(fig, draw_frame,
-                                  frames=len(frames_data), interval=1000//fps)
+                                  frames=total, interval=1000//fps)
     gif_path = os.path.join(FIGS, f"fig_2d_episode_{world}{suffix}.gif")
     ani.save(gif_path, writer="pillow", fps=fps)
     plt.close()

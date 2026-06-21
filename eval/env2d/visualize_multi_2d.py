@@ -108,6 +108,8 @@ def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True)
     traj_y = [[] for _ in range(n)]
 
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
+    cmap_trail = plt.cm.plasma
+    total = len(frames)
 
     def draw_frame(fi):
         ax.clear()
@@ -121,33 +123,43 @@ def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True)
 
         for i in range(n):
             c = COLORS[i % 10]
-            # Trilha
+            # Trilha com gradiente temporal
             if len(traj_x[i]) > 1:
-                ax.plot(traj_x[i], traj_y[i], "-", color=c, lw=1.5, alpha=0.55, zorder=4)
-            # Robô
+                txs, tys = traj_x[i], traj_y[i]
+                for k in range(len(txs) - 1):
+                    t = k / max(total - 1, 1)
+                    ax.plot(txs[k:k+2], tys[k:k+2], "-",
+                            color=cmap_trail(t), lw=1.8, alpha=0.7, zorder=4)
+
             collided = snap["collided"][i] if snap["collided"] is not None else False
             reached  = snap["reached"][i]  if snap["reached"]  is not None else False
             rc = "#F44336" if collided else "#4CAF50" if reached else c
+
+            # Robô
             ax.add_patch(Circle((snap["x"][i], snap["y"][i]), ROBOT_RADIUS,
-                                 color=rc, alpha=0.9, zorder=5))
+                                 color=rc, alpha=0.92, zorder=5))
             # Seta de orientação
             yaw = snap["yaw"][i]
-            ax.annotate("", xy=(snap["x"][i] + 0.2*np.cos(yaw),
-                                snap["y"][i] + 0.2*np.sin(yaw)),
+            ax.annotate("", xy=(snap["x"][i] + 0.22*np.cos(yaw),
+                                snap["y"][i] + 0.22*np.sin(yaw)),
                         xytext=(snap["x"][i], snap["y"][i]),
-                        arrowprops=dict(arrowstyle="->", color="white", lw=1.5))
+                        arrowprops=dict(arrowstyle="->", color="white", lw=1.8))
+            # Rótulo do robô
+            ax.text(snap["x"][i], snap["y"][i] + ROBOT_RADIUS + 0.07,
+                    str(i+1), ha="center", va="bottom", fontsize=7,
+                    fontweight="bold", color=c, zorder=7)
             # Goal
-            ax.plot(snap["gx"][i], snap["gy"][i], "*", color=c, ms=12, zorder=6,
+            ax.plot(snap["gx"][i], snap["gy"][i], "*", color=c, ms=13, zorder=6,
                     markeredgecolor="black", markeredgewidth=0.8)
             ax.add_patch(Circle((snap["gx"][i], snap["gy"][i]), GOAL_RADIUS,
-                                 color=c, alpha=0.12))
+                                 color=c, alpha=0.15))
 
         gr  = best_metrics.get("goal_rate", 0)
         ic  = best_metrics.get("inter_collision", 0)
         ax.set_title(
             f"{n} robôs SAC independentes — {world} ($\\rho\\approx{rho:.2f}$)\n"
-            f"passo {fi}/{len(frames)-1} | goal={gr:.0%}  colisão={ic:.0%}",
-            fontsize=10)
+            f"passo {fi}/{total-1}  |  goal={gr:.0%}  colisão={ic:.0%}",
+            fontsize=10, fontweight="bold")
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
 
     ani = animation.FuncAnimation(fig, draw_frame, frames=len(frames),
