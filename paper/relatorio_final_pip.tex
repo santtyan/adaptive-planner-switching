@@ -547,7 +547,7 @@ A infraestrutura completa está operacional, validando a hipótese H3.
     Simulador          & Gazebo Classic (v11), \texttt{real\_time\_update\_rate=0} \\
     Robô               & TurtleBot3 Waffle, diff-drive, LIDAR 360° (24 raios) \\
     Planejador clássico & A*/SmacPlanner2D via Nav2 Humble \\
-    Agente RL          & SAC, \texttt{ent\_coef=0.1} (fixo$^{a}$), gSDE, \texttt{gradient\_steps=4}, buffer 1M \\
+    Agente RL          & SAC, \texttt{ent\_coef=0.1} (fixo$^{a}$), gSDE, \texttt{gradient\_steps=1}$^{c}$, buffer 1M \\
     Observação         & 29-dim: 24 LIDAR + dist./ângulo ao goal + yaw + ação anterior \\
     Recompensa         & Sobrevivência ($+0{,}1$/passo) + progresso clipado ($\geq 0$) + terminais $\pm100$ \\
     Episódio máximo    & 200 passos$^{b}$ \\
@@ -561,6 +561,11 @@ A infraestrutura completa está operacional, validando a hipótese H3.
 ${\sim}$1k passos quando combinado com gSDE (State-Dependent Exploration), eliminando a
 exploração antes do agente acumular experiência suficiente. Valor fixo em 0,1 mantém entropia
 adequada durante toda a fase de exploração aleatória.}
+
+\noindent\small$^{c}$\textit{\texttt{gradient\_steps=4} causava divergência de Q-values
+combinado com \texttt{R\_APPROACH=10}: recompensas de escala maior amplificam gradientes,
+levando a colapso progressivo de \texttt{ep\_len} após \texttt{learning\_starts}.
+Valor 1 replica a configuração do Env2D que convergiu.}
 
 \noindent\small$^{b}$\textit{Reduzido de 600 (padrão) para 200 passos: em ambiente esparso
 ($\rho{\approx}0{,}05$) episódios mais curtos geram mais resets por hora, aumentando a
@@ -601,9 +606,9 @@ NumPy, $851\times$ mais rápido que o Gazebo Classic. O ambiente reproduz fielme
 cinemática unicycle, a observação de 29 dimensões (via \texttt{obs\_utils} compartilhado)
 e a mesma estrutura de reward do ambiente ROS2.
 
-O SAC convergiu para \textbf{90\% de taxa de sucesso em 14.000 passos (3,3 minutos)}
-no mundo esparso, contra dias de treino no Gazebo. A Figura~\ref{fig:2d_learning_curve}
-mostra a curva de aprendizado; a Figura~\ref{fig:2d_compare} compara as trajetórias de
+O SAC convergiu para \textbf{90\% de taxa de sucesso em $\leq$14.000 passos ($\leq$3,3 minutos)}
+no mundo esparso, reproduzível em 3 seeds independentes (Figura~\ref{fig:2d_learning_curve_ci}).
+A Figura~\ref{fig:2d_compare} compara as trajetórias de
 A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
 
 \textbf{Diagnóstico de causa-raiz via gêmeo controlado.} O treino SAC no Gazebo não
@@ -635,12 +640,12 @@ e ascendente (Fig.~\ref{fig:2d_heatmap}).
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve.png}
-  \caption{Curva de aprendizado SAC no ambiente 2D leve (world=sparse, seed=42).
-           Convergência em 14.000 passos / 3,3 minutos para taxa de sucesso de 90\%.
-           O ambiente 2D serve como proxy controlado para iterar reward e hiperparâmetros
-           antes do ciclo lento do Gazebo (5~Hz LIDAR).}
-  \label{fig:2d_learning_curve}
+  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+  \caption{Curva de aprendizado SAC no ambiente 2D leve (world=sparse), média $\pm$ IC~95\%
+           de 3 seeds independentes (42, 123, 7). Convergência ($\geq$90\% sucesso) em
+           4.000--14.000 passos (6--13 minutos). O ambiente 2D serve como proxy controlado
+           para iterar reward e hiperparâmetros antes do ciclo lento do Gazebo (5~Hz LIDAR).}
+  \label{fig:2d_learning_curve_ci}
 \end{figure}
 
 \begin{figure}[H]
@@ -662,6 +667,16 @@ e ascendente (Fig.~\ref{fig:2d_heatmap}).
            A fronteira de decisão acompanha a geometria dos obstáculos, ativando o SAC
            apenas onde a densidade local justifica.}
   \label{fig:2d_heatmap}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.60\textwidth]{figs/fig_2d_episode_very_dense.gif}
+  \caption{Animação de um episódio no ambiente \texttt{very\_dense} ($\rho \approx 0{,}52$):
+           o agente SAC navega reativamente entre obstáculos próximos, situação em que o
+           planejador global A* falha por ausência de caminho livre. Arquivo gerado por
+           \texttt{eval/env2d/visualize\_2d.py}.}
+  \label{fig:2d_gif}
 \end{figure}
 
 \textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
