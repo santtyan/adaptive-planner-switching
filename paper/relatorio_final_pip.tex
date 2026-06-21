@@ -425,6 +425,25 @@ supera o clássico. A escolha é adicionalmente motivada pelo custo computaciona
 de 16~ms a 115~ms em $\rho = 0{,}30$, enquanto SAC mantém $\approx$12~ms constante
 (Fig.~\ref{fig:planner_time_density}) --- comutar no cruzamento evita degradação de latência
 independentemente da taxa de sucesso.
+A análise de retorno marginal (Fig.~\ref{fig:pareto_threshold}) confirma que $\tau^* = 0{,}30$
+corresponde ao \emph{ponto joelho} da curva uso-de-SAC $\times$ taxa de sucesso:
+elevar o uso de SAC de 50\% ($\tau=0{,}30$) para 70\% ($\tau=0{,}20$) acrescenta apenas
+$+2{,}1$~pp de taxa de sucesso ao custo de $+20$~pp de inferência neural
+--- razão de retorno de $0{,}11$~pp/pp, substancialmente abaixo do retorno de
+$1{,}5$~pp/pp obtido nos segmentos anteriores da curva.
+Escolher $\tau^* = 0{,}30$ é, portanto, a decisão Pareto-ótima entre eficácia e
+eficiência computacional.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\linewidth]{figs/fig_pareto_threshold.png}
+  \caption{Curva retorno marginal de SAC $\times$ taxa de sucesso por limiar $\tau$.
+           $\tau^* = 0{,}30$ (50\% de uso de SAC) é o ponto joelho: a partir desse ponto
+           cada ponto percentual adicional de inferência neural acrescenta menos de
+           $0{,}11$~pp de sucesso --- contra $\approx 1{,}5$~pp nas primeiras
+           adições de SAC.}
+  \label{fig:pareto_threshold}
+\end{figure}
 
 \begin{table}[H]
   \centering
