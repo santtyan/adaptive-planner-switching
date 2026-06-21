@@ -277,21 +277,34 @@ def plot_heatmap(world: str = "dense"):
 # MODO 4 — GIF animado (para apresentação)
 # ══════════════════════════════════════════════════════════════
 def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10):
-    env  = Env2D(world=world, seed=seed)
     cfg  = WORLDS[world]
     half = cfg["size"] / 2
 
-    obs, _ = env.reset()
-    frames_data = [(env._x, env._y, env._yaw, env._gx, env._gy, False, False)]
-    done = False
-    while not done:
-        action, _ = model.predict(obs, deterministic=True) if model else (env.action_space.sample(), None)
-        obs, r, term, trunc, info = env.step(action)
-        frames_data.append((env._x, env._y, env._yaw,
-                             env._gx, env._gy,
-                             info.get("goal_reached", False),
-                             info.get("collision", False)))
-        done = term or trunc
+    # Tenta até 50 seeds para achar um episódio vencedor
+    frames_data = None
+    for try_seed in range(seed, seed + 50):
+        env = Env2D(world=world, seed=try_seed)
+        obs, _ = env.reset()
+        candidate = [(env._x, env._y, env._yaw, env._gx, env._gy, False, False)]
+        done = False
+        reached = False
+        while not done:
+            action, _ = model.predict(obs, deterministic=True) if model else (env.action_space.sample(), None)
+            obs, r, term, trunc, info = env.step(action)
+            candidate.append((env._x, env._y, env._yaw,
+                               env._gx, env._gy,
+                               info.get("goal_reached", False),
+                               info.get("collision", False)))
+            done = term or trunc
+            if info.get("goal_reached", False):
+                reached = True
+        if reached:
+            frames_data = candidate
+            print(f"  Episódio vencedor: seed={try_seed} ({len(candidate)} frames)")
+            break
+    if frames_data is None:
+        print("  Aviso: nenhum episódio vencedor em 50 tentativas, usando último")
+        frames_data = candidate
 
     fig, ax = plt.subplots(figsize=(6, 6))
 
