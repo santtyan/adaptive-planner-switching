@@ -28,6 +28,8 @@ from eval.env2d.env_2d import Env2D, WORLDS, ROBOT_RADIUS, GOAL_RADIUS
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 FIGS = os.path.join(ROOT, "paper", "figs")
+FIGS2D = os.path.join(FIGS, "2d")
+os.makedirs(FIGS2D, exist_ok=True)
 MODS = os.path.join(ROOT, "models")
 
 
@@ -120,10 +122,10 @@ def plot_episode(model, world: str = "sparse", seed: int = 7):
     plt.colorbar(sm, ax=ax, label="Passo", shrink=0.7)
 
     for ext in ["png", "pdf"]:
-        plt.savefig(os.path.join(FIGS, f"fig_2d_trajectory_{world}.{ext}"),
+        plt.savefig(os.path.join(FIGS2D, f"fig_2d_trajectory_{world}.{ext}"),
                     dpi=150 if ext == "png" else None, bbox_inches="tight")
     plt.close()
-    print(f"  ✓ fig_2d_trajectory_{world}.png")
+    print(f"  ✓ 2d/fig_2d_trajectory_{world}.png")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -200,10 +202,10 @@ def plot_compare(model, world: str = "dense"):
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
     for ext in ["png", "pdf"]:
-        plt.savefig(os.path.join(FIGS, f"fig_2d_compare_{world}.{ext}"),
+        plt.savefig(os.path.join(FIGS2D, f"fig_2d_compare_{world}.{ext}"),
                     dpi=150 if ext == "png" else None, bbox_inches="tight")
     plt.close()
-    print(f"  ✓ fig_2d_compare_{world}.png")
+    print(f"  ✓ 2d/fig_2d_compare_{world}.png")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -267,10 +269,10 @@ def plot_heatmap(world: str = "dense"):
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
     for ext in ["png", "pdf"]:
-        plt.savefig(os.path.join(FIGS, f"fig_2d_heatmap_{world}.{ext}"),
+        plt.savefig(os.path.join(FIGS2D, f"fig_2d_heatmap_{world}.{ext}"),
                     dpi=150 if ext == "png" else None, bbox_inches="tight")
     plt.close()
-    print(f"  ✓ fig_2d_heatmap_{world}.png")
+    print(f"  ✓ 2d/fig_2d_heatmap_{world}.png")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -366,10 +368,10 @@ def plot_gif(model, world: str = "sparse", seed: int = 3, fps: int = 10,
 
     ani = animation.FuncAnimation(fig, draw_frame,
                                   frames=total, interval=1000//fps)
-    gif_path = os.path.join(FIGS, f"fig_2d_episode_{world}{suffix}.gif")
+    gif_path = os.path.join(FIGS2D, f"fig_2d_episode_{world}{suffix}.gif")
     ani.save(gif_path, writer="pillow", fps=fps)
     plt.close()
-    print(f"  ✓ fig_2d_episode_{world}{suffix}.gif [{outcome}] ({len(frames_data)} frames)")
+    print(f"  ✓ 2d/fig_2d_episode_{world}{suffix}.gif [{outcome}] ({len(frames_data)} frames)")
 
 
 # ══════════════════════════════════════════════════════════════
