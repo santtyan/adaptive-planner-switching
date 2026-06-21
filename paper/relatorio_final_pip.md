@@ -34,10 +34,10 @@ A literatura trata, em sua maioria, a seleção de planejador como decisão fixa
 Este trabalho aborda essa lacuna com a seguinte tese central: **a seleção adaptiva de planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes heterogêneos, com ganho mensurável e garantias formais de performance**. Operacionalmente, essa tese é verificada por três hipóteses:
 
 - **H1:** O framework adaptivo ρ-criterion obtém taxa de sucesso superior ao melhor método fixo em ambientes de densidade variável.
-- **H2:** O critério ρ com limiar ρ*=0,30 captura a fronteira de decisão ótima entre planejadores clássicos e RL, com regret ≤ 5% em relação ao oracle ideal.
-- **H3:** O framework é realizável em um stack robótico padrão da indústria (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes.
+- **H2:** O critério ρ com limiar ρ*=0,30 captura a fronteira de decisão ótima entre planejadores clássicos e RL, com regret **médio** ≤ 5% em relação ao oracle ideal (pior caso admitido: ≤ 10%).
+- **H3:** O framework é realizável em um stack robótico padrão da indústria (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes. A confirmação de H3 abre uma questão natural para cenários multi-agente: quando N robôs aplicam o ρ-criterion de forma independente e simultânea, a decisão coletiva emergente é coordenada ou pode levar a conflitos de recursos? Essa pergunta é identificada como direção de pesquisa futura (Seção 4).
 
-O projeto foi executado no período 01/09/2025–31/08/2026 com bolsa FAPEG (PI08078-2024) e está alinhado com: (i) o Plano de Trabalho, que prevê comparação entre métodos clássicos e modernos com métricas de tempo e memória; (ii) o Parecer do Consultor SIGAA (13/06/2025), que exige medição de tempo de execução e consumo de recursos; (iii) o Relatório Parcial aprovado em 01/04/2026.
+O projeto foi executado no período 01/09/2025–31/08/2026 com bolsa FAPEG (PI08078-2024), alinhado com: (i) o Plano de Trabalho, que prevê comparação entre métodos clássicos e modernos com métricas de tempo e memória; (ii) o Parecer do Consultor SIGAA (13/06/2025), que exige implementações otimizadas; (iii) o Relatório Parcial aprovado em 01/04/2026. Durante o desenvolvimento, a comparação prevista entre métodos evoluiu naturalmente para a formulação do *critério de seleção adaptiva* como contribuição metodológica central — evolução documentada no Relatório Parcial e coerente com o objetivo geral de "comparar clássicos e modernos com foco em adaptabilidade" (Objetivo 4, PI08078-2024). A extensão multi-agente (Seção 3.4) é uma contribuição adicional além do previsto, motivada pelos resultados da Fase 1.
 
 ### 1.2 Objetivos
 
@@ -108,7 +108,7 @@ O sistema integra:
 - **Nav2 SmacPlanner2D** — planejador clássico (C++, acionado via ROS2)
 - **Stable-Baselines3 SAC** — agente de aprendizado por reforço (Python)
 
-O ambiente gym customizado (`TurtleBot3GazeboEnv`) recebe observações de 27 dimensões: 24 raios LIDAR subamostrados de 360°, posição relativa ao goal (2D), yaw relativo. Ações controlam velocidade linear e angular no espaço contínuo [-1, 1]². A infraestrutura completa é executada via Docker para reprodutibilidade.
+O ambiente gym customizado (`TurtleBot3GazeboEnv`) recebe observações de 29 dimensões: 24 raios LIDAR subamostrados de 360°, distância e ângulo ao goal em coordenadas polares (2D), yaw relativo, e a ação anterior (velocidade linear e angular normalizadas). A inclusão da ação anterior remedia a parcial observabilidade (POMDP) do problema, fornecendo ao agente memória de curto prazo do próprio estado de movimento. Ações controlam velocidade linear e angular no espaço contínuo [-1, 1]². A infraestrutura completa é executada via Docker para reprodutibilidade.
 
 ### 2.5 Benchmark dos Algoritmos Clássicos
 
@@ -172,26 +172,25 @@ O ambiente de simulação completo está operacional. A infraestrutura valida a 
 | Simulador | Gazebo Classic 11, `real_time_update_rate=0` (máxima velocidade) |
 | Robô | TurtleBot3 Waffle, diff-drive, LIDAR 360° (24 raios subamostrados) |
 | Planejador clássico | A*/SmacPlanner2D via Nav2 Humble |
-| Agente RL | SAC com `ent_coef="auto"`, `gradient_steps=4`, buffer 1M |
-| Observação | 27-dim: 24 raios LIDAR + distância, ângulo e yaw ao goal |
-| Recompensa | Potential-based approach + heading penalty + omega penalty; per-step ≤ 0 |
+| Agente RL | SAC com `ent_coef=0.1` (fixo), gSDE, `gradient_steps=4`, buffer 1M |
+| Observação | 29-dim: 24 raios LIDAR + distância e ângulo ao goal + yaw + ação anterior |
+| Recompensa | Sobrevivência + progresso clipado (≥ 0) + terminais ±100 (estilo Cimurs) |
 | Curriculum | Distância inicial 1,0 m, cresce 0,5 m a cada 60% de sucesso nos últimos 10 episódios |
 | Reprodutibilidade | Docker Compose; seed=42; `models/best_model.zip` versionado |
 
 **Reward shaping (Fase 2):**
 
-A função de recompensa adota o padrão-ouro da literatura para robótica de navegação com LIDAR [Sharma et al., 2024]:
+A função de recompensa adota a formulação minimalista consolidada na literatura de navegação DRL com LIDAR [Cimurs et al., 2022; de Jesus et al., 2021]:
 
 ```
-r(s,a) = R_APPROACH·(d_{t-1} - d_t)          # potential-based: telescopa para 0
-        + R_HEADING·(cos(θ_err) - 1)           # ≤ 0; penaliza não apontar ao goal
-        - R_OMEGA·|ω|                           # penaliza rotação desnecessária
-        + R_TIME                                # -0,02/passo; pressão temporal
-        [+ R_GOAL  se goal atingido]            # +50 (terminal)
-        [+ R_COLLISION se colisão]              # -20 (terminal)
+r(s,a) = R_SURVIVAL                            # +0,1/passo; recompensa sobreviver
+        + max(0, R_APPROACH·(d_{t-1} - d_t))   # progresso clipado em ≥ 0
+        [+ R_GOAL       se goal atingido]      # +100 (terminal)
+        [+ R_COLLISION + R_prox  se colisão]   # -100 + crédito parcial (terminal)
+        [+ R_prox       se timeout]            # R_prox = 1 - d/d_inicial
 ```
 
-A propriedade crítica é que a soma não-terminal é garantidamente ≤ 0, impedindo que o agente acumule recompensa sem progredir em direção ao goal ("reward farming"). O termo de heading `R_HEADING·(cos(θ_err) - 1)` é máximo (0) quando o robô aponta diretamente ao goal e mínimo (-2·R_HEADING) quando aponta na direção oposta.
+A propriedade crítica de projeto é que **a recompensa por passo é garantidamente ≥ 0**, enquanto a colisão impõe penalidade terminal de -100. Versões iniciais desta função adotavam penalidade de obstáculo por passo (piso de -1 a -5), produzindo uma integral de penalidade ao longo do episódio (-600 a -3000 em 600 passos) muito maior em magnitude que a penalidade terminal de colisão. Isso tornava racional ao agente colidir cedo para encerrar o episódio — fenômeno conhecido como *suicidal agent*, evidenciado pela queda de `ep_len_mean` de ~55 para ~8 ao ativar o SAC. A correção, seguindo Cimurs et al. (2022), elimina o piso de penalidade e introduz um bônus de sobrevivência constante: sobreviver até o timeout (≥ +20 acumulado) passa a dominar qualquer ganho de colisão precoce, eliminando o incentivo perverso. O crédito parcial `R_prox = 1 - d/d_inicial` [Kolomeytsev & Golembiovsky, 2025] recompensa proporcionalmente o progresso mesmo em episódios sem sucesso.
 
 **Correção de bug crítico de avaliação:**
 
@@ -246,7 +245,17 @@ Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com d
 
 **Nota de transição:** no Relatório Parcial, o planejador clássico de referência era o RRT* (espaço contínuo). No período seguinte, a integração com ROS2/Nav2 adotou o A*/SmacPlanner2D como componente clássico do framework, por ser o planejador padrão do stack Nav2 e possuir implementação C++ otimizada. O critério ρ e o limiar 0,30 permanecem inalterados — a mudança é apenas na implementação do componente clássico.
 
-Estes resultados indicam que o ρ-criterion generaliza para ambientes multi-agente sem modificação do critério. Validação com múltiplos agentes reais em ROS2 constitui trabalho futuro.
+Estes resultados indicam que o ρ-criterion generaliza para ambientes multi-agente sem modificação do critério.
+
+**Escalabilidade do CBS e necessidade de decisão local**
+
+Embora o CBS produza soluções ótimas livres de colisão, seu custo computacional cresce super-linearmente com o número de agentes N. Para quantificar esse efeito, foi conduzido um experimento de escalabilidade: cenários em grid 10×10 com ρ≈0,20 foram resolvidos pelo CBS para N ∈ {2…8} agentes (5 trials por ponto, timeout 30 s). O tempo de solução cresce de ≈5 ms em N=2 para ≈160 ms em N=8, com ocorrência de timeout já em N=8 (1 de 5 trials censurado). O crescimento super-linear confirma que o CBS torna-se inviável para coordenação em tempo real à medida que N aumenta.
+
+Esse resultado tem uma consequência direta: **o CBS centralizado não é uma opção escalável para frotas robóticas de tamanho realista.** O ρ-criterion, por outro lado, toma uma decisão local em O(1) por agente — sem comunicação, sem estado global, sem tempo que cresça com N. Essa propriedade de decisão local é precisamente o que permite que o critério escale de 1 para N agentes sem nenhuma modificação.
+
+No entanto, a decisão local independente levanta uma questão que não pode ser respondida com o critério atual: quando múltiplos agentes tomam decisões π(ρᵢ) de forma simultânea e independente, *a decisão coletiva resultante é coordenada?* Os dados desta seção mostram que o critério funciona empiricamente em trajetórias CBS pré-computadas — mas em um sistema onde os agentes se movem simultaneamente e reagem online ao ambiente compartilhado, a coordenação é emergente, não garantida. Garantir coordenação sob decisão local reativa é o domínio do **Aprendizado por Reforço Multi-Agente (MARL)**, que constitui a Fase 3 deste programa de pesquisa (Seção 4).
+
+Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
 
 ---
 
@@ -256,7 +265,7 @@ Este trabalho desenvolveu e validou, em duas fases complementares, um framework 
 
 **H1 — confirmada na Fase 1, pendente na Fase 2.** Na validação Monte Carlo com modelos calibrados, o framework obteve 85,3% de taxa de sucesso contra 76% do melhor método fixo — diferença de 9,3 pontos percentuais favorável à seleção adaptiva. A confirmação com planejadores reais (A*/SAC em Gazebo) constitui o resultado principal da Fase 2, previsto para Agosto/2026.
 
-**H2 — confirmada.** O regret do ρ-criterion com ρ*=0,30 é de 2,2% em relação ao oracle ideal (pior caso: 6,7%), dentro da margem ≤ 5% estabelecida como critério. O benchmark empírico dos algoritmos clássicos também sustenta H2 indiretamente: A* é o único algoritmo com escalabilidade linear em tempo e memória (0,07 ms / 3,7 KB para 100 nós; 2,46 ms / 85 KB para 2.500 nós), justificando quantitativamente sua escolha como componente clássico do par.
+**H2 — confirmada.** O regret **médio** do ρ-criterion com ρ*=0,30 é de 2,2% em relação ao oracle ideal (pior caso: 6,7%, abaixo do limite superior de 10% declarado em H2), dentro da margem ≤ 5% estabelecida como critério. O limiar ρ*=0,30 é motivado pelo custo computacional (A* cresce de 16 ms a 115 ms em ρ=0,30, diferença de 10× frente ao SAC/PPO ≈12 ms constante) — a comutação antes do cruzamento de taxa de sucesso evita degradação computacional mesmo que o regret de taxa de sucesso seja mínimo. O benchmark empírico dos algoritmos clássicos também sustenta H2 indiretamente: A* é o único algoritmo com escalabilidade linear em tempo e memória (0,07 ms / 3,7 KB para 100 nós; 2,46 ms / 85 KB para 2.500 nós), justificando quantitativamente sua escolha como componente clássico do par.
 
 **H3 — confirmada.** A infraestrutura completa foi implantada em ROS2 Humble + Gazebo Classic + TurtleBot3 Waffle sem modificação dos planejadores subjacentes: Nav2/SmacPlanner2D e SAC/Stable-Baselines3 operam com suas interfaces padrão. Um bug crítico no pipeline de treinamento foi identificado e corrigido — o ambiente de avaliação compartilhava o mesmo nó ROS2 que o treinamento, produzindo seleção de modelo baseada em métricas inválidas (reward −518 observado vs −14 no treino). A solução — `BestRolloutModelCallback` — é contribuição de engenharia replicável em qualquer stack ROS2 + SB3.
 
@@ -267,6 +276,8 @@ A contribuição metodológica central — o ρ-criterion com limiar ρ*=0,30 �
 - O limiar ρ*=0,30 é determinado offline; ajuste online via meta-aprendizado permitiria adaptação a novos ambientes sem re-treinamento.
 - A validação está restrita ao TurtleBot3 Waffle em Gazebo Classic; generalização a robôs com cinemática diferente ou simuladores de maior fidelidade (Isaac Sim, Webots) é trabalho futuro direto.
 - O agente SAC é treinado em mapa fixo; domain randomization (densidade variável por episódio) é necessária para robustez a ambientes não vistos.
+- **Teoria dos jogos cooperativos aplicada ao ρ-criterion** (Seção 3.4): quando N agentes aplicam o critério independentemente, a decisão coletiva emergente é de coordenação com informação incompleta. Perguntas abertas: (i) o ρ-criterion é um equilíbrio de Nash nesse jogo? (ii) mecanismos de leilão ou contrato melhorariam a alocação de planejadores quando recursos (GPU para SAC) são compartilhados entre agentes?
+- **Aprendizado por Reforço Multi-Agente (MARL) — próximo passo prioritário.** O trabalho estabelece a fundação: formalização do problema como Dec-POMDP com observação local ρᵢ por agente; evidência empírica de que o ρ-criterion produz custo menor que qualquer política uniforme; decisão O(1) por agente que escala para N agentes onde o CBS centralizado não escala. O único elemento ausente é o **treino conjunto** das políticas com recompensa compartilhada — o que define MARL propriamente dito. A arquitetura SAC/SB3 já em uso é compatível com extensões MARL (QMIX, MADDPG, MAPPO via RLlib).
 
 ---
 

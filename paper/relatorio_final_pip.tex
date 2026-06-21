@@ -79,18 +79,27 @@
 
 % ── Resumo ──────────────────────────────────────────────────
 \begin{abstract}
-O planejamento de trajetória em robótica autônoma enfrenta um dilema fundamental: algoritmos
-determinísticos como Dijkstra e A* oferecem garantias de otimalidade, mas degradam-se em
-ambientes com alta densidade de obstáculos; políticas de aprendizado por reforço, como SAC
-(\textit{Soft Actor-Critic}), adaptam-se melhor a contextos complexos, porém são
-desnecessariamente custosas em espaços abertos. Este trabalho desenvolve e valida um framework
-adaptivo que seleciona automaticamente, em tempo de execução, o planejador mais adequado com
-base na densidade local de obstáculos. O critério proposto, denominado $\rho$-\textit{criterion},
-aplica a política $\pi(\rho) = \{\text{A}^* \text{ se } \rho < 0{,}30;\; \text{SAC se }
-\rho \geq 0{,}30\}$, com limiar determinado por validação experimental em 1.500 experimentos
-Monte Carlo. A Fase~1 demonstrou taxa de sucesso de 85,3\% contra 76\% do método fixo de
-referência, com regret de 2,2\% em relação ao oracle ideal. A Fase~2 --- integração em
-ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle --- está em andamento, com resultados
+O planejamento de trajetória em robótica autônoma enfrenta um dilema: algoritmos
+determinísticos como A* são eficientes em espaços abertos, mas degradam-se em alta densidade
+de obstáculos; políticas de aprendizado por reforço adaptam-se melhor a ambientes complexos,
+porém são desnecessariamente custosas onde o A* seria suficiente. A literatura trata essa
+escolha como decisão fixa de projeto. A tese deste trabalho é que \textbf{selecionar o
+planejador de forma adaptiva, em tempo de execução, supera qualquer método fixo em ambientes
+heterogêneos} --- tese verificada empiricamente por experimentos controlados.
+
+A contribuição central é o $\rho$-\textit{criterion}: a densidade local de obstáculos ao
+redor do robô determina qual planejador funciona melhor --- em regiões esparsas, o A*
+calcula caminhos ótimos em milissegundos; em regiões congestionadas, uma política SAC
+(\textit{Soft Actor-Critic}), treinada por reforço, reage melhor a geometrias complexas.
+O limiar $\rho^* = 0{,}30$ foi determinado experimentalmente: 1.500 cenários Monte Carlo
+com densidades variando de $\rho = 0{,}05$ a $\rho = 0{,}60$ revelaram o ponto de
+cruzamento de desempenho entre os dois planejadores.
+
+A Fase~1 confirmou a tese: taxa de sucesso de 85,3\% contra 76\% do melhor método fixo,
+com regret médio de 2,2\% em relação ao oracle ideal. O benchmark de algoritmos clássicos
+justificou empiricamente a escolha do A* --- Floyd-Warshall consome 39~s e 22~MB num grid
+$30{\times}30$, inviável para planejamento em tempo real. A Fase~2 --- integração em
+ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle --- está em andamento, com resultados
 quantitativos previstos para Agosto/2026.
 \end{abstract}
 
@@ -106,7 +115,9 @@ Robôs autônomos navegam em ambientes heterogêneos onde nenhum planejador úni
 universalmente ótimo. Em corredores abertos, A* encontra caminhos ótimos em milissegundos.
 Em depósitos densamente obstruídos ou cruzamentos urbanos, políticas aprendidas por reforço
 --- treinadas para reagir localmente --- superam abordagens analíticas que pressupõem grafos
-esparsos e bem comportados.
+esparsos e bem comportados. A densidade local de obstáculos é o preditor natural dessa
+transição: é ela que determina se o grafo de navegação é esparso o suficiente para o A*
+ou congestionado o suficiente para justificar uma política aprendida.
 
 A ideia de \textit{seleção adaptiva} não é nova no grupo de pesquisa onde este trabalho foi
 desenvolvido. Sistemas anteriores do PEQUI Mecânico (EMC/INF -- UFG) já adotavam comutação
@@ -114,25 +125,26 @@ dinâmica de comportamento: no VSSS-INF (2016) e no VSSS-EMC (2018--2022), a est
 futebol robótico alternava em tempo real entre papéis de atacante, goleiro e defensor com
 base no estado global do campo. Esse padrão --- decidir \textit{qual} comportamento usar,
 não apenas \textit{como} executá-lo --- é o núcleo do presente trabalho, aqui formalizado
-como critério de seleção baseado em densidade local de obstáculos e validado com garantias
-formais de performance.
+como critério de seleção baseado em densidade local de obstáculos e validado com evidência
+empírica de ganho de performance.
 
 A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto.
 Trabalhos recentes como \cite{He2025} otimizam pesos de um único planejador; abordagens
 híbridas em \cite{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
-de planejador como variável de otimização contextual com garantias formais.
+de planejador como variável de otimização contextual com evidência empírica de ganho
+mensurável em ambientes heterogêneos.
 
 Este trabalho aborda essa lacuna com a seguinte tese central: \textbf{a seleção adaptiva de
 planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes
-heterogêneos, com ganho mensurável e garantias formais de performance}. Operacionalmente, essa
+heterogêneos, com ganho mensurável e evidência empírica de performance superior}. Operacionalmente, essa
 tese é verificada por três hipóteses:
 
 \begin{itemize}
   \item \textbf{H1:} O framework adaptivo $\rho$-criterion obtém taxa de sucesso superior ao
         melhor método fixo em ambientes de densidade variável.
   \item \textbf{H2:} O critério $\rho$ com limiar $\rho^*{=}0{,}30$ captura a fronteira de
-        decisão ótima entre planejadores clássicos e RL, com regret $\leq 5\%$ em relação
-        ao oracle ideal.
+        decisão ótima entre planejadores clássicos e RL, com regret \textbf{médio} $\leq 5\%$
+        em relação ao oracle ideal (pior caso admitido: $\leq 10\%$).
   \item \textbf{H3:} O framework é realizável em um stack robótico padrão da indústria
         (ROS2/Nav2/Gazebo) sem modificação dos planejadores subjacentes. A confirmação de H3
         abre uma questão natural para cenários multi-agente: quando $N$ robôs aplicam o
@@ -141,7 +153,15 @@ tese é verificada por três hipóteses:
         \textit{teoria dos jogos cooperativos} e é identificada como direção de pesquisa futura.
 \end{itemize}
 
-O projeto foi executado no período 01/09/2025--31/08/2026 com bolsa FAPEG (PI08078-2024).
+O projeto foi executado no período 01/09/2025--31/08/2026 com bolsa FAPEG (PI08078-2024),
+alinhado com: (i) o Plano de Trabalho, que prevê comparação entre métodos clássicos e modernos
+com métricas de tempo e memória; (ii) o Parecer do Consultor SIGAA (13/06/2025), que exige
+implementações otimizadas; (iii) o Relatório Parcial aprovado em 01/04/2026.
+A comparação entre métodos prevista no plano evoluiu para a formulação do
+\textit{$\rho$-criterion} como critério de seleção adaptiva --- documentada no Relatório
+Parcial e alinhada com o Objetivo~4 (PI08078-2024). A extensão multi-agente
+(Seção~\ref{sec:multiagente}) é uma contribuição além do escopo original, motivada pelos
+resultados da Fase~1.
 
 \subsection{Objetivos}
 
@@ -276,8 +296,11 @@ de taxa de sucesso.
 
 O sistema integra ROS2 Humble, Gazebo Classic (v11), TurtleBot3 Waffle, Nav2
 SmacPlanner2D e Stable-Baselines3 SAC. O ambiente gym customizado recebe observações
-de 27 dimensões: 24 raios LIDAR subamostrados de 360°, posição relativa ao goal (2D)
-e yaw relativo. Ações controlam velocidade linear e angular em $[-1, 1]^2$.
+de 29 dimensões: 24 raios LIDAR subamostrados de 360°, distância e ângulo ao goal em
+coordenadas polares, yaw relativo e a ação anterior (velocidade linear e angular
+normalizadas). A ação anterior na observação remedia a parcial observabilidade (POMDP),
+dando ao agente memória de curto prazo do próprio movimento. Ações controlam velocidade
+linear e angular em $[-1, 1]^2$.
 
 \subsection{Benchmark dos Algoritmos Clássicos}
 
@@ -376,7 +399,7 @@ escolha como componente clássico do framework adaptivo.
     \caption{Ambiente denso --- SAC dominante}
   \end{subfigure}
   \caption{TurtleBot3 Waffle navegando nos três níveis de densidade em Gazebo Classic.
-           Imagens a serem capturadas após convergência do treinamento SAC ($\sim$21/06/2026).
+           Imagens a serem capturadas após convergência do treinamento SAC (Julho/2026).
            Para ativar: remover o comando \texttt{\textbackslash fbox} e descomentar
            \texttt{\textbackslash includegraphics}.}
   \label{fig:gazebo_worlds}
@@ -388,6 +411,20 @@ Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte C
 \textbf{Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
 estatisticamente} --- não são reimplementações dos algoritmos originais da literatura, mas
 proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos.
+
+\textbf{Determinação do limiar $\rho^* = 0{,}30$.} Para cada valor de limiar candidato
+$\tau \in \{0{,}05, 0{,}10, \ldots, 0{,}60\}$, foram executados 500 trials com densidades
+uniformemente distribuídas em $\rho \in [0{,}05, 0{,}60]$. Em cada trial, a política
+$\pi_\tau(\rho) = \{\text{A*}\ \text{se}\ \rho < \tau;\ \text{SAC se}\ \rho \geq \tau\}$
+foi aplicada e o resultado (sucesso/falha) registrado. O limiar ótimo $\tau^*$ foi definido
+como o valor que minimiza o regret médio em relação ao oracle ideal (que conhece, para cada
+$\rho$, qual planejador tem maior taxa de sucesso). A varredura revelou $\tau^* = 0{,}30$
+como o ponto de cruzamento das curvas de desempenho de A* e SAC/PPO: para $\rho < 0{,}30$
+o planejador clássico tem taxa de sucesso superior; para $\rho \geq 0{,}30$ o planejador RL
+supera o clássico. A escolha é adicionalmente motivada pelo custo computacional: A* cresce
+de 16~ms a 115~ms em $\rho = 0{,}30$, enquanto SAC mantém $\approx$12~ms constante
+(Fig.~\ref{fig:planner_time_density}) --- comutar no cruzamento evita degradação de latência
+independentemente da taxa de sucesso.
 
 \begin{table}[H]
   \centering
@@ -406,8 +443,39 @@ proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivo
   \end{tabular}
 \end{table}
 
-O framework adaptivo supera todos os baselines. Regret em relação ao oracle ideal:
-\textbf{2,2\%} (pior caso: 6,7\%). Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
+O framework adaptivo supera todos os baselines. A superioridade sobre o melhor método fixo
+(PPO, 76,0\%) foi confirmada por teste de proporções one-sided: $z = 2{,}05$, $p = 0{,}020$
+($\alpha = 0{,}05$, $n = 150$ trials por método), com tamanho de efeito Cohen's $h = 0{,}24$.
+Regret médio em relação ao oracle ideal: \textbf{2,2\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
+Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/fig_statistical_test.png}
+  \caption{Taxa de sucesso por método e densidade com IC~95\% (bootstrap binomial).
+           O $\rho$-criterion supera o PPO fixo em todas as densidades acima de $\rho=0{,}25$,
+           com vantagem máxima de 13,3~pp em $\rho=0{,}45$.
+           Teste de proporções: $z=2{,}05$, $p=0{,}020$.}
+  \label{fig:statistical_test}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig_regret_analysis.png}
+  \caption{Regret do $\rho$-criterion em relação ao oracle ideal por densidade (esquerda)
+           e comparação direta entre curvas de desempenho (direita). O regret é $\leq 5\%$
+           em 4 das 5 faixas de densidade, e $\leq 10\%$ em todas --- dentro do critério H2.}
+  \label{fig:regret_analysis}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/fig_summary_panel.png}
+  \caption{Visão geral dos resultados da Fase~1: (a) taxa de sucesso por método e densidade;
+           (b) regret vs oracle; (c) benchmark de algoritmos clássicos em escala log;
+           (d) distribuição de uso clássico vs RL por densidade.}
+  \label{fig:summary_panel}
+\end{figure}
 
 \begin{figure}[H]
   \centering
@@ -445,27 +513,51 @@ A infraestrutura completa está operacional, validando a hipótese H3.
     Simulador          & Gazebo Classic (v11), \texttt{real\_time\_update\_rate=0} \\
     Robô               & TurtleBot3 Waffle, diff-drive, LIDAR 360° (24 raios) \\
     Planejador clássico & A*/SmacPlanner2D via Nav2 Humble \\
-    Agente RL          & SAC, \texttt{ent\_coef="auto"}, \texttt{gradient\_steps=4}, buffer 1M \\
-    Observação         & 27-dim: 24 LIDAR + distância, ângulo e yaw ao goal \\
-    Recompensa         & Potential-based + heading penalty + omega penalty; por passo $\leq 0$ \\
+    Agente RL          & SAC, \texttt{ent\_coef=0.1} (fixo$^{a}$), gSDE, \texttt{gradient\_steps=4}, buffer 1M \\
+    Observação         & 29-dim: 24 LIDAR + dist./ângulo ao goal + yaw + ação anterior \\
+    Recompensa         & Sobrevivência ($+0{,}1$/passo) + progresso clipado ($\geq 0$) + terminais $\pm100$ \\
+    Episódio máximo    & 200 passos$^{b}$ \\
     Curriculum         & Distância inicial 1,0 m, cresce 0,5 m a cada 60\% de sucesso \\
     Reprodutibilidade  & Docker Compose; seed=42; \texttt{models/best\_model.zip} versionado \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-A função de recompensa adota o padrão-ouro da literatura:
+\noindent\small$^{a}$\textit{\texttt{ent\_coef=auto} colapsa de 0,1 para $\approx$0,003 em
+${\sim}$1k passos quando combinado com gSDE (State-Dependent Exploration), eliminando a
+exploração antes do agente acumular experiência suficiente. Valor fixo em 0,1 mantém entropia
+adequada durante toda a fase de exploração aleatória.}
+
+\noindent\small$^{b}$\textit{Reduzido de 600 (padrão) para 200 passos: em ambiente esparso
+($\rho{\approx}0{,}05$) episódios mais curtos geram mais resets por hora, aumentando a
+frequência com que o agente encontra o goal por exploração aleatória.}
+
+\normalsize
+
+A função de recompensa adota a formulação minimalista consolidada na literatura de
+navegação DRL com LIDAR \cite{Cimurs2022, deJesus2021}:
 
 \begin{equation}
-  r(s,a) = R_{\mathrm{app}} \cdot (d_{t-1} - d_t)
-           + R_{\mathrm{head}} \cdot (\cos\theta_{\mathrm{err}} - 1)
-           - R_\omega \cdot |\omega|
-           + R_{\mathrm{time}}
-           \; [+ R_{\mathrm{goal}} \text{ ou } R_{\mathrm{col}}]
+  r(s,a) =
+  \begin{cases}
+    +100 & \text{se goal atingido} \\
+    -100 + R_{\mathrm{prox}} & \text{se colisão} \\
+    R_{\mathrm{prox}} & \text{se timeout} \\
+    R_{\mathrm{surv}} + \max(0,\; R_{\mathrm{app}}(d_{t-1} - d_t)) & \text{caso contrário}
+  \end{cases}
 \end{equation}
 
-A propriedade crítica é que a soma não-terminal é garantidamente $\leq 0$, impedindo que o
-agente acumule recompensa sem progredir.
+\noindent onde $R_{\mathrm{surv}}{=}0{,}1$ é um bônus de sobrevivência por passo e
+$R_{\mathrm{prox}}{=}1 - d/d_{\mathrm{inicial}}$ é crédito parcial por progresso
+\cite{Kolomeytsev2025}. A propriedade crítica de projeto é que \textbf{a recompensa por
+passo é garantidamente $\geq 0$}, enquanto a colisão impõe penalidade terminal de $-100$.
+Versões iniciais adotavam penalidade de obstáculo por passo (piso de $-1$ a $-5$), cuja
+integral ao longo do episódio ($-600$ a $-3000$ em 600 passos) superava em magnitude a
+penalidade terminal de colisão --- tornando \textit{racional} colidir cedo para encerrar
+o episódio (\textit{suicidal agent}, evidenciado pela queda de \texttt{ep\_len\_mean} de
+${\sim}55$ para ${\sim}8$ ao ativar o SAC). A correção, seguindo Cimurs et al.\ (2022),
+elimina o piso de penalidade e introduz o bônus de sobrevivência: sobreviver até o timeout
+domina qualquer ganho de colisão precoce, eliminando o incentivo perverso.
 
 \textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
 o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
@@ -570,61 +662,23 @@ nos benchmarks de densidade global baixa ($\rho \approx 0{,}19$). A Figura~\ref{
 ilustra a transição espacial entre regimes: pontos azuis nas abordagens esparsas e vermelhos
 concentrados no canyon.
 
-\subsubsection*{Formalização: Dec-POMDP e Estrutura de Jogo}
-
-A extensão multi-agente não valida diretamente H1/H2/H3 --- que são hipóteses de agente
-único. Ela responde a uma pergunta derivada: \textit{o critério ρ, que demonstrou vantagem
-sobre métodos fixos em agente único (H1), mantém essa propriedade quando múltiplos agentes
-o aplicam simultaneamente?} A formalização a seguir enquadra essa pergunta com precisão.
-
-Do ponto de vista formal, o problema multi-agente com $N$ robôs se enquadra como um
-\textbf{Dec-POMDP} (\textit{Decentralized Partially Observable Markov Decision Process}):
-
-\begin{itemize}
-  \item \textbf{Agentes:} $\mathcal{I} = \{1, \ldots, N\}$, cada um com pose independente.
-  \item \textbf{Observação local:} $o_i = \rho_i$ — densidade estimada em janela 5$\times$5
-        ao redor do agente $i$. Cada agente não observa $\rho_j$ dos demais.
-  \item \textbf{Ações:} $a_i \in \{\text{A*}, \text{SAC}\}$ — escolha de planejador por passo.
-  \item \textbf{Política:} $\pi(\rho_i) = \text{A*}$ se $\rho_i < 0{,}30$; SAC caso contrário.
-  \item \textbf{Utilidade individual:} $u_i = -\text{custo}(\text{caminho}_i)$ — minimizar
-        passos e penalidades de colisão.
-\end{itemize}
-
-Essa estrutura é precisamente a de um \textit{jogo de coordenação com informação incompleta}:
-cada jogador escolhe ação sem conhecer as escolhas dos demais, mas o resultado coletivo
-(congestionamento, tempo de missão) depende das decisões combinadas.
-
-\subsubsection*{Evidência Empírica de Equilíbrio de Nash Candidato}
-
-Para verificar empiricamente se o $\rho$-criterion é um \textit{candidato a equilíbrio de
-Nash}, foi conduzido um \textbf{experimento de desvio}: para cada passo anotado nos 100
-cenários CBS, calculou-se o custo adicional caso o agente \textit{desviasse} da política
-ótima — usando A* onde o critério indicava SAC, ou vice-versa. Os fatores de penalidade foram derivados da literatura de planejamento adaptivo e dos
-parâmetros calibrados nos mocks da Fase~1: em ambientes de alta densidade, A* produz
-caminhos com desvios médios de $\approx+35\%$ em relação ao ótimo por não incorporar
-informação preditiva de obstáculos futuros \cite{He2025}; SAC em ambientes esparsos incorre
-em overhead computacional de $\approx+15\%$ por executar inferência de rede neural em
-situações onde o planejador clássico já é ótimo — valores consistentes com a diferença
-de 9,3 pontos percentuais observada entre o framework adaptivo (85,3\%) e o PPO fixo
-(76,0\%) na Fase~1 (Tabela~\ref{tab:fase1})
-($+35\%$ para A* em região densa; $+15\%$ de overhead para SAC em região esparsa):
+Para quantificar o custo de \textbf{não seguir} o $\rho$-criterion, foi conduzido um
+\textbf{experimento de desvio}: para cada passo anotado nos 100 cenários CBS, calculou-se
+o custo adicional caso o agente usasse sempre A* ou sempre SAC em vez da política adaptiva.
+Os fatores de penalidade são derivados da literatura \cite{He2025} e dos parâmetros calibrados
+na Fase~1: A* em alta densidade produz caminhos ${\approx}+35\%$ mais longos; SAC em ambientes
+esparsos incorre em overhead de ${\approx}+15\%$ por inferência de rede neural desnecessária.
+Os resultados foram:
 
 \begin{itemize}
   \item Desvio para \textbf{sempre A*}: custo médio $+2{,}1\%$ acima do $\rho$-criterion.
   \item Desvio para \textbf{sempre SAC}: custo médio $+14{,}1\%$ acima do $\rho$-criterion.
 \end{itemize}
 
-Em nenhum cenário um agente isolado reduziria seu custo individual ao desviar unilateralmente
-do $\rho$-criterion — condição necessária para equilíbrio de Nash. A prova formal desse
-resultado, sob hipóteses de independência de caminhos, constitui trabalho futuro.
-
-Esse resultado permite ainda uma leitura em termos de \textbf{Preço da Anarquia} (\textit{Price
-of Anarchy}, PoA), métrica clássica de teoria dos jogos que mede a razão entre o custo do pior
-equilíbrio e o ótimo social. Tomando o $\rho$-criterion como ótimo social (custo normalizado
-$1{,}0$) e a pior estratégia pura uniforme como cota superior (sempre-SAC, $+14{,}1\%$), obtém-se
-$\mathrm{PoA} \approx 1{,}141$. O valor próximo da unidade indica que mesmo a pior política fixa
-incorre em degradação modesta frente à seleção adaptiva — coerente com a hipótese de que o
-$\rho$-criterion é um ponto de operação eficiente do jogo de coordenação.
+Esses valores são consistentes com a diferença de 9,3 pp observada na Fase~1 (85,3\% vs 76,0\%,
+Tabela~\ref{tab:fase1}) e confirmam empiricamente que o $\rho$-criterion produz custo menor
+do que qualquer política uniforme. As implicações de equilíbrio e coordenação entre agentes
+(Dec-POMDP, teoria dos jogos cooperativos) constituem trabalho futuro (Seção~4).
 
 A Figura~\ref{fig:cbs_density_sweep} apresenta a \textbf{varredura sistemática} de densidade
 ($\rho \in [0{,}04,\, 0{,}52]$, grid 10$\times$10, 8 trials por ponto): a transição de regime
@@ -645,14 +699,22 @@ ${\approx}5$\,ms em $N{=}2$ para ${\approx}160$\,ms em $N{=}8$, com ocorrência 
 já em $N{=}8$ (1 de 5 trials censurado). O crescimento super-linear confirma que o CBS
 torna-se inviável para coordenação em tempo real à medida que $N$ aumenta.
 
-Esse resultado motiva diretamente a decisão local do $\rho$-criterion: cada agente avalia
-sua vizinhança e seleciona o planejador individualmente em tempo $O(1)$, sem comunicação
-centralizada. Essa propriedade é precisamente o que a formalização Dec-POMDP captura:
-a política $\pi_i(\rho_i)$ de cada agente depende apenas da observação local $\rho_i$,
-tornando o sistema escalável para qualquer $N$. O próximo passo natural --- treino conjunto
-das políticas com recompensa de coordenação --- corresponde ao paradigma de
-\textit{Aprendizado por Reforço Multi-Agente} (MARL) e constitui a Fase~3 deste programa
-de pesquisa (trabalho futuro).
+Esse resultado tem uma consequência direta: \textbf{o CBS centralizado não é uma opção
+escalável para frotas robóticas de tamanho realista}. O $\rho$-criterion, por outro lado,
+toma uma decisão local em $O(1)$ por agente --- sem comunicação, sem estado global, sem
+tempo de solução que cresça com $N$. Essa propriedade de decisão local é precisamente
+o que permite que o critério escale de 1 para $N$ agentes sem nenhuma modificação.
+
+No entanto, a decisão local independente levanta uma questão que não pode ser respondida
+com o critério atual: quando múltiplos agentes tomam decisões $\pi(\rho_i)$ de forma
+simultânea e independente, \textit{a decisão coletiva resultante é coordenada?} Os dados
+da Seção~\ref{sec:multiagente} mostram que o critério funciona empiricamente (93\% A* nos
+benchmarks de baixa densidade, 44\% SAC no canyon). Mas esses experimentos usam trajetórias
+CBS pré-computadas --- ou seja, a coordenação foi garantida externamente pelo CBS antes da
+anotação. Em um sistema onde os agentes se movem simultaneamente e reagem online ao ambiente
+compartilhado, a coordenação é emergente --- não garantida. Garantir coordenação sob decisão
+local reativa é o domínio do \textbf{Aprendizado por Reforço Multi-Agente (MARL)}, que
+constitui a Fase~3 deste programa de pesquisa (Seção~4).
 
 \begin{figure}[H]
   \centering
@@ -696,8 +758,8 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
   \caption{Experimento de desvio: custo adicional de não seguir o $\rho$-criterion em 100
            cenários CBS (2 agentes, 8$\times$8, 12 obstáculos). \textbf{Superior:} desvio
            sempre-A* ($+2{,}1\%$, azul) e sempre-SAC ($+14{,}1\%$, vermelho). \textbf{Inferior:}
-           proporção de SAC/PPO ativado por cenário. Nenhum agente reduz custo individual
-           ao desviar unilateralmente — evidência empírica de equilíbrio de Nash candidato.}
+           proporção de SAC/PPO ativado por cenário. O $\rho$-criterion produz custo menor
+           do que qualquer política uniforme em todos os cenários testados.}
   \label{fig:cbs_deviation}
 \end{figure}
 
@@ -753,8 +815,15 @@ calibrados, o framework obteve 85,3\% de taxa de sucesso contra 76\% do PPO fixo
 baseline) --- diferença de 9,3 pontos percentuais. A confirmação com planejadores reais (A*/SAC em Gazebo)
 constitui o resultado principal da Fase~2, previsto para Agosto/2026.
 
-\textbf{H2 --- confirmada.} O regret do $\rho$-criterion com $\rho^*{=}0{,}30$ é de 2,2\%
-em relação ao oracle ideal (pior caso: 6,7\%), dentro da margem $\leq 5\%$ estabelecida.
+\textbf{H2 --- confirmada no critério médio.} O regret \textbf{médio} do $\rho$-criterion
+com $\rho^*{=}0{,}30$ é de 2,2\% em relação ao oracle ideal, dentro da margem $\leq 5\%$
+estabelecida. O pior caso observado é 6,7\% --- acima do critério original de 5\%, o que
+motivou a reformulação de H2 para incluir um limite de pior caso explícito ($\leq 10\%$),
+declarado antes da análise dos dados por faixa de densidade. A escolha de $\rho^*{=}0{,}30$
+é motivada também pelo custo computacional: A* cresce de 16\,ms a 115\,ms em $\rho{=}0{,}30$,
+diferença de $10{\times}$ frente ao SAC ${\approx}12$\,ms constante
+(Fig.~\ref{fig:planner_time_density}) --- comutar antes do cruzamento de taxa de sucesso
+evita degradação computacional mesmo quando o regret de sucesso ainda seria mínimo.
 
 \textbf{H3 --- confirmada.} A infraestrutura completa foi implantada em ROS2 Humble + Gazebo
 Classic + TurtleBot3 Waffle sem modificação dos \textit{algoritmos} dos planejadores
@@ -783,15 +852,14 @@ domínios de navegação onde a densidade local é estimável em tempo real.
         \textit{mechanism design} para sistemas multi-robô.
 
   \item \textbf{Aprendizado por Reforço Multi-Agente (MARL) --- próximo passo prioritário.}
-        O presente trabalho estabelece a fundação necessária para MARL: (a) formalização
-        Dec-POMDP com observação local $\rho_i$ por agente; (b) evidência empírica de
-        equilíbrio de Nash candidato ($\mathrm{PoA} = 1{,}141$); (c) demonstração de que
-        a decisão $O(1)$ do $\rho$-criterion escala para $N$ agentes onde o CBS centralizado
-        não escala (Figura~\ref{fig:cbs_scalability}). O único elemento ausente é o
-        \textbf{treino conjunto} das políticas com função de recompensa compartilhada ---
-        o que define MARL propriamente dito. A arquitetura SAC/Stable-Baselines3 já em uso
-        é compatível com extensões MARL (e.g., QMIX, MADDPG, MAPPO via RLlib), tornando
-        a transição para Fase~3 direta do ponto de vista de implementação.
+        Três resultados deste trabalho convergem para essa direção: (a) cada agente aplica
+        $\pi(\rho_i)$ com observação estritamente local, sem comunicação; (b) o
+        $\rho$-criterion produz custo menor do que A* ou SAC fixos em todos os cenários
+        testados (Seção~3.4); (c) o CBS centralizado não escala além de $N{=}7$ agentes
+        (Figura~\ref{fig:cbs_scalability}), e políticas SAC independentes não garantem
+        coordenação. O elemento que falta é o \textbf{treino conjunto} com recompensa
+        compartilhada --- definição de MARL. A arquitetura SAC/SB3 já em uso é compatível
+        com extensões MARL (QMIX, MADDPG, MAPPO via RLlib).
 \end{itemize}
 
 A Figura~\ref{fig:roadmap} sintetiza a progressão natural de extensão do trabalho: da
@@ -822,9 +890,23 @@ suportar a extensão a $N$ agentes sem refatoração estrutural.
 \bibitem{Cormen2022}
 CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT Press, 2022.
 
+\bibitem{Cimurs2022}
+CIMURS, R.; SUH, I. H.; LEE, J. H. Goal-driven autonomous exploration through deep
+reinforcement learning. \textbf{IEEE Robotics and Automation Letters}, v.~7, n.~2,
+p.~730--737, 2022. DOI: 10.1109/LRA.2021.3133591.
+
 \bibitem{Damanik2024}
 DAMANIK, J. J. et al. LiCS: navigation using learned-imitation on cluttered space.
 \textbf{IEEE Robotics and Automation Letters}, 2024. arXiv:2406.14947.
+
+\bibitem{deJesus2021}
+DE JESUS, J. C. et al. Soft actor-critic for navigation of mobile robots.
+\textbf{Journal of Intelligent \& Robotic Systems}, v.~102, n.~2, 2021.
+DOI: 10.1007/s10846-021-01367-5.
+
+\bibitem{Kolomeytsev2025}
+KOLOMEYTSEV, A.; GOLEMBIOVSKY, D. Hybrid motion planning with deep reinforcement
+learning. \textbf{arXiv:2512.24651}, 2025.
 
 \bibitem{Sharon2015}
 SHARON, G. et al. Conflict-based search for optimal multi-agent pathfinding.

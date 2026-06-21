@@ -1,0 +1,13 @@
+=== Teste Estatístico — Fase 1 ===
+Dataset: sota_comparison_results.csv
+Adaptativo:    0.853 (128/150 trials)
+PPO fixo:      0.760 (114/150 trials)
+RRT* fixo:     0.480
+
+Teste de proporções (one-sided: adaptativo > PPO fixo):
+  z = 2.047
+  p-valor = 0.0203
+  SIGNIFICATIVO (p < 0.05) ✓
+
+Effect size: Cohen's h = 0.238 (pequeno)
+Diferença absoluta: 9.3 pp

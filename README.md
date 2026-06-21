@@ -22,6 +22,21 @@ onde ρ é a fração de células ocupadas em uma janela 2×2 m ao redor da pose
 
 ---
 
+## Visão Geral Visual
+
+| Critério de seleção ρ | Decisão espacial do switcher |
+|:---:|:---:|
+| ![Switching](paper/figs/density_progression.png) | ![Heatmap](paper/figs/switching_heatmap.png) |
+
+| Benchmark clássicos (tempo) | Roadmap (agente único → MARL) |
+|:---:|:---:|
+| ![Benchmark](paper/figs/benchmark_time.png) | ![Roadmap](paper/figs/roadmap_marl_tj.png) |
+
+> Catálogo completo das 51 figuras científicas (organizado por utilidade) em
+> [`paper/figs/CATALOG.md`](paper/figs/CATALOG.md).
+
+---
+
 ## Resultados
 
 ### Fase 1 — Validação Monte Carlo (concluída)
@@ -36,17 +51,19 @@ Benchmark com 1.500 trials e modelos de planejamento calibrados estatisticamente
 | Hybrid DRL | 66,0% |
 | RRT* fixo | 48,0% |
 
-- **Regret vs oracle ideal:** 2,2% (pior caso: 6,7%)
-- **Limiar otimizado:** ρ* = 0,30 (gap teórico: 1,7%)
+- **Regret médio vs oracle ideal:** 2,2% (pior caso: 6,7%)
+- **Limiar otimizado:** ρ* = 0,30 — motivado pelo custo computacional (A* cresce 10× frente ao SAC em ρ=0,30, Fig. benchmark_time)
+- **Generalização multi-agente:** CBS centralizado cresce super-linearmente com N agentes (timeout em N=8); o ρ-criterion decide em O(1) por agente, escalando naturalmente → MARL como Fase 3
 - Benchmark clássico: A* escala linearmente (0,07 ms / 3,7 KB para 100 nós); Floyd-Warshall inviável para tempo real (39 s / 22 MB para grid 30×30)
 
 ### Fase 2 — Integração ROS2/Gazebo (em andamento)
 
 Validação com planejadores reais em simulação física:
 
-- **Ambiente:** Gazebo Classic, TurtleBot3 Waffle, arena 4×4 m, `dense_custom.world` (ρ≈0,38)
-- **Agente RL:** SAC com obs 29-dim (24 LIDAR + 3 goal-polar + 2 vel/ação), curriculum de distância 1→3 m, reward shaping potencial + heading
-- **Treinamento:** em andamento (~500k steps teto, convergência esperada ~150–250k steps)
+- **Ambiente:** Gazebo Classic, TurtleBot3 Waffle, arena 4×4 m. Currículo por densidade de mundo: treino em `sparse.world` (ρ≈0,05) → fine-tune em `dense_custom.world` (ρ≈0,38), padrão de transfer learning (Cimurs 2022, HMP-DRL 2025)
+- **Agente RL:** SAC com obs 29-dim (24 LIDAR + 2 goal-polar + yaw + ação anterior), `ent_coef=0.1` fixo, gSDE, curriculum de distância 1→3 m
+- **Reward:** sobrevivência (+0,1/passo) + progresso clipado (≥0) + terminais ±100, estilo Cimurs/de Jesus — formulação minimalista que elimina o *suicidal agent* (penalidade por passo nunca supera a colisão terminal)
+- **Treinamento:** em andamento (~500k steps teto)
 - **Resultados quantitativos:** previstos para Agosto/2026 (30 trials × 3 worlds)
 
 ---
@@ -69,7 +86,7 @@ ros2_ws/
 └── src/turtlebot3_gym_env/       # Ambiente Gymnasium sobre Gazebo
 
 eval/                             # Scripts de benchmark e figuras científicas
-paper/figs/                       # 16 figuras (.png + .pdf) para artigo
+paper/figs/                       # 51 figuras (.png + .pdf) — ver CATALOG.md
 models/                           # Modelos treinados (best_model.zip)
 results_abstract/                 # Dados Fase 1 (Monte Carlo calibrado)
 results_ros2/                     # Dados Fase 2 (benchmark real — preencher pós-convergência)
@@ -121,7 +138,7 @@ python experiments/comprehensive_experiments.py  # 1.500 trials
 2. Fase 2 limitada a ambiente simulado (Gazebo Classic) — sem testes em robô físico
 3. Contexto unidimensional (densidade ρ) — sem curvatura, velocidade de obstáculos, etc.
 4. Treinamento SAC em CPU (i5-1235U) — sem GPU
-5. Single-agente — extensão MARL fora do escopo desta IC
+5. Single-agente — decisão local independente não garante coordenação em tempo real; extensão MARL identificada como próximo passo natural (Seção 4 do relatório final)
 
 ---
 
