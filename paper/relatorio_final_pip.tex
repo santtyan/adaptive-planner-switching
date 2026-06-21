@@ -679,6 +679,28 @@ e ascendente (Fig.~\ref{fig:2d_heatmap}).
   \label{fig:2d_gif}
 \end{figure}
 
+\textbf{Diagnóstico de generalização por densidade.} O modelo \texttt{sac\_2d\_best} foi
+treinado exclusivamente no mundo \texttt{sparse} ($\rho{=}0{,}05$). Para quantificar a
+capacidade de generalização, avaliaram-se 100 episódios por densidade sem novo treinamento
+(Figura~\ref{fig:2d_degradation_singlerobot}). A taxa de sucesso cai de \textbf{91\%} no
+esparso para \textbf{59\%} no denso e \textbf{40\%} no muito denso --- evidência de
+insuficiência de generalização fora da distribuição de treino. O modo de falha dominante é
+\textbf{colisão} (não timeout), pois em ambientes densificados o agente encontra obstáculos
+antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo de treinamento:
+currículo multi-densidade (sparse $\to$ dense $\to$ very\_dense), planejado para quando
+o treino Gazebo liberar recursos computacionais.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.82\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
+  \caption{Degradação da taxa de sucesso do SAC single-robot em função da densidade de
+           obstáculos $\rho$ (100 episódios por ponto, modelo treinado \textbf{apenas} no
+           mundo esparso). A linha tracejada em $\rho^*{=}0{,}30$ coincide com o limiar
+           adaptivo: abaixo dele, A* domina; acima, o SAC assume --- mas o SAC atual
+           não foi treinado nessa faixa, explicando a queda de desempenho.}
+  \label{fig:2d_degradation_singlerobot}
+\end{figure}
+
 \textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
 o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
 treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}.
@@ -687,8 +709,10 @@ treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRoll
 
 \begin{quote}
   \textit{Esta seção será preenchida com os resultados do benchmark após a convergência do
-  treinamento SAC (previsto para Agosto/2026). A estrutura abaixo reflete o protocolo de
-  avaliação adotado.}
+  treinamento SAC no Gazebo (em andamento em 21/06/2026 --- ep\_len subindo monotonicamente,
+  ep\_rew $\approx -96$ @ 60k steps, sem colapso). O protocolo abaixo reflete a estrutura de
+  avaliação adotada; os valores serão inseridos após convergência ($\geq 60\%$ de sucesso em
+  30 avaliações consecutivas), prevista para Agosto/2026.}
 \end{quote}
 
 Protocolo: $N=30$ trials por condição, 3 seeds independentes, Wilcoxon signed-rank com
@@ -866,10 +890,35 @@ coordenação central. 20 trials por configuração, arena densa ($\rho \approx 
            Azul: taxa de goal média por robô (eixo esquerdo, $\downarrow$ com $N$).
            Vermelho: taxa de colisão inter-robô (eixo direito, $\uparrow$ com $N$).
            Em $N{=}1$: 25\% de goal, 0\% de colisão inter-robô.
-           Em $N{=}8$: 18\% de goal, 85\% de colisão inter-robô.
+           Em $N{=}8$: 18\% de goal, 85\% de colisão inter-robô (arena densa, $\rho{=}0{,}30$).
+           O modo de falha dominante é \textbf{colisão inter-robô} ($\approx$100\% em $N{=}8$);
+           deadlock = 0\% em todas as configurações, pois o SAC é reativo e não trava.
            A degradação empírica confirma que políticas independentes não generalizam
            para cenários multi-agente --- motivação direta para o MARL.}
   \label{fig:marl_degradation}
+\end{figure}
+
+Para avaliar se a degradação depende da \textbf{densidade do ambiente} além do número de
+agentes, o experimento foi repetido nas três densidades disponíveis
+(Figura~\ref{fig:marl_degradation_density}). Os resultados mostram que a taxa de goal cai
+consistentemente com $N$ em \textit{todas} as densidades: para $N{=}8$, o SAC independente
+atinge 38\% de goal no esparso, 20\% no denso e 12\% no muito denso. A colisão inter-robô
+se mantém próxima de 100\% para $N \geq 5$ independentemente da densidade --- indicando
+que o problema é inerente à falta de coordenação, não à dificuldade do ambiente per se.
+Deadlock permanece 0\% em todas as combinações, confirmando que os robôs \textbf{colidem}
+sem travar.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
+  \caption{Degradação do SAC independente: taxa de goal (esq.), colisão inter-robô (centro)
+           e deadlock (dir.) versus $N$, para três densidades de obstáculos
+           (verde=esparso $\rho{=}0{,}05$, amarelo=denso $\rho{=}0{,}30$,
+           vermelho=muito denso $\rho{=}0{,}50$). Dados REAIS, 20 trials por ponto, env 2D.
+           Em $N{=}8$: goal cai de 38\% a 12\% conforme a densidade sobe;
+           colisão inter-robô converge a ${\approx}100\%$ em $N{\geq}5$ em todas as densidades;
+           deadlock = 0\% em todos os casos (robôs colidem, não travam).}
+  \label{fig:marl_degradation_density}
 \end{figure}
 
 \begin{figure}[H]
@@ -895,6 +944,28 @@ coordenação central. 20 trials por configuração, arena densa ($\rho \approx 
            As trajetórias mostram comportamento reativo local sem coordenação:
            robôs convergem para as mesmas regiões congestionadas e colidem.}
   \label{fig:marl_snapshot}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_sparse_N4.gif}
+    \caption*{(a) Esparso $\rho{=}0{,}05$, $N{=}4$ — 75\% goal, colisão inter-robô alta por
+              trajetos cruzados.}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_dense_N8.gif}
+    \caption*{(b) Denso $\rho{=}0{,}30$, $N{=}8$ — 12\% goal, colapso de coordenação:
+              robôs invadem o mesmo espaço e colidem.}
+  \end{minipage}
+  \caption{Animações representativas de episódios multi-robô com SAC independente
+           (sem coordenação central). Verde=robô atingiu goal; vermelho=colidiu; azul=em
+           movimento. A ausência de comunicação leva a trajetórias conflitantes --- argumento
+           direto para coordenação via MARL.
+           Gerado por \texttt{eval/env2d/visualize\_multi\_2d.py}.}
+  \label{fig:marl_gifs}
 \end{figure}
 
 Um aspecto prático relevante para execução em robôs reais é a diferença entre o plano CBS
@@ -1008,7 +1079,11 @@ domínios de navegação onde a densidade local é estimável em tempo real.
   \item Generalização a robôs com cinemática diferente ou simuladores de maior fidelidade
         (Isaac Sim, Webots) é trabalho futuro.
   \item O agente SAC é treinado em mapa fixo; domain randomization é necessária para robustez
-        a ambientes não vistos.
+        a ambientes não vistos. Avaliação empírica no env 2D (100 episódios por densidade,
+        Figura~\ref{fig:2d_degradation_singlerobot}) confirma essa limitação: treinado apenas
+        em $\rho{=}0{,}05$ (esparso), a taxa de goal cai de 91\% a 40\% em $\rho{=}0{,}50$
+        (muito denso). Currículo de treinamento multi-densidade (esparso $\to$ denso $\to$
+        muito denso) é o próximo passo imediato de mitigação.
   \item \textbf{Teoria dos jogos cooperativos aplicada ao $\rho$-criterion}
         (Seção~\ref{sec:multiagente}): cada agente decide A* ou SAC com informação local,
         sem comunicação --- estrutura de jogo de coordenação com informação incompleta.
