@@ -60,36 +60,35 @@
 \noindent\textbf{Resumo:}
 
 \noindent
-Quando um robô precisa ir de um ponto a outro, ele utiliza um algoritmo de planejamento de
-trajetória para decidir por onde passar. Algoritmos tradicionais, como o A*, são muito
-eficientes em ambientes simples, mas perdem desempenho quando há muitos obstáculos. Já
-algoritmos baseados em aprendizado de máquina lidam melhor com ambientes complexos, porém
-são desnecessariamente lentos quando o caminho é livre. Na prática, a escolha do algoritmo é
-feita uma única vez pelo engenheiro, independentemente do ambiente em que o robô vai operar.
-A tese deste trabalho é que \textbf{escolher o algoritmo de forma adaptiva, durante a
-navegação, supera métodos de escolha fixa} em ambientes heterogêneos.
+Um robô autônomo usa um algoritmo de planejamento de trajetória para decidir por onde se
+mover. Algoritmos clássicos, como o A*, são rápidos e ótimos em espaços abertos, mas perdem
+desempenho em ambientes congestionados; já políticas de aprendizado por reforço lidam melhor
+com muitos obstáculos, porém são custosas onde o caminho é livre. Como a literatura costuma
+fixar essa escolha no projeto do sistema, independentemente do ambiente, este trabalho propõe
+e avalia a hipótese de que \textbf{selecionar o planejador de forma adaptiva, durante a
+navegação, supera qualquer método fixo em ambientes heterogêneos}.
 
-A contribuição central é o $\rho$-criterion: um critério que, a cada momento, mede quantos
-obstáculos há ao redor do robô e seleciona automaticamente o algoritmo mais adequado para
-aquele trecho. Em espaços abertos, o cálculo analítico do A* é suficiente e rápido; em
-regiões congestionadas, uma política aprendida por reforço (SAC, \textit{Soft Actor-Critic})
-navega melhor. O limiar $\rho^* = 0{,}30$ que separa os dois regimes foi obtido por
-experimentos: é o ponto em que um planejador passa a superar o outro e, a partir do qual,
-usar mais o método aprendido quase não aumenta o sucesso --- o melhor equilíbrio entre
-eficácia e custo.
+A contribuição é o $\rho$-criterion: um critério que mede a densidade local de obstáculos em
+torno do robô e seleciona, a cada instante, entre o A* e uma política \textit{Soft
+Actor-Critic} (SAC) treinada por reforço. O limiar de comutação $\rho^* = 0{,}30$ foi
+determinado por varredura experimental: 1.500 cenários Monte Carlo, com modelos de
+planejamento calibrados a partir da literatura, identificaram o ponto em que o planejador
+aprendido passa a superar o clássico e a partir do qual usá-lo mais quase não aumenta o
+sucesso. O framework foi implementado em ROS2/Nav2, com simulação em Gazebo e TurtleBot3.
 
-Em 1.500 cenários de simulação (Monte Carlo), com modelos de planejamento calibrados a partir
-da literatura, o framework adaptivo alcançou \textbf{85,3\% de taxa de sucesso}, contra 76\%
-do melhor método fixo, ficando a apenas \textbf{2,2\%} de um seletor ideal --- aquele que
-conhece o ambiente de antemão. O estudo dos algoritmos clássicos também justificou a escolha
-do A*: o Floyd-Warshall, por exemplo, leva 39 segundos num mapa de médio porte, inviável em
-tempo real.
+O $\rho$-criterion alcançou \textbf{85,3\% de taxa de sucesso}, superando o melhor método fixo
+(76\%) com significância estatística ($p = 0{,}020$), e ficou a apenas \textbf{2,2\%} de um
+seletor ideal que conheceria o ambiente de antemão. O estudo comparativo dos algoritmos
+clássicos justificou a escolha do A*, já que alternativas mais custosas, como o
+Floyd-Warshall, tornam-se inviáveis em tempo real (39~s num grid de médio porte).
 
-Esses resultados confirmam a tese nesta primeira fase do trabalho; a validação com
-planejadores reais em ambiente robótico (ROS2/Gazebo) está em andamento, com resultados
-finais previstos para o encerramento do ciclo. Como o critério depende apenas da densidade
-local, estende-se naturalmente a frotas de múltiplos robôs, direção em que o aprendizado por
-reforço multi-agente se apresenta como próxima etapa.
+Esses resultados parciais confirmam a tese; a validação com planejadores reais em Gazebo está
+em andamento, com resultados finais previstos para o fim do ciclo. O critério estende-se a
+frotas, pois cada robô avalia sua própria densidade: experimentos indicam que a coordenação
+centralizada deixa de escalar a partir de cerca de 8 robôs e que políticas aprendidas
+independentes colidem sem coordenação, apontando o aprendizado por reforço multi-agente como
+próxima etapa. A abordagem é relevante para navegação em armazéns, ambientes urbanos e frotas
+robóticas.
 
 \vspace{0.4cm}
 \noindent\textbf{Palavras-chave:} planejamento de trajetória; aprendizado por reforço;
