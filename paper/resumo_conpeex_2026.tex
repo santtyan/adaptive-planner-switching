@@ -63,37 +63,34 @@ eficientes em ambientes simples, mas perdem desempenho quando há muitos obstác
 algoritmos baseados em aprendizado de máquina lidam melhor com ambientes complexos, porém
 são desnecessariamente lentos quando o caminho é livre. Na prática, a escolha do algoritmo é
 feita uma única vez pelo engenheiro, independentemente do ambiente em que o robô vai operar.
-A tese deste trabalho é que \textbf{escolher o algoritmo de forma adaptiva, em tempo real,
-supera métodos de escolha fixa} em ambientes heterogêneos.
+A tese deste trabalho é que \textbf{escolher o algoritmo de forma adaptiva, durante a
+navegação, supera métodos de escolha fixa} em ambientes heterogêneos.
 
 A contribuição central é o $\rho$-criterion: um critério que, a cada momento, mede quantos
-obstáculos estão ao redor do robô e seleciona automaticamente o algoritmo mais adequado para
-aquele trecho. A intuição é direta: a densidade de obstáculos determina qual abordagem
-funciona melhor. Em espaços abertos, o cálculo analítico do A* é suficiente e rápido; em
-regiões congestionadas, uma política aprendida por reforço (SAC) navega melhor por já ter
-sido treinada em situações semelhantes. O limiar $\rho^* = 0{,}30$ foi determinado por dois
-critérios convergentes: (i)~é o ponto de cruzamento empírico das curvas de desempenho de
-A* e SAC (abaixo desse valor o A* é superior, acima o SAC supera); e (ii)~é o ponto joelho
-da curva de retorno marginal, acima do qual usar mais SAC quase não melhora o sucesso,
-tornando $\rho^* = 0{,}30$ a escolha Pareto-ótima entre eficácia e custo.
+obstáculos há ao redor do robô e seleciona automaticamente o algoritmo mais adequado para
+aquele trecho. Em espaços abertos, o cálculo analítico do A* é suficiente e rápido; em
+regiões congestionadas, uma política aprendida por reforço (SAC, \textit{Soft Actor-Critic})
+navega melhor. O limiar $\rho^* = 0{,}30$ que separa os dois regimes foi obtido por
+experimentos: é o ponto em que um planejador passa a superar o outro e, a partir do qual,
+usar mais o método aprendido quase não aumenta o sucesso --- o melhor equilíbrio entre
+eficácia e custo.
 
-Os experimentos em simulação controlada (1.500 cenários Monte Carlo) sustentam a tese:
-o framework adaptivo alcançou \textbf{85,3\% de taxa de sucesso} na navegação, contra 76\%
-do melhor método fixo testado. A diferença em relação ao desempenho teórico máximo possível
-(um seletor hipotético que conhece o ambiente de antemão) foi de apenas \textbf{2,2\%}.
-Também foi demonstrado que algoritmos clássicos como Floyd-Warshall são inviáveis em tempo
-real (39 segundos para um mapa de médio porte), o que justifica a escolha do A* como
-componente clássico do framework.
+Em 1.500 cenários de simulação (Monte Carlo), com modelos de planejamento calibrados a partir
+da literatura, o framework adaptivo alcançou \textbf{85,3\% de taxa de sucesso}, contra 76\%
+do melhor método fixo, ficando a apenas \textbf{2,2\%} de um seletor ideal --- aquele que
+conhece o ambiente de antemão. O estudo dos algoritmos clássicos também justificou a escolha
+do A*: o Floyd-Warshall, por exemplo, leva 39 segundos num mapa de médio porte, inviável em
+tempo real.
 
-O critério se estende a frotas de múltiplos robôs, pois cada um avalia sua própria densidade
-de forma independente. Experimentos mostram que a coordenação centralizada torna-se inviável
-em tempo real a partir de 8 robôs, apontando o aprendizado por reforço multi-agente como
-próxima etapa.
-Implementação disponível em \texttt{github.com/santtyan/adaptive-planner-switching}.
+Esses resultados confirmam a tese nesta primeira fase do trabalho; a validação com
+planejadores reais em ambiente robótico (ROS2/Gazebo) está em andamento, com resultados
+finais previstos para o encerramento do ciclo. Como o critério depende apenas da densidade
+local, estende-se naturalmente a frotas de múltiplos robôs, direção em que o aprendizado por
+reforço multi-agente se apresenta como próxima etapa.
 
 \vspace{0.4cm}
 \noindent\textbf{Palavras-chave:} planejamento de trajetória; aprendizado por reforço;
-navegação autônoma; ROS2; switching adaptivo.
+navegação autônoma; ROS2; seleção adaptativa.
 
 \vspace{0.3cm}
 \noindent\rule{\linewidth}{0.4pt}
