@@ -303,7 +303,7 @@ normalizadas). A ação anterior na observação remedia a parcial observabilida
 dando ao agente memória de curto prazo do próprio movimento. Ações controlam velocidade
 linear e angular em $[-1, 1]^2$.
 
-\subsection{Benchmark dos Algoritmos Clássicos}
+\subsection{Protocolo de Benchmark dos Clássicos}
 
 Para cada algoritmo e tamanho de grid (10$\times$10 a 50$\times$50), com densidade de
 obstáculos 25\% e 5 trials por configuração:
@@ -369,51 +369,17 @@ escolha como componente clássico do framework adaptivo.
   \label{fig:benchmark_time}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.85\textwidth]{figs/benchmark/benchmark_memory.png}
-  \caption{Consumo de memória de pico dos algoritmos clássicos.}
-  \label{fig:benchmark_memory}
-\end{figure}
 
 % ── Espaço reservado para imagens do Gazebo ──────────────────
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    % \includegraphics[width=\textwidth]{figs/gz_sparse.png}
-    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_sparse.png\\ (3 obstáculos, $\rho \approx 0{,}10$)}}}
-    \caption{Ambiente esparso --- A* dominante}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    % \includegraphics[width=\textwidth]{figs/gz_dense.png}
-    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_dense.png\\ (7 obstáculos, $\rho \approx 0{,}35$)}}}
-    \caption{Ambiente médio --- regime misto}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.32\textwidth}
-    \centering
-    % \includegraphics[width=\textwidth]{figs/gz_very_dense.png}
-    \fbox{\parbox[c][4cm][c]{\textwidth}{\centering\small\textit{[PENDENTE]\\ gz\_very\_dense.png\\ (13 obstáculos, $\rho \approx 0{,}50$)}}}
-    \caption{Ambiente denso --- SAC dominante}
-  \end{subfigure}
-  \caption{TurtleBot3 Waffle navegando nos três níveis de densidade em Gazebo Classic.
-           Imagens a serem capturadas após convergência do treinamento SAC (Julho/2026).
-           Para ativar: remover o comando \texttt{\textbackslash fbox} e descomentar
-           \texttt{\textbackslash includegraphics}.}
-  \label{fig:gazebo_worlds}
-\end{figure}
 
 \subsection{Validação do Critério Adaptivo $\rho$ --- Fase 1 (Monte Carlo)}
 
 Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado).
-\textbf{Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
-estatisticamente}: não são reimplementações dos algoritmos originais da literatura, mas
+Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
+estatisticamente: não são reimplementações dos algoritmos originais da literatura, mas
 proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos.
 
-\textbf{Determinação do limiar $\rho^* = 0{,}30$.} Para cada valor de limiar candidato
+Determinação do limiar $\rho^* = 0{,}30$. Para cada valor de limiar candidato
 $\tau \in \{0{,}05, 0{,}10, \ldots, 0{,}60\}$, foram executados 500 trials com densidades
 uniformemente distribuídas em $\rho \in [0{,}05, 0{,}60]$. Em cada trial, a política
 $\pi_\tau(\rho) = \{\text{A*}\ \text{se}\ \rho < \tau;\ \text{SAC se}\ \rho \geq \tau\}$
@@ -426,7 +392,7 @@ supera o clássico. A escolha é adicionalmente motivada pelo custo computaciona
 de 16~ms a 115~ms em $\rho = 0{,}30$, enquanto SAC mantém $\approx$12~ms constante
 (Fig.~\ref{fig:planner_time_density}) --- comutar no cruzamento evita degradação de latência
 independentemente da taxa de sucesso.
-A análise de retorno marginal (Fig.~\ref{fig:pareto_threshold}) confirma que $\tau^* = 0{,}30$
+A análise de retorno marginal (Fig.~\ref{fig:pareto_boxplot}) confirma que $\tau^* = 0{,}30$
 corresponde ao \emph{ponto joelho} da curva uso-de-SAC $\times$ taxa de sucesso:
 elevar o uso de SAC de 50\% ($\tau=0{,}30$) para 70\% ($\tau=0{,}20$) acrescenta apenas
 $+2{,}1$~pp de taxa de sucesso ao custo de $+20$~pp de inferência neural
@@ -435,16 +401,6 @@ $1{,}5$~pp/pp obtido nos segmentos anteriores da curva.
 Escolher $\tau^* = 0{,}30$ é, portanto, a decisão Pareto-ótima entre eficácia e
 eficiência computacional.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.72\linewidth]{figs/pareto/fig_pareto_threshold.png}
-  \caption{Curva retorno marginal de SAC $\times$ taxa de sucesso por limiar $\tau$.
-           $\tau^* = 0{,}30$ (50\% de uso de SAC) é o ponto joelho: a partir desse ponto
-           cada ponto percentual adicional de inferência neural acrescenta menos de
-           $0{,}11$~pp de sucesso --- contra $\approx 1{,}5$~pp nas primeiras
-           adições de SAC.}
-  \label{fig:pareto_threshold}
-\end{figure}
 
 \begin{figure}[H]
   \centering
@@ -494,44 +450,9 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
   \label{fig:statistical_test}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/core/fig_regret_analysis.png}
-  \caption{Regret do $\rho$-criterion em relação ao oracle ideal por densidade (esquerda)
-           e comparação direta entre curvas de desempenho (direita). O regret é $\leq 5\%$
-           em 4 das 5 faixas de densidade, e $\leq 10\%$ em todas --- dentro do critério H2.}
-  \label{fig:regret_analysis}
-\end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/core/fig_summary_panel.png}
-  \caption{Visão geral dos resultados da Fase~1: (a) taxa de sucesso por método e densidade;
-           (b) regret vs oracle; (c) benchmark de algoritmos clássicos em escala log;
-           (d) distribuição de uso clássico vs RL por densidade.}
-  \label{fig:summary_panel}
-\end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.85\textwidth]{figs/core/switching_heatmap.png}
-  \caption{Heatmap espacial do $\rho$-criterion no mapa \texttt{dense\_custom.world}. Regiões
-           azuis ($\rho < 0{,}30$) usam A*; regiões vermelhas ($\rho \geq 0{,}30$) usam SAC.
-           A linha tracejada indica a fronteira de decisão $\rho^* = 0{,}30$.}
-  \label{fig:switching_heatmap}
-\end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/core/density_progression.png}
-  \caption{Progressão de densidade --- análise prospectiva do switcher em três ambientes
-           criados para a Fase~2 (mundos \texttt{sparse}, \texttt{dense\_custom} e
-           \texttt{very\_dense}, criados em junho/2026).
-           Esparso ($\rho \approx 0{,}10$): A* cobre quase todo o mapa.
-           Médio ($\rho \approx 0{,}35$): regime misto, fronteira visível.
-           Denso ($\rho \approx 0{,}50$): SAC domina a maior parte do espaço navegável.}
-  \label{fig:density_progression}
-\end{figure}
 
 \subsection{Integração ROS2/Gazebo --- Fase 2}
 
@@ -614,7 +535,7 @@ no mundo esparso, reproduzível em 3 seeds independentes (Figura~\ref{fig:2d_lea
 A Figura~\ref{fig:2d_compare} compara as trajetórias de
 A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
 
-\textbf{Diagnóstico de causa-raiz via ambiente 2D.} O treinamento SAC no Gazebo não
+Diagnóstico de causa-raiz via ambiente 2D. O treinamento SAC no Gazebo não
 convergia por múltiplas sessões. Como o ambiente 2D usa a mesma estrutura de observação e
 recompensa, uma comparação direta das constantes entre os dois ambientes
 (Tabela~\ref{tab:reward_comparison}) isolou a causa: \texttt{R\_APPROACH=2.0} no Gazebo
@@ -674,17 +595,8 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
   \label{fig:2d_heatmap}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.60\textwidth]{figs/2d/fig_2d_episode_very_dense_frame.png}
-  \caption{Quadro final de um episódio no ambiente \texttt{very\_dense} ($\rho \approx 0{,}52$):
-           o agente SAC navega reativamente entre obstáculos próximos, situação em que o
-           planejador global A* falha por ausência de caminho livre. Arquivo gerado por
-           \texttt{eval/env2d/visualize\_2d.py}.}
-  \label{fig:2d_gif}
-\end{figure}
 
-\textbf{Diagnóstico de generalização por densidade.} O modelo \texttt{sac\_2d\_best} foi
+Diagnóstico de generalização por densidade. O modelo \texttt{sac\_2d\_best} foi
 treinado exclusivamente no mundo \texttt{sparse} ($\rho{=}0{,}05$). Para quantificar a
 capacidade de generalização, avaliaram-se 100 episódios por densidade sem novo treinamento
 (Figura~\ref{fig:2d_degradation_singlerobot}). A taxa de sucesso cai de \textbf{91\%} no
@@ -706,38 +618,24 @@ o treino Gazebo liberar recursos computacionais.
   \label{fig:2d_degradation_singlerobot}
 \end{figure}
 
-\textbf{Correção de bug crítico:} O ambiente de avaliação compartilhava o mesmo nó ROS2 que
+Correção de bug crítico: O ambiente de avaliação compartilhava o mesmo nó ROS2 que
 o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
 treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}.
 
-\textbf{Resultados quantitativos --- Fase 2:}
+Os resultados quantitativos da Fase 2 (Tabela~\ref{tab:fase2}) serão preenchidos após a
+convergência do treinamento SAC no Gazebo, prevista para Agosto/2026. Em 21/06/2026 o treino
+apresentava \texttt{ep\_len} $\approx 27$--$30$ e \texttt{ep\_rew} $\approx -97$ em 95k passos,
+com o agente já navegando ativamente, porém colidindo antes de consolidar o desvio de
+obstáculos. O protocolo definido é de $N=30$ trials por condição, 3 seeds independentes, com
+teste de Wilcoxon e correção Holm-Bonferroni.
 
-\begin{quote}
-  \textit{Esta seção será preenchida com os resultados do benchmark após a convergência do
-  treinamento SAC no Gazebo. Status em 21/06/2026: ep\_len $\approx 27$--$30$, ep\_rew
-  $\approx -97$ @ 95k steps --- agente colide em torno do passo 30, indicando navegação
-  ativa sem coordenação de desvio ainda consolidada. PlanB ativo em 300k steps.
-  Convergência prevista para Agosto/2026.}
-\end{quote}
-
-\textbf{Análise qualitativa preliminar --- Fase 2.} Embora os resultados quantitativos
-do benchmark A* vs.\ SAC vs.\ Adaptativo no Gazebo dependam da convergência do treinamento,
-a curva de aprendizado já permite extrair conclusões qualitativas relevantes. A
-Figura~\ref{fig:2d_learning_curve_ci} mostra que o mesmo algoritmo SAC, com idêntica
-estrutura de reward, convergiu para 90\% de sucesso em 4.000--14.000 passos no ambiente 2D
-leve. A comparação entre os dois ambientes (Tabela~\ref{tab:reward_comparison}) isolou que
-a \textbf{única} fonte de divergência era a constante \texttt{R\_APPROACH}: 2,0 no Gazebo
-vs.\ 10,0 no Env2D, cruzando o limiar crítico de $R_{\text{app}} > 6{,}67$ que garante
-preferência por navegação sobre repouso. Corrigido \texttt{R\_APPROACH=10,0}, o Gazebo
-passou a apresentar \texttt{ep\_len} estável e crescente --- validando H3 (infraestrutura
-operacional) e confirmando que o 2D é um proxy confiável para diagnóstico de reward.
-
-O protocolo de benchmark quantitativo --- 30 trials por condição, 3 seeds independentes,
-Wilcoxon com Holm-Bonferroni --- será executado assim que o Gazebo convergir, e os
-valores da Tabela~\ref{tab:fase2} serão preenchidos.
-
-Protocolo: $N=30$ trials por condição, 3 seeds independentes, Wilcoxon signed-rank com
-correção Holm-Bonferroni.
+Ainda que os números finais dependam dessa convergência, a curva de aprendizado no ambiente
+2D (Figura~\ref{fig:2d_learning_curve_ci}) já sustenta uma conclusão qualitativa: o mesmo
+algoritmo, com idêntica estrutura de reward, atinge 90\% de sucesso em poucos minutos no 2D.
+O diagnóstico da constante \texttt{R\_APPROACH} (Tabela~\ref{tab:reward_comparison}) que
+destravou o Gazebo confirma que o ambiente 2D é um proxy confiável para depurar reward antes
+do ciclo lento da simulação física, validando a hipótese H3 de realizabilidade da
+infraestrutura.
 
 \begin{table}[H]
   \centering
@@ -756,36 +654,9 @@ correção Holm-Bonferroni.
   \end{tabular}
 \end{table}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.75\textwidth]{figs/benchmark/success_by_density.png}
-  \caption{Taxa de sucesso por método e faixa de densidade $\rho$.
-           A linha tracejada indica o limiar $\rho^*=0{,}30$.
-           Resultados definitivos em Agosto/2026.}
-  \label{fig:success_density}
-\end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.75\textwidth]{figs/benchmark/outcome_matrix.png}
-  \caption{Matriz de desfecho (goal / colisão / timeout) por método e faixa de densidade.}
-  \label{fig:outcome_matrix}
-\end{figure}
 
 % ── Espaço reservado para imagens de trajetória ──────────────
-\begin{figure}[H]
-  \centering
-  % \includegraphics[width=0.85\textwidth]{figs/trajectory_comparison.png}
-  \fbox{\parbox[c][5cm][c]{0.85\textwidth}{\centering\small\textit{[PENDENTE]\\
-  trajectory\_comparison.png\\
-  Trajetórias A* (azul), SAC (vermelho) e Adaptativo (verde)\\
-  no mapa dense\_custom.world\\
-  A ser gerado por record\_episode.py após convergência do SAC}}}
-  \caption{Trajetórias representativas por método no mapa \texttt{dense\_custom.world}.
-           Para ativar: remover \texttt{\textbackslash fbox} e descomentar
-           \texttt{\textbackslash includegraphics}.}
-  \label{fig:trajectories}
-\end{figure}
 
 \subsection{Extensão Multi-Agente}
 \label{sec:multiagente}
@@ -804,7 +675,7 @@ fixos):
         anotados com PPO; nos demais, a proporção variou entre 0\% e 24\%.
 \end{itemize}
 
-\textbf{Nota de transição:} no Relatório Parcial, o planejador clássico de referência era o
+Nota de transição: no Relatório Parcial, o planejador clássico de referência era o
 RRT* (espaço contínuo). No período seguinte, a integração com ROS2/Nav2 adotou o
 A*/SmacPlanner2D como componente clássico do framework, por ser o planejador padrão do
 stack Nav2 com implementação C++ otimizada. O critério $\rho$ e o limiar $0{,}30$ permanecem
@@ -904,20 +775,6 @@ forma \textbf{independente} (sem comunicação). Cada robô percebe os vizinhos 
 circulares dinâmicos no LIDAR (raycasting atualizado a cada passo), mas decide ação sem
 coordenação central. 20 trials por configuração, arena densa ($\rho \approx 0{,}35$).
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/marl/fig_marl_motivation_degradation_2d.png}
-  \caption{Degradação do SAC independente com $N$ robôs (\textbf{dados REAIS}, env 2D).
-           Azul: taxa de goal média por robô (eixo esquerdo, $\downarrow$ com $N$).
-           Vermelho: taxa de colisão inter-robô (eixo direito, $\uparrow$ com $N$).
-           Em $N{=}1$: 25\% de goal, 0\% de colisão inter-robô.
-           Em $N{=}8$: 18\% de goal, 85\% de colisão inter-robô (arena densa, $\rho{=}0{,}30$).
-           O modo de falha dominante é \textbf{colisão inter-robô} ($\approx$100\% em $N{=}8$);
-           deadlock = 0\% em todas as configurações, pois o SAC é reativo e não trava.
-           A degradação empírica confirma que políticas independentes não generalizam
-           para cenários multi-agente --- motivação direta para o MARL.}
-  \label{fig:marl_degradation}
-\end{figure}
 
 Para avaliar se a degradação depende da \textbf{densidade do ambiente} além do número de
 agentes, o experimento foi repetido nas três densidades disponíveis
@@ -967,59 +824,13 @@ Essa diferença reforça o diagnóstico central: o problema multi-agente não é
 planejador em si, mas a ausência de \textit{coordenação} entre decisões locais
 simultâneas --- exatamente a lacuna que o MARL (Fase~3) endereça.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.65\textwidth]{figs/marl/fig_2d_multiagent_snapshot.png}
-  \caption{Snapshot de um trial com 8 robôs SAC independentes na arena densa.
-           Cada cor representa um robô distinto; ●=posição inicial, ★=goal.
-           As trajetórias mostram comportamento reativo local sem coordenação:
-           robôs convergem para as mesmas regiões congestionadas e colidem.}
-  \label{fig:marl_snapshot}
-\end{figure}
 
-\begin{figure}[H]
-  \centering
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_sparse_N4_frame.png}
-    \caption*{(a) Esparso $\rho{=}0{,}05$, $N{=}4$ — 75\% goal, colisão inter-robô alta por
-              trajetos cruzados.}
-  \end{minipage}\hfill
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_dense_N8_frame.png}
-    \caption*{(b) Denso $\rho{=}0{,}30$, $N{=}8$ — 12\% goal, colapso de coordenação:
-              robôs invadem o mesmo espaço e colidem.}
-  \end{minipage}
-  \caption{Quadros finais representativos de episódios multi-robô com SAC independente
-           (sem coordenação central). Verde=robô atingiu goal; vermelho=colidiu; azul=em
-           movimento. A ausência de comunicação leva a trajetórias conflitantes, argumento
-           direto para coordenação via MARL.
-           Gerado por \texttt{eval/env2d/visualize\_multi\_2d.py}.}
-  \label{fig:marl_gifs}
-\end{figure}
 
-Um aspecto prático relevante para execução em robôs reais é a diferença entre o plano CBS
-(discreto, em passos de grid) e um \textit{schedule} cinemático executável. O CBS assume
-que cada agente pode ocupar exatamente uma célula por passo de tempo, desconsiderando
-inércia e restrições de velocidade. O pós-processamento por \textbf{Grafo de Plano Temporal
-(TPG)} \cite{Honig2016} resolve essa lacuna: para cada par de agentes que compartilha uma
-mesma célula em passos adjacentes, o TPG insere um buffer de segurança $\delta$ (tipicamente
-$0{,}20$\,m), garantindo separação mínima e viabilidade cinemática. A
-Figura~\ref{fig:cbs_tpg} ilustra essa transformação para um cenário de 3 agentes em grid
-5$\times$5: o painel central mostra os atrasos adicionados pelo TPG; o painel direito exibe
-as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
+Para execução em robôs reais, o plano discreto do CBS precisa ainda ser convertido em um
+\textit{schedule} cinemático que respeite inércia e limites de velocidade, etapa resolvida
+pelo pós-processamento por Grafo de Plano Temporal (TPG) \cite{Honig2016}, que insere buffers
+de segurança entre agentes que cruzam a mesma célula em passos adjacentes.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_tpg_comparison.png}
-  \caption{Transformação CBS $\to$ TPG: plano discreto (passos de grid, painel esquerdo)
-           convertido em schedule cinemático com buffers de segurança $\delta=0{,}20$\,m
-           (painéis central e direito). As setas no painel central indicam atrasos inseridos
-           pelo TPG onde dois agentes passariam pelo mesmo ponto em momentos adjacentes.
-           Esta etapa de pós-processamento é necessária antes da execução em ROS2/Nav2.}
-  \label{fig:cbs_tpg}
-\end{figure}
 
 \begin{figure}[H]
   \centering
@@ -1042,15 +853,6 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
   \label{fig:cbs_density_sweep}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_spatial_annotation.png}
-  \caption{Cenário de referência: 3 agentes em grid 10$\times$10 com 13 obstáculos.
-           \textbf{Esquerda:} heatmap de densidade local $\rho$.
-           \textbf{Direita:} decisão passo a passo (azul = A*/RRT*, vermelho = SAC/PPO).
-           19\% dos passos ativam o planejador RL na zona densa (colunas 5--8).}
-  \label{fig:cbs_spatial}
-\end{figure}
 
 \begin{figure}[H]
   \centering
@@ -1062,15 +864,6 @@ as zonas de segurança $\delta$ ao redor de cada waypoint no espaço métrico.
   \label{fig:cbs_canyon}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_ppo_ratio_comparison.png}
-  \caption{Proporção de passos com SAC/PPO por cenário nos benchmarks públicos
-           (100 cenários com 2 agentes e 21 cenários com 5 agentes, densidade global
-           $\rho \approx 0{,}19$). A maioria opera abaixo de $\rho^* = 0{,}30$
-           (linha tracejada); picos acima indicam regiões de congestionamento.}
-  \label{fig:cbs_bars}
-\end{figure}
 
 % ============================================================
 \section{Conclusão}
