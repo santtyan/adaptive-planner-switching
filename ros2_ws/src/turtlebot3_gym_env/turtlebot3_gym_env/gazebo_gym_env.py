@@ -95,7 +95,7 @@ SCAN_TIMEOUT = 1.0          # seconds — max wait for a fresh /scan message
 # FIX provado pelo gêmeo 2D (eval/env2d/): com R_APPROACH=10.0 e o resto idêntico, o SAC
 # convergiu a 90% em 14k steps. Replicamos esse valor aqui.
 R_APPROACH = 10.0           # progresso potencial clipado ≥0; >6.67 p/ vencer o atrator ocioso
-R_SURVIVAL = 0.1            # bônus por passo; sozinho cria atrator "parado" (+20) — ver acima
+R_SURVIVAL = 0.0            # validado no env 2D: sem suicidal, convergência mais rápida
 R_COLLISION = -100.0        # terminal collision penalty
 R_GOAL = 100.0              # terminal goal reward
 
