@@ -74,9 +74,8 @@ regiões congestionadas, uma política aprendida por reforço (SAC) navega melho
 sido treinada em situações semelhantes. O limiar $\rho^* = 0{,}30$ foi determinado por dois
 critérios convergentes: (i)~é o ponto de cruzamento empírico das curvas de desempenho de
 A* e SAC (abaixo desse valor o A* é superior, acima o SAC supera); e (ii)~é o ponto joelho
-da curva de retorno marginal, em que aumentar o uso de SAC além de 50\% dos passos acrescenta
-menos de $0{,}11$~pp de sucesso por ponto percentual adicional de inferência neural,
-tornando $\rho^* = 0{,}30$ a escolha Pareto-ótima entre eficácia e custo computacional.
+da curva de retorno marginal, acima do qual usar mais SAC quase não melhora o sucesso,
+tornando $\rho^* = 0{,}30$ a escolha Pareto-ótima entre eficácia e custo.
 
 Os experimentos em simulação controlada (1.500 cenários Monte Carlo) sustentam a tese:
 o framework adaptivo alcançou \textbf{85,3\% de taxa de sucesso} na navegação, contra 76\%
@@ -86,10 +85,10 @@ Também foi demonstrado que algoritmos clássicos como Floyd-Warshall são invi�
 real (39 segundos para um mapa de médio porte), o que justifica a escolha do A* como
 componente clássico do framework.
 
-O critério se estende naturalmente para frotas de múltiplos robôs, pois cada um avalia sua
-própria densidade de forma independente. Experimentos mostram, porém, que algoritmos centralizados de coordenação tornam-se
-inviáveis em tempo real a partir de 8 robôs simultâneos, apontando o aprendizado por
-reforço multi-agente como próxima etapa de pesquisa.
+O critério se estende a frotas de múltiplos robôs, pois cada um avalia sua própria densidade
+de forma independente. Experimentos mostram que a coordenação centralizada torna-se inviável
+em tempo real a partir de 8 robôs, apontando o aprendizado por reforço multi-agente como
+próxima etapa.
 Implementação disponível em \texttt{github.com/santtyan/adaptive-planner-switching}.
 
 \vspace{0.4cm}
