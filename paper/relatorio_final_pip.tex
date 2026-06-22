@@ -85,7 +85,7 @@ de obstáculos; políticas de aprendizado por reforço adaptam-se melhor a ambie
 porém são desnecessariamente custosas onde o A* seria suficiente. A literatura trata essa
 escolha como decisão fixa de projeto. A tese deste trabalho é que \textbf{selecionar o
 planejador de forma adaptiva, em tempo de execução, supera qualquer método fixo em ambientes
-heterogêneos, tese verificada empiricamente por experimentos controlados.
+heterogêneos}, tese verificada empiricamente por experimentos controlados.
 
 A contribuição central é o $\rho$-\textit{criterion}: a densidade local de obstáculos ao
 redor do robô determina qual planejador funciona melhor. Em regiões esparsas, o A*
@@ -204,7 +204,7 @@ do bloqueio do planejador clássico.
 \subsection{Algoritmos Clássicos Implementados}
 
 Os quatro algoritmos foram implementados em Python puro com \textbf{estruturas de dados
-otimizadas, atendendo à observação do Consultor SIGAA (13/06/2025) de que a comparação
+otimizadas}, atendendo à observação do Consultor SIGAA (13/06/2025) de que a comparação
 deve envolver implementações otimizadas, não apenas didáticas. Dijkstra e A* utilizam
 \texttt{heapq} (heap binário mínimo), estrutura ótima para fila de prioridade em grafos
 esparsos, garantindo complexidade $O(V \log V + E)$ na prática. Floyd-Warshall usa matriz

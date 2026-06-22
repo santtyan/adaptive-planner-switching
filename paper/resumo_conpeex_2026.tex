@@ -62,26 +62,26 @@ trajetória para decidir por onde passar. Algoritmos tradicionais, como o A*, s�
 eficientes em ambientes simples, mas perdem desempenho quando há muitos obstáculos. Já
 algoritmos baseados em aprendizado de máquina lidam melhor com ambientes complexos, porém
 são desnecessariamente lentos quando o caminho é livre. Na prática, a escolha do algoritmo é
-feita uma única vez pelo engenheiro --- independentemente do ambiente em que o robô vai operar.
+feita uma única vez pelo engenheiro, independentemente do ambiente em que o robô vai operar.
 A tese deste trabalho é que \textbf{escolher o algoritmo de forma adaptiva, em tempo real,
 supera métodos de escolha fixa} em ambientes heterogêneos.
 
 A contribuição central é o $\rho$-criterion: um critério que, a cada momento, mede quantos
 obstáculos estão ao redor do robô e seleciona automaticamente o algoritmo mais adequado para
-aquele trecho. A intuição é direta --- a densidade de obstáculos determina qual abordagem
-funciona melhor: em espaços abertos, o cálculo analítico do A* é suficiente e rápido; em
+aquele trecho. A intuição é direta: a densidade de obstáculos determina qual abordagem
+funciona melhor. Em espaços abertos, o cálculo analítico do A* é suficiente e rápido; em
 regiões congestionadas, uma política aprendida por reforço (SAC) navega melhor por já ter
 sido treinada em situações semelhantes. O limiar $\rho^* = 0{,}30$ foi determinado por dois
 critérios convergentes: (i)~é o ponto de cruzamento empírico das curvas de desempenho de
-A* e SAC --- abaixo desse valor o A* é superior, acima o SAC supera; e (ii)~é o ponto joelho
-da curva de retorno marginal --- aumentar o uso de SAC além de 50\% dos passos acrescenta
+A* e SAC (abaixo desse valor o A* é superior, acima o SAC supera); e (ii)~é o ponto joelho
+da curva de retorno marginal, em que aumentar o uso de SAC além de 50\% dos passos acrescenta
 menos de $0{,}11$~pp de sucesso por ponto percentual adicional de inferência neural,
 tornando $\rho^* = 0{,}30$ a escolha Pareto-ótima entre eficácia e custo computacional.
 
 Os experimentos em simulação controlada (1.500 cenários Monte Carlo) sustentam a tese:
 o framework adaptivo alcançou \textbf{85,3\% de taxa de sucesso} na navegação, contra 76\%
 do melhor método fixo testado. A diferença em relação ao desempenho teórico máximo possível
---- um seletor hipotético que conhece o ambiente de antemão --- foi de apenas \textbf{2,2\%}.
+(um seletor hipotético que conhece o ambiente de antemão) foi de apenas \textbf{2,2\%}.
 Também foi demonstrado que algoritmos clássicos como Floyd-Warshall são inviáveis em tempo
 real (39 segundos para um mapa de médio porte), o que justifica a escolha do A* como
 componente clássico do framework.
