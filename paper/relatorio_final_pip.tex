@@ -96,7 +96,7 @@ com densidades variando de $\rho = 0{,}05$ a $\rho = 0{,}60$ revelaram o ponto d
 cruzamento de desempenho entre os dois planejadores.
 
 A Fase~1 confirmou a tese: taxa de sucesso de 85,3\% contra 76\% do melhor método fixo,
-com regret médio de 2,2\% em relação ao oracle ideal. O benchmark de algoritmos clássicos
+com regret médio de 2,2\% em relação ao seletor ideal. O benchmark de algoritmos clássicos
 justificou empiricamente a escolha do A* (Floyd-Warshall consome 39~s e 22~MB num grid
 $30{\times}30$, inviável para planejamento em tempo real). A Fase~2, que integra
 ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle, está em andamento, com resultados
@@ -140,14 +140,14 @@ tese é verificada por três hipóteses. A primeira (H1) sustenta que o framewor
 $\rho$-criterion obtém taxa de sucesso superior à do melhor método fixo em ambientes de
 densidade variável. A segunda (H2) afirma que o critério com limiar $\rho^*{=}0{,}30$ captura a
 fronteira de decisão ótima entre planejadores clássicos e de aprendizado por reforço, com
-regret médio de no máximo 5\% em relação ao oracle ideal (admitindo-se até 10\% no pior caso).
+regret médio de no máximo 5\% em relação ao seletor ideal (admitindo-se até 10\% no pior caso).
 A terceira (H3) postula que o framework é realizável em um stack robótico padrão da indústria
-(ROS2/Nav2/Gazebo) sem modificar os planejadores subjacentes; sua confirmação abre, ainda, uma
-questão para cenários multi-agente, a de saber se $N$ robôs aplicando o critério de forma
-independente e simultânea produzem uma decisão coletiva coordenada ou conflitos de recursos,
-pergunta que pertence à teoria dos jogos cooperativos e fica como direção futura.
+(ROS2/Nav2/Gazebo), sem modificar os planejadores subjacentes. A confirmação de H3 levanta
+uma questão para o caso com vários robôs: quando todos aplicam o critério ao mesmo tempo e de
+forma independente, o comportamento coletivo é coordenado? Essa pergunta fica como direção
+futura.
 
-O projeto foi executado no período 01/09/2025--31/08/2026 com bolsa FAPEG (PI08078-2024),
+O projeto foi executado no período 01/09/2025--31/08/2026, vinculado ao projeto PI08078-2024,
 alinhado com: (i) o Plano de Trabalho, que prevê comparação entre métodos clássicos e modernos
 com métricas de tempo e memória; (ii) o Parecer do Consultor SIGAA (13/06/2025), que exige
 implementações otimizadas; (iii) o Relatório Parcial aprovado em 01/04/2026.
@@ -169,7 +169,7 @@ trajetória como variável de otimização contextual, não como escolha fixa de
   \item Formular o critério $\rho$ de seleção adaptiva e determinar o limiar ótimo $\rho^*$
         experimentalmente.
   \item Derivar garantias teóricas de performance (\textit{regret bounds}) em relação ao
-        oracle ideal.
+        seletor ideal.
   \item Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle,
         avaliando o desempenho em ambientes estáticos e de densidade variável. Testes com
         obstáculos dinâmicos (pedestres, veículos) constituem trabalho futuro --- Gazebo
@@ -236,19 +236,17 @@ O limiar $\rho^* = 0{,}30$ foi determinado por validação experimental com 1.50
 
 \subsection{Análise Teórica de Regret}
 
-Dado um oracle $O$ que sempre escolhe o planejador ótimo com conhecimento perfeito,
-definimos o regret do framework como:
+Para medir a qualidade do critério, comparamos seu desempenho ao de um \textit{seletor ideal}:
+um seletor hipotético que, conhecendo o ambiente de antemão, sempre escolhe o melhor planejador
+para cada situação. A diferença de desempenho entre os dois é o que chamamos de \textit{regret}:
 
 \begin{equation}
-  \mathrm{Regret}(\pi) = \mathbb{E}[R_{\mathrm{oracle}}] - \mathbb{E}[R_\pi]
+  \mathrm{Regret}(\pi) = \mathbb{E}[R_{\mathrm{ideal}}] - \mathbb{E}[R_\pi]
 \end{equation}
 
-Sob o modelo de simulação calibrado (Monte Carlo), o regret do $\rho$-criterion é de
-$2{,}2\%$ em média e $6{,}7\%$ no pior caso, em relação ao oracle ideal. A escolha do limiar
-em $\rho^*{=}0{,}30$ é reforçada pelo custo computacional: o tempo do planejador clássico
-cresce de 16\,ms a 115\,ms quando $\rho$ atinge $0{,}30$, enquanto o SAC mantém latência
-constante de ${\approx}12$\,ms, de modo que comutar nesse ponto evita degradação de
-desempenho mesmo antes do cruzamento das taxas de sucesso.
+Quanto menor o regret, mais perto o critério está do ideal. Nos experimentos calibrados
+(Monte Carlo), o $\rho$-criterion fica, em média, a apenas $2{,}2\%$ desse seletor ideal, e a
+$6{,}7\%$ no pior caso.
 
 \subsection{Implementação ROS2}
 
@@ -334,26 +332,17 @@ Todos os métodos comparados nesta fase utilizam modelos de planejamento calibra
 estatisticamente: não são reimplementações dos algoritmos originais da literatura, mas
 proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos.
 
-Determinação do limiar $\rho^* = 0{,}30$. Para cada valor de limiar candidato
-$\tau \in \{0{,}05, 0{,}10, \ldots, 0{,}60\}$, foram executados 500 trials com densidades
-uniformemente distribuídas em $\rho \in [0{,}05, 0{,}60]$. Em cada trial, a política
-$\pi_\tau(\rho) = \{\text{A*}\ \text{se}\ \rho < \tau;\ \text{SAC se}\ \rho \geq \tau\}$
-foi aplicada e o resultado (sucesso/falha) registrado. O limiar ótimo $\tau^*$ foi definido
-como o valor que minimiza o regret médio em relação ao oracle ideal (que conhece, para cada
-$\rho$, qual planejador tem maior taxa de sucesso). A varredura revelou $\tau^* = 0{,}30$
-como o ponto de cruzamento das curvas de desempenho de A* e SAC/PPO: para $\rho < 0{,}30$
-o planejador clássico tem taxa de sucesso superior; para $\rho \geq 0{,}30$ o planejador RL
-supera o clássico. A escolha é adicionalmente motivada pelo custo computacional: A* cresce
-de 16~ms a 115~ms em $\rho = 0{,}30$, enquanto SAC mantém $\approx$12~ms constante, de modo
-que comutar no cruzamento evita degradação de latência independentemente da taxa de sucesso.
-A análise de retorno marginal (Fig.~\ref{fig:pareto_boxplot}) confirma que $\tau^* = 0{,}30$
-corresponde ao \emph{ponto joelho} da curva uso-de-SAC $\times$ taxa de sucesso:
-elevar o uso de SAC de 50\% ($\tau=0{,}30$) para 70\% ($\tau=0{,}20$) acrescenta apenas
-$+2{,}1$~pp de taxa de sucesso ao custo de $+20$~pp de inferência neural
---- razão de retorno de $0{,}11$~pp/pp, substancialmente abaixo do retorno de
-$1{,}5$~pp/pp obtido nos segmentos anteriores da curva.
-Escolher $\tau^* = 0{,}30$ é, portanto, a decisão Pareto-ótima entre eficácia e
-eficiência computacional.
+\textit{Como o limiar foi determinado.} Para achar o melhor ponto de comutação, testamos
+vários limiares candidatos, de 0,05 a 0,60. Para cada um, rodamos 500 cenários com densidades
+sorteadas no intervalo $[0{,}05,\, 0{,}60]$, aplicando a regra ``A* abaixo do limiar, SAC
+acima'' e registrando se o robô chegou ao destino. O melhor limiar é o que mais se aproxima de
+um seletor ideal, isto é, um seletor que sempre escolhe o planejador certo para cada
+densidade. A varredura apontou $\rho^* = 0{,}30$: abaixo desse valor o A* tem mais sucesso;
+acima, o SAC. O custo computacional reforça a escolha. No ponto $\rho = 0{,}30$, o tempo do A*
+já subiu de 16~ms para 115~ms, enquanto o SAC se mantém constante em $\approx$12~ms. Além
+disso, usar o SAC em mais da metade dos passos quase não aumenta o sucesso
+(Fig.~\ref{fig:pareto_boxplot}). Por isso, $\rho^* = 0{,}30$ é o melhor equilíbrio entre
+desempenho e custo.
 
 
 \begin{figure}[htbp]
@@ -391,7 +380,7 @@ eficiência computacional.
 O framework adaptivo supera todos os baselines. A superioridade sobre o melhor método fixo
 (PPO, 76,0\%) foi confirmada por teste de proporções one-sided: $z = 2{,}05$, $p = 0{,}020$
 ($\alpha = 0{,}05$, $n = 150$ trials por método), com tamanho de efeito Cohen's $h = 0{,}24$.
-Regret médio em relação ao oracle ideal: \textbf{2,2\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
+Regret médio em relação ao seletor ideal: \textbf{2,2\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
 Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[htbp]
@@ -849,7 +838,7 @@ Inovação antes de submeter no SIGAA]}
 \textit{[Se houver vídeo de até 1 min / 50 MB: inserir link do Google Drive institucional aqui]}
 
 \subsection*{Outras Atividades Acadêmicas Relacionadas ao Projeto}
-Ao longo da vigência da bolsa, o estudante participou de atividades de pesquisa e extensão
+Ao longo do projeto, o estudante participou de atividades de pesquisa e extensão
 que complementaram a formação em robótica autônoma e deram suporte ao desenvolvimento do
 trabalho:
 
