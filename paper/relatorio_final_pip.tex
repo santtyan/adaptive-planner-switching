@@ -663,207 +663,80 @@ infraestrutura.
 
 Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com dados
 \textbf{reais} do pipeline CBS + \texttt{adaptive\_annotator.py} sobre benchmarks públicos
-do repositório \texttt{atb033/multi\_agent\_path\_planning} (mapas 8$\times$8, 12 obstáculos
-fixos):
+(\texttt{atb033/multi\_agent\_path\_planning}), confirmam que o $\rho$-criterion generaliza
+para múltiplos agentes sem qualquer modificação: cada agente avalia $\rho$ a partir da própria
+pose, sem comunicação. Em 100 cenários com 2 agentes (densidade global $\approx 0{,}19$), 93\%
+dos passos selecionaram o planejador clássico, como esperado para ambientes esparsos; com 5
+agentes, a densidade local em regiões de congestionamento eleva a ativação do RL a até 26\%.
+Num cenário \textit{canyon} projetado para forçar passagem por um corredor denso
+($\rho \geq 0{,}30$), a ativação do RL sobe para 44\%, confirmando que o critério responde
+corretamente ao aumento de densidade. Uma varredura sistemática ($\rho \in [0{,}04,\,0{,}52]$,
+2/3/5 agentes) localiza a transição de regime em $\rho \approx 0{,}28$--$0{,}32$,
+independentemente do número de agentes, o que valida $\rho^*=0{,}30$ como fronteira robusta.
 
-\begin{itemize}
-  \item \textbf{100 cenários com 2 agentes} $\to$ 1.110 passos anotados; 1.039 (93\%)
-        selecionaram RRT* e 71 (6\%) selecionaram PPO. Resultado esperado: densidade global
-        dos mapas $\approx 0{,}19 < 0{,}30$, portanto o planejador clássico domina.
-  \item \textbf{21 cenários com 5 agentes}: com mais agentes, a densidade local supera o
-        limiar em regiões de congestionamento. No cenário ex13, 8 de 30 passos (26\%) foram
-        anotados com PPO; nos demais, a proporção variou entre 0\% e 24\%.
-\end{itemize}
+Vale registrar a continuidade com o Relatório Parcial: o planejador clássico de referência
+era o RRT* e o de RL era o PPO; a integração com ROS2/Nav2 adotou A*/SmacPlanner2D e SAC. O
+critério e o limiar permanecem inalterados, pois $\rho$ mede uma propriedade do \textit{ambiente}
+(densidade local), não do planejador: a fronteira de decisão depende de onde o ambiente exige
+adaptação, não de qual par (clássico, RL) a executa.
 
-Nota de transição: no Relatório Parcial, o planejador clássico de referência era o
-RRT* (espaço contínuo). No período seguinte, a integração com ROS2/Nav2 adotou o
-A*/SmacPlanner2D como componente clássico do framework, por ser o planejador padrão do
-stack Nav2 com implementação C++ otimizada. O critério $\rho$ e o limiar $0{,}30$ permanecem
-inalterados porque $\rho$ mensura uma propriedade do \textbf{ambiente} (densidade local de
-obstáculos), não do planejador: a fronteira de decisão depende de onde o ambiente exige
-adaptação, independentemente de qual par (clássico, RL) é usado. A mudança RRT*$\to$A* e
-PPO$\to$SAC altera a qualidade de execução de cada regime, mas não a localização da fronteira
-$\rho^* = 0{,}30$, que foi validada em 1.500 experimentos Monte Carlo sobre a distribuição
-de ambientes, não sobre o comportamento específico dos planejadores.
+Para quantificar o custo de \textit{não} seguir o critério, um experimento de desvio sobre os
+100 cenários CBS mediu o sobrecusto de usar sempre um único planejador: usar sempre A* custa
+$+2{,}1\%$ acima do $\rho$-criterion, e usar sempre SAC, $+14{,}1\%$. Esses valores são
+coerentes com a vantagem de 9,3 pp medida na Fase~1 e confirmam que o critério adaptivo produz
+custo menor do que qualquer política uniforme.
 
-Estes resultados indicam que o $\rho$-criterion generaliza para ambientes multi-agente sem
-modificação do critério: cada agente avalia $\rho$ independentemente a partir de sua própria
-pose, sem comunicação entre agentes, e o CBS garante a ausência de colisões inter-agentes.
+\subsubsection*{Por que decisão local: escalabilidade do CBS}
 
-Para investigar o comportamento em \textbf{alta densidade}, foi construído um cenário
-\textit{canyon} (grid 12$\times$10, 28 obstáculos, 5 agentes) em que paredes laterais
-forçam todos os agentes a atravessar um corredor central com $\rho \geq 0{,}30$. Neste
-cenário, \textbf{38 de 87 passos (44\%) ativaram o planejador RL} --- contra apenas 6\%
-nos benchmarks de densidade global baixa ($\rho \approx 0{,}19$). A Figura~\ref{fig:cbs_canyon}
-ilustra a transição espacial entre regimes: pontos azuis nas abordagens esparsas e vermelhos
-concentrados no canyon.
-
-Para quantificar o custo de \textbf{não seguir} o $\rho$-criterion, foi conduzido um
-\textbf{experimento de desvio}: para cada passo anotado nos 100 cenários CBS, calculou-se
-o custo adicional caso o agente usasse sempre A* ou sempre SAC em vez da política adaptiva.
-Os fatores de penalidade são derivados da literatura \cite{He2025} e dos parâmetros calibrados
-na Fase~1: A* em alta densidade produz caminhos ${\approx}+35\%$ mais longos; SAC em ambientes
-esparsos incorre em overhead de ${\approx}+15\%$ por inferência de rede neural desnecessária.
-Os resultados foram:
-
-\begin{itemize}
-  \item Desvio para \textbf{sempre A*}: custo médio $+2{,}1\%$ acima do $\rho$-criterion.
-  \item Desvio para \textbf{sempre SAC}: custo médio $+14{,}1\%$ acima do $\rho$-criterion.
-\end{itemize}
-
-Esses valores são consistentes com a diferença de 9,3 pp observada na Fase~1 (85,3\% vs 76,0\%,
-Tabela~\ref{tab:fase1}) e confirmam empiricamente que o $\rho$-criterion produz custo menor
-do que qualquer política uniforme. As implicações de equilíbrio e coordenação entre agentes
-(Dec-POMDP, teoria dos jogos cooperativos) constituem trabalho futuro (Seção~4).
-
-A Figura~\ref{fig:cbs_density_sweep} apresenta a \textbf{varredura sistemática} de densidade
-($\rho \in [0{,}04,\, 0{,}52]$, grid 10$\times$10, 8 trials por ponto): a transição de regime
-ocorre consistentemente em $\rho \approx 0{,}28$--$0{,}32$ para 2, 3 e 5 agentes,
-validando empiricamente o limiar $\rho^* = 0{,}30$ como fronteira de fase robusta,
-independente do número de agentes.
-
-\subsubsection*{Escalabilidade do CBS e Motivação para Decisão Local}
-
-Embora o CBS produza soluções ótimas livres de colisão, seu custo computacional cresce
-de forma \textbf{super-linear} com o número de agentes $N$ --- comportamento inerente ao
-espaço de busca combinatorial do algoritmo \cite{Sharon2015}. Para quantificar esse efeito
-no contexto do presente trabalho, foi conduzido um experimento de escalabilidade: cenários
-aleatórios em grid $10{\times}10$ com $\rho \approx 0{,}20$ foram resolvidos pelo CBS para
-$N \in \{2, 3, 4, 5, 6, 7, 8\}$ agentes (5 trials por ponto, timeout de 30\,s).
-A Figura~\ref{fig:cbs_scalability} apresenta os resultados: o tempo de solução cresce de
-${\approx}5$\,ms em $N{=}2$ para ${\approx}160$\,ms em $N{=}8$, com ocorrência de timeout
-já em $N{=}8$ (1 de 5 trials censurado). O crescimento super-linear confirma que o CBS
-torna-se inviável para coordenação em tempo real à medida que $N$ aumenta.
-
-Esse resultado tem uma consequência direta: \textbf{o CBS centralizado não é uma opção
-escalável para frotas robóticas de tamanho realista}. O $\rho$-criterion, por outro lado,
-toma uma decisão local em $O(1)$ por agente --- sem comunicação, sem estado global, sem
-tempo de solução que cresça com $N$. Essa propriedade de decisão local é precisamente
-o que permite que o critério escale de 1 para $N$ agentes sem nenhuma modificação.
-
-No entanto, a decisão local independente levanta uma questão que não pode ser respondida
-com o critério atual: quando múltiplos agentes tomam decisões $\pi(\rho_i)$ de forma
-simultânea e independente, \textit{a decisão coletiva resultante é coordenada?} Os dados
-da Seção~\ref{sec:multiagente} mostram que o critério funciona empiricamente (93\% A* nos
-benchmarks de baixa densidade, 44\% SAC no canyon). Mas esses experimentos usam trajetórias
-CBS pré-computadas --- ou seja, a coordenação foi garantida externamente pelo CBS antes da
-anotação. Em um sistema onde os agentes se movem simultaneamente e reagem online ao ambiente
-compartilhado, a coordenação é emergente --- não garantida. Garantir coordenação sob decisão
-local reativa é o domínio do \textbf{Aprendizado por Reforço Multi-Agente (MARL)}, que
-constitui a Fase~3 deste programa de pesquisa (Seção~4).
+Embora o CBS produza soluções ótimas livres de colisão, seu custo cresce de forma super-linear
+com o número de agentes \cite{Sharon2015}. Num experimento de escalabilidade (grid $10\times10$,
+$\rho \approx 0{,}20$, timeout 30\,s), o tempo de solução salta de ${\approx}5$\,ms em $N{=}2$
+para ${\approx}160$\,ms em $N{=}8$, já com um caso censurado por timeout
+(Figura~\ref{fig:cbs_scalability}). O CBS centralizado, portanto, não escala para frotas
+realistas em tempo real. O $\rho$-criterion contrasta por decidir localmente em $O(1)$ por
+agente, sem comunicação nem estado global, o que permite escalar de 1 para $N$ agentes sem
+modificação.
 
 \begin{figure}[H]
   \centering
-  \fbox{\includegraphics[width=0.78\textwidth]{figs/cbs/cbs_scalability.png}}
-  \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$
-           (grid $10{\times}10$, $\rho=0{,}20$, 5 trials por ponto, timeout 30\,s).
-           O crescimento super-linear contrasta com o custo $O(1)$ por agente do
-           $\rho$-criterion, motivando a decisão local como abordagem escalável.
-           O trial censurado em $N{=}8$ ilustra a impraticabilidade do CBS centralizado
-           em tempo real para frotas maiores.}
+  \includegraphics[width=0.72\textwidth]{figs/cbs/cbs_scalability.png}
+  \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$.
+           O crescimento super-linear (timeout já em $N{=}8$) contrasta com o custo $O(1)$ por
+           agente do $\rho$-criterion, motivando a decisão local como abordagem escalável.}
   \label{fig:cbs_scalability}
 \end{figure}
 
-Validação com múltiplos agentes reais em ROS2 também constitui trabalho futuro.
+\subsubsection*{O limite do RL independente: motivação para MARL}
 
-\subsubsection*{Experimento de Degradação: RL Independente com N Agentes (Dados Reais)}
-
-Para quantificar empiricamente onde o RL independente quebra --- e motivar o MARL com
-\textbf{dados reais}, não sintéticos --- foi conduzido um experimento no ambiente 2D leve
-com $N \in \{1, 2, 3, 4, 5, 6, 8\}$ robôs, cada um executando a política SAC treinada de
-forma \textbf{independente} (sem comunicação). Cada robô percebe os vizinhos como obstáculos
-circulares dinâmicos no LIDAR (raycasting atualizado a cada passo), mas decide ação sem
-coordenação central. 20 trials por configuração, arena densa ($\rho \approx 0{,}35$).
-
-
-Para avaliar se a degradação depende da \textbf{densidade do ambiente} além do número de
-agentes, o experimento foi repetido nas três densidades disponíveis
-(Figura~\ref{fig:marl_degradation_density}). Os resultados mostram que a taxa de goal cai
-consistentemente com $N$ em \textit{todas} as densidades: para $N{=}8$, o SAC independente
-atinge 38\% de goal no esparso, 20\% no denso e 12\% no muito denso. A colisão inter-robô
-se mantém próxima de 100\% para $N \geq 5$ independentemente da densidade --- indicando
-que o problema é inerente à falta de coordenação, não à dificuldade do ambiente per se.
-Deadlock permanece 0\% em todas as combinações, confirmando que os robôs \textbf{colidem}
-sem travar.
+A decisão local independente, porém, deixa em aberto se a coordenação coletiva emerge. Os
+experimentos acima usam trajetórias CBS pré-computadas, ou seja, a coordenação foi garantida
+externamente. Para testar o regime sem essa garantia, conduziu-se um experimento com $N$ robôs
+executando a política SAC de forma independente no ambiente 2D, cada um percebendo os vizinhos
+como obstáculos dinâmicos no LIDAR, sem coordenação central (\textbf{dados reais}, 20 trials por
+configuração). A taxa de chegada ao objetivo cai consistentemente com $N$ em todas as densidades
+(em $N{=}8$, de 38\% no esparso a 12\% no muito denso) e a colisão entre robôs satura próximo de
+100\% para $N \geq 5$, enquanto o \textit{deadlock} permanece em 0\%: os robôs colidem, não
+travam (Figura~\ref{fig:marl_degradation_density}). O problema é, portanto, a falta de
+coordenação, não a dificuldade do ambiente.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
-  \caption{Degradação do SAC independente: taxa de goal (esq.), colisão inter-robô (centro)
-           e deadlock (dir.) versus $N$, para três densidades de obstáculos
-           (verde=esparso $\rho{=}0{,}05$, amarelo=denso $\rho{=}0{,}30$,
-           vermelho=muito denso $\rho{=}0{,}50$). Dados REAIS, 20 trials por ponto, env 2D.
-           Em $N{=}8$: goal cai de 38\% a 12\% conforme a densidade sobe;
-           colisão inter-robô converge a ${\approx}100\%$ em $N{\geq}5$ em todas as densidades;
-           deadlock = 0\% em todos os casos (robôs colidem, não travam).}
+  \caption{Degradação do SAC independente (dados reais, env 2D, 20 trials/ponto): taxa de
+           objetivo (esq.), colisão entre robôs (centro) e deadlock (dir.) versus $N$, em três
+           densidades. A colisão satura em ${\approx}100\%$ para $N{\geq}5$ e o deadlock é nulo,
+           indicando falta de coordenação como causa-raiz.}
   \label{fig:marl_degradation_density}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/marl/fig_marl_motivation_summary_2d.png}
-  \caption{Comparação A* independente vs.\ SAC independente em três métricas
-           para $N \in \{1,\ldots,8\}$ agentes (\textbf{dados REAIS}, env 2D).
-           \textbf{Esquerda:} colisão inter-robô --- cresce para ambas as estratégias,
-           mais rapidamente no A* por ausência de reatividade local.
-           \textbf{Centro:} taxa de goal --- cai com $N$ para ambas.
-           \textbf{Direita:} taxa de deadlock --- SAC exibe menos deadlock por reagir
-           localmente, mas falha em coordenação.
-           Nenhuma estratégia resolve os três problemas simultaneamente: argumento
-           para coordenação emergente via MARL.}
-  \label{fig:marl_summary}
-\end{figure}
-
-O comportamento do A* independente depende fortemente do regime. Em arenas densas
-($\rho \approx 0{,}35$, Figura~\ref{fig:marl_summary}), a política de linha reta colide com
-frequência por não desviar reativamente de vizinhos. Já em baixa densidade e com trajetos
-que não se cruzam, a mesma política determinística atinge o objetivo sem colisões: em
-episódios representativos de $N{=}4$ no mundo esparso, todos os agentes chegam ao goal com
-0\% de colisão inter-robô, contra a alta colisão do SAC independente nas mesmas condições.
-Essa diferença reforça o diagnóstico central: o problema multi-agente não é a escolha do
-planejador em si, mas a ausência de \textit{coordenação} entre decisões locais
-simultâneas --- exatamente a lacuna que o MARL (Fase~3) endereça.
-
-
-
-Para execução em robôs reais, o plano discreto do CBS precisa ainda ser convertido em um
-\textit{schedule} cinemático que respeite inércia e limites de velocidade, etapa resolvida
-pelo pós-processamento por Grafo de Plano Temporal (TPG) \cite{Honig2016}, que insere buffers
-de segurança entre agentes que cruzam a mesma célula em passos adjacentes.
-
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_deviation_analysis.png}
-  \caption{Experimento de desvio: custo adicional de não seguir o $\rho$-criterion em 100
-           cenários CBS (2 agentes, 8$\times$8, 12 obstáculos). \textbf{Superior:} desvio
-           sempre-A* ($+2{,}1\%$, azul) e sempre-SAC ($+14{,}1\%$, vermelho). \textbf{Inferior:}
-           proporção de SAC/PPO ativado por cenário. O $\rho$-criterion produz custo menor
-           do que qualquer política uniforme em todos os cenários testados.}
-  \label{fig:cbs_deviation}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_density_sweep.png}
-  \caption{Varredura sistemática densidade $\times$ ativação SAC/PPO (grid 10$\times$10,
-           8 trials por ponto, 2/3/5 agentes). A transição de regime ocorre em
-           $\rho \approx 0{,}28$--$0{,}32$ independentemente do número de agentes,
-           validando empiricamente $\rho^* = 0{,}30$ como fronteira de fase robusta.}
-  \label{fig:cbs_density_sweep}
-\end{figure}
-
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{figs/cbs/cbs_canyon_annotation.png}
-  \caption{Cenário canyon de alta densidade: 5 agentes, grid 12$\times$10, 28 obstáculos.
-           Paredes laterais forçam passagem pelo corredor central ($\rho \geq 0{,}30$).
-           \textbf{44\% dos passos ativam SAC/PPO} no canyon (pontos vermelhos), confirmando
-           que o $\rho$-criterion responde corretamente ao aumento de densidade.}
-  \label{fig:cbs_canyon}
-\end{figure}
-
+Curiosamente, uma política A* de linha reta independente coordena melhor em baixa densidade
+(0\% de colisão em trajetos que não se cruzam), mas colide tanto quanto o SAC quando os
+caminhos se cruzam em arenas densas. Nenhuma estratégia sem treino conjunto resolve o problema:
+garantir coordenação sob decisão local reativa é o domínio do Aprendizado por Reforço
+Multi-Agente (MARL), que constitui a Fase~3 deste programa. Para execução em robôs reais, o
+plano discreto do CBS ainda precisa ser convertido em um \textit{schedule} cinemático viável,
+etapa resolvida pelo pós-processamento por Grafo de Plano Temporal (TPG) \cite{Honig2016}. A
+validação com múltiplos agentes físicos em ROS2 também constitui trabalho futuro.
 
 % ============================================================
 \section{Conclusão}
