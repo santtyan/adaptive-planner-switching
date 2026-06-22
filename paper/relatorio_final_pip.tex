@@ -79,28 +79,29 @@
 
 % ── Resumo ──────────────────────────────────────────────────
 \begin{abstract}
-O planejamento de trajetória em robótica autônoma enfrenta um dilema: algoritmos
-determinísticos como A* são eficientes em espaços abertos, mas degradam-se em alta densidade
-de obstáculos; políticas de aprendizado por reforço adaptam-se melhor a ambientes complexos,
-porém são desnecessariamente custosas onde o A* seria suficiente. A literatura trata essa
-escolha como decisão fixa de projeto. A tese deste trabalho é que \textbf{selecionar o
-planejador de forma adaptiva, em tempo de execução, supera qualquer método fixo em ambientes
-heterogêneos}, tese verificada empiricamente por experimentos controlados.
+Para decidir por onde passar, um robô autônomo usa um algoritmo de planejamento de trajetória.
+Algoritmos clássicos como o A* são rápidos e eficientes em espaços abertos, mas perdem
+desempenho quando há muitos obstáculos. Já as políticas de aprendizado por reforço lidam melhor
+com ambientes complexos, porém são desnecessariamente custosas quando o caminho é livre. Na
+prática, essa escolha costuma ser fixada uma única vez, no projeto do sistema. A tese deste
+trabalho é que \textbf{escolher o planejador de forma adaptiva, durante a navegação, supera
+qualquer escolha fixa em ambientes heterogêneos} --- e isso foi verificado por experimentos
+controlados.
 
-A contribuição central é o $\rho$-\textit{criterion}: a densidade local de obstáculos ao
-redor do robô determina qual planejador funciona melhor. Em regiões esparsas, o A*
-calcula caminhos ótimos em milissegundos; em regiões congestionadas, uma política SAC
-(\textit{Soft Actor-Critic}), treinada por reforço, reage melhor a geometrias complexas.
-O limiar $\rho^* = 0{,}30$ foi determinado experimentalmente: 1.500 cenários Monte Carlo
-com densidades variando de $\rho = 0{,}05$ a $\rho = 0{,}60$ revelaram o ponto de
-cruzamento de desempenho entre os dois planejadores.
+A contribuição central é o $\rho$-\textit{criterion}: um critério que mede a densidade de
+obstáculos ao redor do robô e seleciona, a cada instante, o planejador mais adequado. Em
+espaços abertos, usa o A*; em regiões congestionadas, usa uma política SAC
+(\textit{Soft Actor-Critic}) treinada por reforço, que reage melhor a geometrias difíceis. O
+limiar que separa os dois regimes, $\rho^* = 0{,}30$, foi obtido por experimentos: 1.500
+cenários cobrindo densidades de $0{,}05$ a $0{,}60$ revelaram o ponto em que um planejador
+passa a superar o outro.
 
-A Fase~1 confirmou a tese: taxa de sucesso de 85,3\% contra 76\% do melhor método fixo,
-com regret médio de 2,2\% em relação ao seletor ideal. O benchmark de algoritmos clássicos
-justificou empiricamente a escolha do A* (Floyd-Warshall consome 39~s e 22~MB num grid
-$30{\times}30$, inviável para planejamento em tempo real). A Fase~2, que integra
-ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle, está em andamento, com resultados
-quantitativos previstos para Agosto/2026.
+A Fase~1 confirmou a tese: o critério adaptivo atingiu 85,3\% de taxa de sucesso, contra 76\%
+do melhor método fixo, ficando a apenas 2,2\% de um seletor ideal. O estudo dos algoritmos
+clássicos justificou a escolha do A* (o Floyd-Warshall, por exemplo, leva 39~s e 22~MB num
+grid $30{\times}30$, inviável em tempo real). A Fase~2, que integra ROS2~Humble, Gazebo~Classic
+e TurtleBot3~Waffle, está em andamento, com resultados quantitativos previstos para
+Agosto/2026.
 \end{abstract}
 
 
@@ -135,12 +136,12 @@ mensurável em ambientes heterogêneos.
 
 Este trabalho aborda essa lacuna com a seguinte tese central: \textbf{a seleção adaptiva de
 planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes
-heterogêneos, com ganho mensurável e evidência empírica de performance superior}. Operacionalmente, essa
-tese é verificada por três hipóteses. A primeira (H1) sustenta que o framework adaptivo
-$\rho$-criterion obtém taxa de sucesso superior à do melhor método fixo em ambientes de
-densidade variável. A segunda (H2) afirma que o critério com limiar $\rho^*{=}0{,}30$ captura a
-fronteira de decisão ótima entre planejadores clássicos e de aprendizado por reforço, com
-regret médio de no máximo 5\% em relação ao seletor ideal (admitindo-se até 10\% no pior caso).
+heterogêneos, com ganho mensurável}. Essa tese se desdobra em três hipóteses verificáveis.
+A primeira (H1) sustenta que o critério adaptivo alcança taxa de sucesso maior que a do melhor
+método fixo em ambientes de densidade variável. A segunda (H2) afirma que o limiar
+$\rho^*{=}0{,}30$ acerta o ponto de troca entre o planejador clássico e o de aprendizado por
+reforço, ficando perto de um seletor ideal: a diferença média de desempenho é de no máximo
+5\%, e de 10\% no pior caso.
 A terceira (H3) postula que o framework é realizável em um stack robótico padrão da indústria
 (ROS2/Nav2/Gazebo), sem modificar os planejadores subjacentes. A confirmação de H3 levanta
 uma questão para o caso com vários robôs: quando todos aplicam o critério ao mesmo tempo e de
