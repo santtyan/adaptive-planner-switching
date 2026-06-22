@@ -103,8 +103,6 @@ ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle, está em andamento, com resulta
 quantitativos previstos para Agosto/2026.
 \end{abstract}
 
-\tableofcontents
-\newpage
 
 % ============================================================
 \section{Apresentação}
@@ -280,9 +278,9 @@ o tempo do RRT* cresce de 16\,ms a 115\,ms em $\rho{=}0{,}30$ contra ${\approx}1
 constantes do PPO --- diferença de 10$\times$, que justifica a comutação antes do cruzamento
 de taxa de sucesso.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figs/benchmark/planner_time_vs_density.png}
+  \includegraphics[width=0.8\textwidth]{figs/benchmark/planner_time_vs_density.png}
   \caption{Regime de atuação por planejador (dados calibrados Fase~1, mocks RRT*/PPO;
            Fase~2 usa A*/SAC real). \textbf{Esquerda:} taxa de sucesso por densidade ---
            RRT* excelente em baixa densidade (96\% em $\rho{=}0{,}10$), PPO estável em
@@ -359,10 +357,10 @@ que combina escalabilidade com direcionamento ao objetivo, justificando formalme
 escolha como componente clássico do framework adaptivo.
 
 % ── Figuras do benchmark ─────────────────────────────────────
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   % Substitua pelo caminho real após gerar as figuras definitivas
-  \includegraphics[width=0.85\textwidth]{figs/benchmark/benchmark_time.png}
+  \includegraphics[width=0.72\textwidth]{figs/benchmark/benchmark_time.png}
   \caption{Tempo de execução dos algoritmos clássicos em função do tamanho do grid.
            Escala log-log. Dijkstra e A* crescem linearmente; Floyd-Warshall e Johnson
            tornam-se inviáveis para $N > 900$ nós.}
@@ -402,9 +400,9 @@ Escolher $\tau^* = 0{,}30$ é, portanto, a decisão Pareto-ótima entre eficáci
 eficiência computacional.
 
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
+  \includegraphics[width=0.8\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
   \caption{Análise comparativa do limiar $\tau^*{=}0{,}30$ com boxplots de distribuição de
            taxa de sucesso e equações formais de retorno marginal.
            \textbf{Equações:}
@@ -440,9 +438,9 @@ O framework adaptivo supera todos os baselines. A superioridade sobre o melhor m
 Regret médio em relação ao oracle ideal: \textbf{2,2\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
 Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/core/fig_statistical_test.png}
+  \includegraphics[width=0.72\textwidth]{figs/core/fig_statistical_test.png}
   \caption{Taxa de sucesso por método e densidade com IC~95\% (bootstrap binomial).
            O $\rho$-criterion supera o PPO fixo em todas as densidades acima de $\rho=0{,}25$,
            com vantagem máxima de 13,3~pp em $\rho=0{,}45$.
@@ -564,9 +562,9 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
   \end{tabular}
 \end{table}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+  \includegraphics[width=0.72\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
   \caption{Curva de aprendizado SAC no ambiente 2D leve (world=sparse), média $\pm$ IC~95\%
            de 3 seeds independentes (42, 123, 7). Convergência ($\geq$90\% sucesso) em
            4.000--14.000 passos (6--13 minutos). O ambiente 2D serve como proxy controlado
@@ -574,9 +572,9 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
   \label{fig:2d_learning_curve_ci}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_compare_dense.png}
   \caption{Comparação de trajetórias no ambiente denso ($\rho \approx 0{,}35$):
            A* analítico (linha reta, frequentemente bloqueado), SAC independente
            (reativo local) e política Adaptativa $\rho$-criterion (A* onde possível,
@@ -585,7 +583,7 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
   \label{fig:2d_compare}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.75\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
   \caption{Mapa de decisão $\rho$-criterion no ambiente denso: regiões azuis
@@ -607,7 +605,7 @@ antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo 
 currículo multi-densidade (sparse $\to$ dense $\to$ very\_dense), planejado para quando
 o treino Gazebo liberar recursos computacionais.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.82\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
   \caption{Degradação da taxa de sucesso do SAC single-robot em função da densidade de
@@ -697,7 +695,7 @@ realistas em tempo real. O $\rho$-criterion contrasta por decidir localmente em 
 agente, sem comunicação nem estado global, o que permite escalar de 1 para $N$ agentes sem
 modificação.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.72\textwidth]{figs/cbs/cbs_scalability.png}
   \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$.
@@ -719,9 +717,9 @@ configuração). A taxa de chegada ao objetivo cai consistentemente com $N$ em t
 travam (Figura~\ref{fig:marl_degradation_density}). O problema é, portanto, a falta de
 coordenação, não a dificuldade do ambiente.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
+  \includegraphics[width=0.8\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
   \caption{Degradação do SAC independente (dados reais, env 2D, 20 trials/ponto): taxa de
            objetivo (esq.), colisão entre robôs (centro) e deadlock (dir.) versus $N$, em três
            densidades. A colisão satura em ${\approx}100\%$ para $N{\geq}5$ e o deadlock é nulo,
@@ -813,9 +811,9 @@ adaptiva (Fase~2, parcialmente implementada), até o horizonte de pesquisa em MA
 e com estimador $\rho$ desacoplado, o que permite estender o sistema para $N$ agentes
 sem reescrever os componentes existentes.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{figs/marl/roadmap_marl_tj.png}
+  \includegraphics[width=0.8\textwidth]{figs/marl/roadmap_marl_tj.png}
   \caption{Roadmap de extensão do framework: Fase~1 (implementada, agente único),
            Fase~2 (CBS + anotação adaptiva, parcialmente implementada) e
            Fase~3 (MARL + teoria dos jogos cooperativos, trabalho futuro).
