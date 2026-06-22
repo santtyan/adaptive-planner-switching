@@ -1,15 +1,10 @@
 """
-visualize_multi_2d.py — GIFs animados de múltiplos robôs SAC independentes.
-
-Gera animações para sparse / dense / very_dense com N robôs mostrando:
-  - sparse  : robôs chegando ao goal (N pequeno, comportamento ok)
-  - dense   : colisões emergindo
-  - very_dense : colapso de coordenação
+visualize_multi_2d.py — GIFs animados de múltiplos robôs (SAC ou A* independentes).
 
 Uso:
-  python3 -m eval.env2d.visualize_multi_2d
-  python3 -m eval.env2d.visualize_multi_2d --world dense --n-agents 6 --seed 3
   python3 -m eval.env2d.visualize_multi_2d --all-worlds
+  python3 -m eval.env2d.visualize_multi_2d --all-worlds --policy astar
+  python3 -m eval.env2d.visualize_multi_2d --world dense --n-agents 4 --policy astar
 """
 
 import os, sys, argparse
@@ -33,16 +28,29 @@ NOMINAL_RHO = {"sparse": 0.05, "dense": 0.30, "very_dense": 0.50}
 COLORS = plt.cm.tab10.colors
 
 
-def _rollout_multi(model, world, n_agents, seed):
+def _astar_action(env, i):
+    """Política de linha reta para agente i (A* simplificado)."""
+    dx = env.gx[i] - env.x[i]
+    dy = env.gy[i] - env.y[i]
+    dist = np.hypot(dx, dy)
+    ang  = np.arctan2(dy, dx)
+    dtheta = (ang - env.yaw[i] + np.pi) % (2 * np.pi) - np.pi
+    v = min(1.0, dist / 0.5) * (abs(dtheta) < 0.6)
+    w = np.clip(dtheta / np.pi, -1.0, 1.0)
+    return np.array([v, w], dtype=np.float32)
+
+
+def _rollout_multi(model, world, n_agents, seed, policy="sac"):
     """Roda um episódio multi-robô e retorna frames e métricas."""
     env = MultiAgentEnv2D(n_agents, world=world, seed=seed)
     obs = env.reset()
 
-    # frame = (xs, ys, yaws, gxs, gys, done_flags)
     frames = [_snapshot(env, n_agents)]
     done = False
     while not done:
-        if model is not None:
+        if policy == "astar":
+            actions = np.array([_astar_action(env, i) for i in range(n_agents)])
+        elif model is not None:
             actions, _ = model.predict(obs, deterministic=True)
         else:
             actions = np.zeros((n_agents, 2))
@@ -79,7 +87,7 @@ def _draw_arena_multi(ax, snap):
     ax.grid(True, alpha=0.12)
 
 
-def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True):
+def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True, policy="sac"):
     """Gera um GIF animado de N robôs no mundo especificado."""
     rho = NOMINAL_RHO.get(world, 0.0)
     out_dir = FIGS / "marl"
@@ -89,16 +97,17 @@ def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True)
     best_frames, best_metrics = None, None
     seeds_to_try = range(seed, seed + (30 if cherry_pick else 1))
     for s in seeds_to_try:
-        frames, metrics = _rollout_multi(model, world, n_agents, s)
+        frames, metrics = _rollout_multi(model, world, n_agents, s, policy=policy)
         if best_frames is None:
             best_frames, best_metrics = frames, metrics
-        if cherry_pick and metrics.get("goal_rate", 0) > 0:
+        if cherry_pick and metrics.get("goal_rate", 0) > best_metrics.get("goal_rate", 0):
             best_frames, best_metrics = frames, metrics
-            print(f"  seed={s}: goal_rate={metrics['goal_rate']:.0%} "
-                  f"inter_coll={metrics['inter_collision']:.0%} — usado")
+        if cherry_pick and best_metrics.get("goal_rate", 0) >= 0.75:
+            print(f"  seed={s}: goal_rate={best_metrics['goal_rate']:.0%} "
+                  f"inter_coll={best_metrics['inter_collision']:.0%} — usado")
             break
     else:
-        print(f"  seed range esgotado, usando melhor encontrado")
+        print(f"  seed range esgotado: goal_rate={best_metrics.get('goal_rate',0):.0%}")
 
     frames = best_frames
     n = n_agents
@@ -156,15 +165,17 @@ def make_gif(model, world, n_agents, seed=1, fps=8, suffix="", cherry_pick=True)
 
         gr  = best_metrics.get("goal_rate", 0)
         ic  = best_metrics.get("inter_collision", 0)
+        label = "A* independente" if policy == "astar" else "SAC independente"
         ax.set_title(
-            f"{n} robôs SAC independentes — {world} ($\\rho\\approx{rho:.2f}$)\n"
+            f"{n} robôs {label} — {world} ($\\rho\\approx{rho:.2f}$)\n"
             f"passo {fi}/{total-1}  |  goal={gr:.0%}  colisão={ic:.0%}",
             fontsize=10, fontweight="bold")
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
 
     ani = animation.FuncAnimation(fig, draw_frame, frames=len(frames),
                                   interval=1000 // fps)
-    fname = out_dir / f"fig_marl_episode_{world}_N{n_agents}{suffix}.gif"
+    policy_tag = "_astar" if policy == "astar" else ""
+    fname = out_dir / f"fig_marl_episode_{world}_N{n_agents}{policy_tag}{suffix}.gif"
     ani.save(str(fname), writer="pillow", fps=fps)
     plt.close()
     print(f"  ✓ {fname.name}  [{len(frames)} frames]")
@@ -179,34 +190,36 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--fps", type=int, default=8)
     ap.add_argument("--all-worlds", action="store_true",
-                    help="Gera GIFs para sparse (N=4), dense (N=4), very_dense (N=4)")
+                    help="Gera GIFs para sparse/dense/very_dense N=4")
     ap.add_argument("--no-model", action="store_true")
+    ap.add_argument("--policy", default="sac", choices=["sac", "astar"],
+                    help="Política dos agentes: sac ou astar")
     args = ap.parse_args()
 
     model = None
-    if not args.no_model:
+    if args.policy == "sac" and not args.no_model:
         from stable_baselines3 import SAC
         mp = MODS / "sac_2d_best.zip"
         if mp.exists():
             model = SAC.load(str(mp), device="cpu")
             print("Modelo carregado: sac_2d_best")
         else:
-            print(f"Modelo não encontrado em {mp}. Use --no-model.")
+            print(f"Modelo não encontrado em {mp}. Use --no-model ou --policy astar.")
             sys.exit(1)
 
     if args.all_worlds:
         configs = [
-            ("sparse",     4, 1),   # sparse + N=4: maioria chega
-            ("dense",      4, 1),   # dense  + N=4: colisões emergem
-            ("very_dense", 4, 1),   # very_dense N=4: colapso
-            ("dense",      8, 1),   # dense  + N=8: colapso total
+            ("sparse",     4, 1),
+            ("dense",      4, 1),
+            ("very_dense", 4, 1),
+            ("dense",      8, 1),
         ]
         for world, n, seed in configs:
-            print(f"\n--- {world}  N={n} ---")
-            make_gif(model, world, n, seed=seed, fps=args.fps)
+            print(f"\n--- {world}  N={n}  policy={args.policy} ---")
+            make_gif(model, world, n, seed=seed, fps=args.fps, policy=args.policy)
     else:
         make_gif(model, args.world, args.n_agents,
-                 seed=args.seed, fps=args.fps)
+                 seed=args.seed, fps=args.fps, policy=args.policy)
 
 
 if __name__ == "__main__":
