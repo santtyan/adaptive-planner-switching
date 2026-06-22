@@ -50,6 +50,9 @@
 \rhead{\small PIP/UFG 2025--2026}
 \lhead{\small Yan Santos Leite}
 \cfoot{\thepage}
+\setlength{\headheight}{14.5pt}      % evita warning "headheight too small" do fancyhdr
+\addtolength{\topmargin}{-2.5pt}     % compensa o aumento, mantendo a área de texto
+\emergencystretch=2em                % reduz "Overfull \hbox" em parágrafos justificados
 
 % ── Seções sem recuo ────────────────────────────────────────
 \setlength{\parindent}{1.25cm}
@@ -214,7 +217,7 @@ Floyd-Warshall e Johnson resolvem todos os pares de origem-destino, o primeiro e
 tempo e $O(V^2)$ de memória, o segundo em $O(V \cdot E \cdot \log V)$ com rebalanceamento por
 Bellman-Ford.
 
-\subsection{Critério Adaptivo $\rho$}
+\subsection{Critério Adaptivo \texorpdfstring{$\rho$}{rho}}
 
 A densidade local de obstáculos é calculada em uma janela $w$ ao redor da pose atual do
 robô na costmap de ocupação:
@@ -326,7 +329,7 @@ escolha como componente clássico do framework adaptivo.
 
 % ── Espaço reservado para imagens do Gazebo ──────────────────
 
-\subsection{Validação do Critério Adaptivo $\rho$ --- Fase 1 (Monte Carlo)}
+\subsection{Validação do Critério Adaptivo \texorpdfstring{$\rho$}{rho} --- Fase 1 (Monte Carlo)}
 
 Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado).
 Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
