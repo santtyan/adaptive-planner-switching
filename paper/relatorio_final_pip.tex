@@ -676,8 +676,8 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.60\textwidth]{figs/2d/fig_2d_episode_very_dense.gif}
-  \caption{Animação de um episódio no ambiente \texttt{very\_dense} ($\rho \approx 0{,}52$):
+  \includegraphics[width=0.60\textwidth]{figs/2d/fig_2d_episode_very_dense_frame.png}
+  \caption{Quadro final de um episódio no ambiente \texttt{very\_dense} ($\rho \approx 0{,}52$):
            o agente SAC navega reativamente entre obstáculos próximos, situação em que o
            planejador global A* falha por ausência de caminho livre. Arquivo gerado por
            \texttt{eval/env2d/visualize\_2d.py}.}
@@ -981,19 +981,19 @@ simultâneas --- exatamente a lacuna que o MARL (Fase~3) endereça.
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_sparse_N4.gif}
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_sparse_N4_frame.png}
     \caption*{(a) Esparso $\rho{=}0{,}05$, $N{=}4$ — 75\% goal, colisão inter-robô alta por
               trajetos cruzados.}
   \end{minipage}\hfill
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_dense_N8.gif}
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_episode_dense_N8_frame.png}
     \caption*{(b) Denso $\rho{=}0{,}30$, $N{=}8$ — 12\% goal, colapso de coordenação:
               robôs invadem o mesmo espaço e colidem.}
   \end{minipage}
-  \caption{Animações representativas de episódios multi-robô com SAC independente
+  \caption{Quadros finais representativos de episódios multi-robô com SAC independente
            (sem coordenação central). Verde=robô atingiu goal; vermelho=colidiu; azul=em
-           movimento. A ausência de comunicação leva a trajetórias conflitantes --- argumento
+           movimento. A ausência de comunicação leva a trajetórias conflitantes, argumento
            direto para coordenação via MARL.
            Gerado por \texttt{eval/env2d/visualize\_multi\_2d.py}.}
   \label{fig:marl_gifs}
