@@ -957,6 +957,16 @@ sem travar.
   \label{fig:marl_summary}
 \end{figure}
 
+O comportamento do A* independente depende fortemente do regime. Em arenas densas
+($\rho \approx 0{,}35$, Figura~\ref{fig:marl_summary}), a política de linha reta colide com
+frequência por não desviar reativamente de vizinhos. Já em baixa densidade e com trajetos
+que não se cruzam, a mesma política determinística atinge o objetivo sem colisões: em
+episódios representativos de $N{=}4$ no mundo esparso, todos os agentes chegam ao goal com
+0\% de colisão inter-robô, contra a alta colisão do SAC independente nas mesmas condições.
+Essa diferença reforça o diagnóstico central: o problema multi-agente não é a escolha do
+planejador em si, mas a ausência de \textit{coordenação} entre decisões locais
+simultâneas --- exatamente a lacuna que o MARL (Fase~3) endereça.
+
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.65\textwidth]{figs/marl/fig_2d_multiagent_snapshot.png}
@@ -1116,6 +1126,18 @@ estimável em tempo real a partir do LIDAR do robô.
         (Aprendizado por Reforço Multi-Agente, MARL), que permitiria coordenação emergente
         sem comunicação explícita. A arquitetura SAC já em uso é compatível com extensões
         como QMIX e MAPPO.
+  \item \textbf{Obstáculos dinâmicos.} O Plano de Trabalho previa testes com agentes em
+        movimento (pedestres, veículos), inviáveis no Gazebo Classic, que não simula atores
+        dinâmicos nativamente. Migrar a infraestrutura para simuladores com suporte a atores
+        (Gazebo Fortress, Isaac Sim) fecharia esse item: o $\rho$-criterion já estima a
+        densidade local em tempo real a partir do LIDAR, de modo que obstáculos móveis seriam
+        capturados pelo mesmo mecanismo, sem alteração do critério.
+  \item \textbf{Validação em robôs físicos.} Toda a avaliação ocorreu em simulação. O grupo
+        já dispõe de uma plataforma com dois TurtleBot3 Waffle reais
+        (\texttt{cerise-turtlebot3-nav}), o que torna a transferência \textit{sim-to-real}
+        do $\rho$-criterion um passo concreto: validar a estimativa de densidade e a comutação
+        de planejador sob ruído de sensor e latência reais é o teste decisivo de
+        aplicabilidade do framework.
 \end{itemize}
 
 A Figura~\ref{fig:roadmap} sintetiza a progressão natural do trabalho: da validação em
