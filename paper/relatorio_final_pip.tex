@@ -450,12 +450,12 @@ passo é garantidamente $\geq 0$}, enquanto a colisão impõe penalidade termina
 Versões iniciais adotavam penalidade de obstáculo por passo (piso de $-1$ a $-5$). O
 problema é que a soma dessas penalidades ao longo de um episódio longo ($-600$ a $-3000$
 em 600 passos) superava a penalidade por colisão ($-100$), tornando racional para o agente
-colidir cedo e encerrar o episódio rapidamente. Esse comportamento, denominado
-\textit{suicidal agent} na literatura, foi evidenciado pela queda de
-\texttt{ep\_len\_mean} de ${\sim}55$ para ${\sim}8$ ao ativar o SAC. A correção,
-seguindo Cimurs et al.\ (2022), elimina o piso de penalidade e introduz um bônus de
-sobrevivência por passo: assim, aguentar o episódio até o fim sempre vale mais do que
-colidir, eliminando o incentivo perverso.
+colidir cedo e encerrar o episódio rapidamente. Esse comportamento, conhecido na literatura
+como \textit{suicidal agent} (agente suicida), ficou evidente na queda da duração média dos
+episódios, de cerca de 55 para apenas 8 passos ao ativar o SAC. A correção, seguindo Cimurs
+et al.\ (2022), elimina a penalidade por passo e mantém o bônus de sobrevivência: assim,
+chegar até o fim do episódio sempre vale mais do que colidir, o que remove o incentivo
+perverso.
 
 \subsection{Validação no Ambiente 2D Leve --- Env2D}
 
@@ -596,18 +596,17 @@ infraestrutura.
 \subsection{Extensão Multi-Agente}
 \label{sec:multiagente}
 
-Resultados reportados no Relatório Parcial (aprovado 01/04/2026), obtidos com dados
-\textbf{reais} do pipeline CBS + \texttt{adaptive\_annotator.py} sobre benchmarks públicos
-(\texttt{atb033/multi\_agent\_path\_planning}), confirmam que o $\rho$-criterion generaliza
-para múltiplos agentes sem qualquer modificação: cada agente avalia $\rho$ a partir da própria
-pose, sem comunicação. Em 100 cenários com 2 agentes (densidade global $\approx 0{,}19$), 93\%
-dos passos selecionaram o planejador clássico, como esperado para ambientes esparsos; com 5
-agentes, a densidade local em regiões de congestionamento eleva a ativação do RL a até 26\%.
-Num cenário \textit{canyon} projetado para forçar passagem por um corredor denso
-($\rho \geq 0{,}30$), a ativação do RL sobe para 44\%, confirmando que o critério responde
-corretamente ao aumento de densidade. Uma varredura sistemática ($\rho \in [0{,}04,\,0{,}52]$,
-2/3/5 agentes) localiza a transição de regime em $\rho \approx 0{,}28$--$0{,}32$,
-independentemente do número de agentes, o que valida $\rho^*=0{,}30$ como fronteira robusta.
+O Relatório Parcial (aprovado em 01/04/2026) já mostrou que o $\rho$-criterion funciona com
+vários robôs sem nenhuma adaptação: cada agente calcula a própria densidade e decide sozinho,
+sem se comunicar com os demais. Esses resultados vieram de dados reais, gerados pelo pipeline
+CBS sobre mapas públicos de teste.
+
+Os números acompanham a densidade do ambiente. Em 100 cenários com 2 agentes (espaço esparso,
+$\rho \approx 0{,}19$), 93\% dos passos usaram o planejador clássico, como se espera em espaços
+abertos. Com 5 agentes, regiões de congestionamento elevam o uso do RL para até 26\%. E num
+cenário \textit{canyon}, com um corredor estreito e denso, o uso do RL sobe para 44\%. Uma
+varredura completa confirma que a troca entre os dois regimes acontece sempre por volta de
+$\rho \approx 0{,}30$, qualquer que seja o número de robôs.
 
 Vale registrar a continuidade com o Relatório Parcial: o planejador clássico de referência
 era o RRT* e o de RL era o PPO; a integração com ROS2/Nav2 adotou A*/SmacPlanner2D e SAC. O
@@ -716,16 +715,13 @@ cair de 91\% no esparso a 40\% no muito denso (Figura~\ref{fig:2d_degradation_si
 que motiva, como próximo passo imediato, um currículo de treinamento que varra as três
 densidades.
 
-Há ainda três extensões de maior fôlego. A primeira é a coordenação multi-agente: com decisão
+Há ainda duas extensões de maior fôlego. A primeira é a coordenação multi-agente: com decisão
 local e independente, a coordenação só emerge quando o CBS pré-computa as trajetórias, e o
 movimento simultâneo gera colisões, lacuna que o treinamento conjunto por reforço (MARL, via
 QMIX ou MAPPO) endereçaria sobre a mesma arquitetura SAC já em uso. A segunda são os obstáculos
 dinâmicos previstos no Plano de Trabalho, inviáveis no Gazebo Classic por falta de atores
 móveis nativos, mas que seriam capturados pelo mesmo estimador de densidade via LIDAR em
-simuladores como Gazebo Fortress ou Isaac Sim, sem alterar o critério. A terceira é a validação
-em robôs físicos: como toda a avaliação ocorreu em simulação, a transferência \textit{sim-to-real}
-para os dois TurtleBot3 Waffle reais do grupo (\texttt{cerise-turtlebot3-nav}) é o teste
-decisivo de aplicabilidade do framework.
+simuladores como Gazebo Fortress ou Isaac Sim, sem alterar o critério.
 
 A Figura~\ref{fig:roadmap} sintetiza a progressão natural do trabalho: da validação em
 agente único (Fase~1, concluída) à generalização multi-agente via CBS com anotação
@@ -830,12 +826,9 @@ from the third BARN Challenge at ICRA 2024. \textbf{IEEE Robotics \& Automation 
 \section*{Informações Complementares}
 \addcontentsline{toc}{section}{Informações Complementares}
 
-\subsection*{Certificados --- Diálogos em Pesquisa e Inovação (OBRIGATÓRIO)}
-\textit{[Anexar certificados de participação nas palestras do Programa Diálogos em Pesquisa e
-Inovação antes de submeter no SIGAA]}
-
-\subsection*{Elemento Audiovisual (opcional)}
-\textit{[Se houver vídeo de até 1 min / 50 MB: inserir link do Google Drive institucional aqui]}
+\subsection*{Certificados --- Diálogos em Pesquisa e Inovação}
+Os certificados de participação nas palestras do Programa Diálogos em Pesquisa e Inovação
+encontram-se anexados a este relatório.
 
 \subsection*{Outras Atividades Acadêmicas Relacionadas ao Projeto}
 Ao longo do projeto, o estudante participou de atividades de pesquisa e extensão
@@ -844,9 +837,8 @@ trabalho:
 
 \begin{itemize}
   \item \textbf{Projeto CERISE} (orientação do Prof.\ Álisson): atuação em navegação autônoma
-        e gêmeos digitais com TurtleBot3, incluindo um sistema de alocação de tarefas com dois
-        robôs reais (\texttt{cerise-turtlebot3-nav}), plataforma identificada neste relatório
-        como caminho para a validação \textit{sim-to-real} do $\rho$-criterion.
+        e gêmeos digitais com TurtleBot3 em simulação, incluindo um sistema de alocação de
+        tarefas entre múltiplos robôs (\texttt{cerise-turtlebot3-nav}).
   \item \textbf{Projeto AKCIT} (orientação do Prof.\ Hugo): trabalho com Meta Quest~3, visão
         computacional (YOLO) e automação em Python, reforçando a base de percepção e
         integração de sistemas usada no projeto.
@@ -862,9 +854,5 @@ Código completo disponível em: \url{https://github.com/santtyan/adaptive-plann
 \subsection*{Infraestrutura Utilizada}
 Python~3.10, ROS2~Humble, Gazebo~Classic~11, Docker, Stable-Baselines3~2.3, NumPy, Pandas,
 \texttt{timeit}, \texttt{tracemalloc}.
-
-\vfill
-\noindent\small\textit{Versão: Junho/2026 | Relatório parcial --- versão final: Agosto/2026.
-Salvar como PDF (Arial~12pt, espaço~1,5, A4) antes de submeter no SIGAA.}
 
 \end{document}
