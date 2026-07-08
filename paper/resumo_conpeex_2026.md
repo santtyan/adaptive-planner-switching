@@ -17,29 +17,29 @@
 
 ---
 
-## TÍTULO (colar em CAIXA ALTA — 117 chars ✅)
+## TÍTULO (colar em CAIXA ALTA)
 
-DESENVOLVIMENTO DE FRAMEWORK ADAPTIVO PARA SELEÇÃO DE ALGORITMOS DE PLANEJAMENTO DE TRAJETÓRIA EM NAVEGAÇÃO AUTÔNOMA
+MÉTODOS MODERNOS E CLÁSSICOS PARA PLANEJAMENTO DE TRAJETÓRIA ADAPTATIVO EM NAVEGAÇÃO AUTÔNOMA
 
 ---
 
 ## RESUMO (corpo — colar no campo "Resumo" do PLATEIA)
 
-*Texto corrido, alinhamento justificado. Contar os chars no PLATEIA antes de submeter. Estimativa: ~2.380 chars.*
+*Texto corrido, alinhamento justificado. Contar os chars no PLATEIA antes de submeter. Estimativa: ~2.367 chars.*
 
 ---
 
-A tese deste trabalho é que a seleção adaptiva de planejador de trajetória, baseada na densidade local de obstáculos, supera qualquer método fixo em ambientes heterogêneos, com ganho mensurável e garantias formais de performance. Algoritmos determinísticos como Dijkstra e A* oferecem garantias de otimalidade, mas degradam-se em alta densidade de obstáculos; políticas de aprendizado por reforço, como SAC (Soft Actor-Critic), adaptam-se melhor a contextos complexos, porém são desnecessariamente custosas em espaços abertos. Nenhum método fixo é universalmente ótimo — logo, a seleção deve ser tratada como variável de otimização contextual, não como escolha fixa de design. Para operacionalizar essa tese, é proposto o critério ρ, que calcula a densidade local de obstáculos em uma janela ao redor da pose do robô e aplica a política π(ρ) = {A* se ρ < 0,30; SAC se ρ ≥ 0,30}, com limiar ρ* = 0,30 determinado por validação experimental. A metodologia envolveu a implementação e benchmarking de quatro algoritmos clássicos — Dijkstra, A*, Floyd-Warshall e Johnson — em grids de 100 a 2.500 nós, com medição de tempo de execução (timeit) e consumo de memória de pico (tracemalloc), além da integração completa em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle via Stable-Baselines3, incluindo reward shaping baseado em potencial, penalidade de heading e curriculum de distância para treinamento do agente SAC em ambiente físico simulado. Os resultados do benchmark clássico mostram que Dijkstra e A* escalam linearmente: 0,07 ms e 3,7 KB para grids de 100 nós; 2,46 ms e 85 KB para 2.500 nós. Floyd-Warshall e Johnson tornam-se inviáveis para planejamento em tempo real: Floyd-Warshall consome 39 segundos e 22 MB em um grid 30×30 (O(n³)), justificando empiricamente a escolha de A* como componente clássico. A validação do critério adaptivo em 1.500 experimentos Monte Carlo calibrados demonstrou taxa de sucesso de 85,3% contra 76% do PPO fixo (melhor baseline), com regret de apenas 2,2% em relação a um seletor oracle ideal — confirmando a tese em ambiente controlado. A validação com planejadores reais em Gazebo está em andamento. Conclui-se que o ρ-criterion captura a fronteira de decisão ótima entre planejadores clássicos e RL, sendo independente dos algoritmos subjacentes e generalizável a cenários multi-agente sem modificação do critério. Implementação disponível em github.com/santtyan/adaptive-planner-switching.
+A tese deste trabalho é que a seleção adaptativa de planejador de trajetória, baseada na densidade local de obstáculos, supera métodos de planejamento fixos em taxa de sucesso em ambientes com densidade variável. Algoritmos determinísticos como Dijkstra e A* oferecem garantias de otimalidade e baixo custo computacional, mas tendem a apresentar desempenho limitado em ambientes densos e não estruturados; políticas de aprendizado por reforço, como o SAC, generalizam melhor nesses contextos, porém introduzem custo desnecessário em espaços livres. Portanto, a seleção do planejador deve ser tratada como uma decisão contextual adaptativa, não como uma escolha estática de projeto. Para verificar essa tese, propõe-se o critério ρ, que calcula a densidade local de obstáculos em torno da posição do robô e define a regra de seleção: A* para ambientes esparsos (ρ < 0,30) e SAC para ambientes densos (ρ ≥ 0,30), com limiar ρ* = 0,30 determinado por análise de sensibilidade sobre taxa de sucesso. A metodologia envolveu a implementação e avaliação de quatro algoritmos clássicos — Dijkstra, A*, Floyd-Warshall e Johnson — em quatro grades (100 a 2.500 nós), com medição de tempo de execução e consumo de memória. Para a validação em ambiente simulado, desenvolveu-se a infraestrutura de integração com ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle via Stable-Baselines3, incluindo o treinamento do agente SAC. Os resultados mostram que Dijkstra atinge 0,08 ms e 4 KB em grades de 100 nós e 2,4 ms e 85 KB em grades de 2.500 nós; A* apresenta tempo similar e maior uso de memória (6,6 KB e 220 KB, respectivamente). Floyd-Warshall consome 39 segundos e 22 MB em uma grade de 900 nós, resultado de crescimento cúbico que inviabiliza sua aplicação em robótica móvel e justifica a escolha de A* como planejador clássico do sistema. A validação do critério em experimentos Monte Carlo, cobrindo condições de densidade esparsa, moderada e densa, demonstrou taxa de sucesso média de 85,3%, superior a todos os métodos de referência testados — o melhor planejador fixo atingiu 76% e o melhor método de comutação concorrente, 78,7% — com regret de 2,9% ante o seletor ideal. Os resultados parciais indicam que o critério ρ captura a fronteira de decisão entre planejadores clássicos e de aprendizado por reforço, com potencial de generalização a cenários multi-agente; a validação com planejadores reais em Gazebo está em andamento. Implementação disponível em github.com/santtyan/adaptive-planner-switching.
 
 ---
 
 ## PALAVRAS-CHAVE (inserir uma por uma no PLATEIA, pressionar Enter após cada)
 
-1. planejamento de trajetória
-2. aprendizado por reforço
+1. planejamento de trajetória adaptativo
+2. aprendizado por reforço profundo
 3. navegação autônoma
-4. ROS2
-5. switching adaptivo
+4. planejamento híbrido
+5. densidade de obstáculos
 
 ---
 

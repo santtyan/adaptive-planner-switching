@@ -100,7 +100,7 @@ cenários cobrindo densidades de $0{,}05$ a $0{,}60$ revelaram o ponto em que um
 passa a superar o outro.
 
 A Fase~1 confirmou a tese: o critério adaptivo atingiu 85,3\% de taxa de sucesso, contra 76\%
-do melhor método fixo, ficando a apenas 2,2\% de um seletor ideal. O estudo dos algoritmos
+do melhor método fixo, ficando a apenas 2,9\% de um seletor ideal. O estudo dos algoritmos
 clássicos justificou a escolha do A* (o Floyd-Warshall, por exemplo, leva 39~s e 22~MB num
 grid $30{\times}30$, inviável em tempo real). A Fase~2, que integra ROS2~Humble, Gazebo~Classic
 e TurtleBot3~Waffle, está em andamento, com resultados quantitativos previstos para
@@ -251,7 +251,7 @@ para cada situação. A diferença de desempenho entre os dois é o que chamamos
 \end{equation}
 
 Quanto menor o regret, mais perto o critério está do ideal. Nos experimentos calibrados
-(Monte Carlo), o $\rho$-criterion fica, em média, a apenas $2{,}2\%$ desse seletor ideal, e a
+(Monte Carlo), o $\rho$-criterion fica, em média, a apenas $2{,}9\%$ desse seletor ideal, e a
 $6{,}7\%$ no pior caso.
 
 \subsection{Implementação ROS2}
@@ -386,7 +386,7 @@ desempenho e custo.
 O framework adaptivo supera todos os baselines. A superioridade sobre o melhor método fixo
 (PPO, 76,0\%) foi confirmada por teste de proporções one-sided: $z = 2{,}05$, $p = 0{,}020$
 ($\alpha = 0{,}05$, $n = 150$ trials por método), com tamanho de efeito Cohen's $h = 0{,}24$.
-Regret médio em relação ao seletor ideal: \textbf{2,2\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
+Regret médio em relação ao seletor ideal: \textbf{2,9\%} (pior caso: 6,7\%; limite H2: $\leq 10\%$).
 Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[htbp]
@@ -693,7 +693,7 @@ método fixo testado), diferença de 9,3 pontos percentuais estatisticamente sig
 principal da Fase~2, previsto para Agosto/2026.
 
 A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}:
-o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,2\% em relação a um
+o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,9\% em relação a um
 seletor ideal com conhecimento perfeito do ambiente; no pior caso observado, essa perda
 chegou a 6,7\%, dentro do limite de 10\% estabelecido. O limiar $\rho^*{=}0{,}30$
 também é justificado pelo custo computacional: nesse ponto, o tempo do A* já cresceu
