@@ -31,6 +31,11 @@ services:
     build: .
     image: adaptive-planner:latest
     network_mode: host
+    # Sobrevive a crash/reboot do host sem intervenção manual. Combinado com o
+    # auto-resume de checkpoint em train_sac.py (--fresh desativa), o treino
+    # nunca mais precisa ser reiniciado manualmente. Respeita `docker compose
+    # stop`/`down` explícito (não força religar se você parar de propósito).
+    restart: unless-stopped
     environment:
       - TURTLEBOT3_MODEL=waffle
       - ROS_DOMAIN_ID=0
@@ -119,6 +124,7 @@ services:
       - TURTLEBOT3_MODEL=waffle
       - ROS_DOMAIN_ID=0
       - ROS_LOCALHOST_ONLY=1
+    restart: unless-stopped
     volumes:
       - ./ros2_ws/src:/workspace/ros2_ws/src:ro
       - ./models:/workspace/models                  # salva modelo aqui
@@ -134,6 +140,7 @@ services:
       - TURTLEBOT3_MODEL=waffle
       - ROS_DOMAIN_ID=1                             # domínio isolado do SAC
       - ROS_LOCALHOST_ONLY=1
+    restart: unless-stopped
     volumes:
       - ./ros2_ws/src:/workspace/ros2_ws/src:ro
       - ./models:/workspace/models

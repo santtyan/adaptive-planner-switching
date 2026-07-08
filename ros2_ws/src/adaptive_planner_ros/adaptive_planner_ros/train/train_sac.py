@@ -22,7 +22,9 @@ Outputs:
 """
 
 import argparse
+import glob
 import os
+import re
 
 import rclpy
 from stable_baselines3 import SAC
@@ -36,6 +38,38 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNode
 
 
+def find_latest_checkpoint(models_dir: str, seed: int):
+    """Localiza o checkpoint mais recente (maior step) salvo por CheckpointCallback.
+
+    Retorna (model_path, replay_buffer_path_ou_None, vecnormalize_path_ou_None)
+    ou None se nenhum checkpoint existir. Usado para auto-resume: se o container
+    morrer (crash, reboot, docker stop) e for reiniciado, o treino continua do
+    último checkpoint em vez de do zero — ver [[project-treino-sparse-08jul]].
+    """
+    pattern = os.path.join(models_dir, f"sac_{seed}_ckpt_*_steps.zip")
+    candidates = glob.glob(pattern)
+    if not candidates:
+        return None
+
+    def step_of(path: str) -> int:
+        m = re.search(r"_(\d+)_steps\.zip$", path)
+        return int(m.group(1)) if m else -1
+
+    best = max(candidates, key=step_of)
+    step = step_of(best)
+    replay_path = os.path.join(
+        models_dir, f"sac_{seed}_ckpt_replay_buffer_{step}_steps.pkl"
+    )
+    vecnorm_path = os.path.join(
+        models_dir, f"sac_{seed}_ckpt_vecnormalize_{step}_steps.pkl"
+    )
+    return (
+        best,
+        replay_path if os.path.isfile(replay_path) else None,
+        vecnorm_path if os.path.isfile(vecnorm_path) else None,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--steps", type=int, default=500_000)
@@ -44,6 +78,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-episodes", type=int, default=5)
     p.add_argument("--models-dir", default="models")
     p.add_argument("--logs-dir", default="logs")
+    p.add_argument("--fresh", action="store_true",
+                   help="Ignora checkpoints existentes e treina do zero "
+                        "(padrão é AUTO-RESUME do checkpoint mais recente)")
     # Early abort (Plan B) — DESLIGADO por padrão (20/06/2026).
     # O threshold antigo (ep_rew_mean<50 @ 300k) era inatingível em mundo denso
     # (R_GOAL=50 exigiria quase todo episódio fechando goal) → matava o run.
@@ -207,6 +244,8 @@ def main() -> None:
         save_freq=50_000,
         save_path=args.models_dir,
         name_prefix=f"sac_{args.seed}_ckpt",
+        save_replay_buffer=True,   # obrigatório p/ auto-resume equivalente (SAC é off-policy)
+        save_vecnormalize=True,    # preserva stats de normalização de reward entre restarts
         verbose=0,
     )
 
@@ -217,24 +256,48 @@ def main() -> None:
         print("[WARN] tensorboard not installed — logging disabled")
         tb_log = None
 
-    model = SAC(
-        "MlpPolicy",
-        train_env,
-        learning_rate=3e-4,
-        buffer_size=1_000_000,
-        learning_starts=10_000,   # mundo esparso: sinal mais limpo, 10k suficiente
-        batch_size=256,
-        tau=0.005,
-        gamma=0.99,
-        train_freq=1,
-        gradient_steps=1,         # 1 update/passo: evita divergência de Q-values com R_APPROACH=10
-        ent_coef=0.1,             # fixo: gSDE colapsa entropia com auto, 0.1 mantém exploração
-        use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
-        sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
-        verbose=1,
-        tensorboard_log=tb_log,
-        seed=args.seed,
+    # Auto-resume: se existir checkpoint do mesmo seed, continua dele em vez de
+    # treinar do zero. Isso é o que evita perder progresso quando o container
+    # morre (crash, docker stop, reboot) — combinado com `restart: unless-stopped`
+    # no docker-compose.yml, o treino se recupera sozinho sem intervenção manual.
+    # Usar --fresh para forçar treino do zero mesmo com checkpoints existentes.
+    resume_from = None if args.fresh else find_latest_checkpoint(
+        args.models_dir, args.seed
     )
+    if resume_from is not None:
+        model_path, replay_path, vecnorm_path = resume_from
+        print(f"[Resume] Checkpoint encontrado: {model_path}")
+        if vecnorm_path:
+            train_env = VecNormalize.load(vecnorm_path, train_env.venv)
+            print(f"[Resume] VecNormalize stats carregadas: {vecnorm_path}")
+        model = SAC.load(model_path, env=train_env, tensorboard_log=tb_log)
+        if replay_path:
+            model.load_replay_buffer(replay_path)
+            print(f"[Resume] Replay buffer carregado: {replay_path} "
+                  f"({model.replay_buffer.size()} transições)")
+        else:
+            print("[Resume] AVISO: replay buffer não encontrado — "
+                  "retomando com buffer vazio (menos ideal, mas não do zero).")
+        print(f"[Resume] Continuando de num_timesteps={model.num_timesteps}")
+    else:
+        model = SAC(
+            "MlpPolicy",
+            train_env,
+            learning_rate=3e-4,
+            buffer_size=1_000_000,
+            learning_starts=10_000,   # mundo esparso: sinal mais limpo, 10k suficiente
+            batch_size=256,
+            tau=0.005,
+            gamma=0.99,
+            train_freq=1,
+            gradient_steps=1,         # 1 update/passo: evita divergência de Q-values com R_APPROACH=10
+            ent_coef=0.1,             # fixo: gSDE colapsa entropia com auto, 0.1 mantém exploração
+            use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
+            sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
+            verbose=1,
+            tensorboard_log=tb_log,
+            seed=args.seed,
+        )
 
     callbacks = [best_cb, ckpt_cb, StopOnSuccessCallback(
         threshold=args.stop_success_rate,
@@ -258,6 +321,9 @@ def main() -> None:
         callback=callbacks,
         tb_log_name=f"sac_{args.seed}",
         progress_bar=False,
+        # False = continua contando a partir de model.num_timesteps (resume real).
+        # Se treinando do zero, num_timesteps já começa em 0 — não tem efeito.
+        reset_num_timesteps=False,
     )
 
     final_path = os.path.join(args.models_dir, f"{model_name}_final.zip")
