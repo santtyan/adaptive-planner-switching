@@ -232,6 +232,12 @@ A validação de H1 relatada na Seção 3.2 usa planejadores mock calibrados est
 
 *Figura: (a) Taxa de sucesso real, A* vs BC casado por densidade — A* permanece à frente em todo regime. (b) Custo de decisão real, escala logarítmica — BC ~600× mais barato em `very_dense`. Dados reais, 500 trials pareados, `results_abstract/h1_real_2d_mixed_pool.csv`.*
 
+**Distribuição e outliers:** os valores acima são médias; a Figura abaixo mostra a distribuição completa (150 trials de custo A*, 300 de custo BC por mundo, e os 500 trials de ρ_local). O custo do A* real não é constante entre trials — em `very_dense`, 14 dos 150 trials (9,3%) são outliers estatísticos (acima de Q3 + 1,5×IQR = 33,3 ms), chegando a 51,9 ms no pior caso, quase o dobro da mediana (28,1 ms). Esses outliers correspondem a pares start-goal que exigem busca mais extensa na grade (mais nós expandidos antes de alcançar o objetivo), um comportamento esperado de busca em grafo e não um artefato de medição. O custo do BC, por contraste, tem variância desprezível em todos os mundos (desvio padrão < 0,05 ms), consistente com ser um único *forward pass* de custo fixo independente da geometria do trial. A distribuição de ρ_local (painel c) mostra que a maioria dos trials em `dense`/`very_dense` já nasce acima do limiar ρ*=0,30 original, explicando por que o ρ-criterion raramente aciona o A* nesses mundos (Seção 4).
+
+![Distribuição e outliers da revalidação de H1](figs/2d/fig_2d_h1_boxplots.png)
+
+*Figura: (a) Boxplot do custo de decisão A* por mundo, com outliers (círculos vermelhos) — a cauda longa em `very_dense` reflete trials com busca mais extensa. (b) Boxplot do custo BC — variância desprezível. (c) Boxplot de ρ_local por mundo, com a linha tracejada marcando o limiar original ρ*=0,30.*
+
 **Reformulação de H1 com esse dado real:** em vez de "o ρ-criterion supera qualquer planejador fixo em taxa de sucesso" (verdadeiro apenas sob os planejadores mock da Seção 3.2), a tese sustentada por dados reais é **"o ρ-criterion mantém taxa de sucesso próxima da do melhor planejador fixo (A*) mantendo uma fração pequena do seu custo computacional em alta densidade"** — uma versão mais modesta, porém integralmente real e internamente consistente (sucesso e custo medidos no mesmo ambiente, mesmos trials), do argumento original de H1+H2.
 
 **Heatmap do critério de switching:**

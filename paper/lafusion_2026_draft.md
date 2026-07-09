@@ -270,6 +270,18 @@ directly measured rather than estimated from unpaired benchmarks (vs. the
 ~10× estimate in Section 3.2). This is the basis for the reformulated claim
 in Section 4.
 
+The means above hide meaningful spread. Over 150 A* trials per world, cost
+is not constant: in `very_dense`, 14/150 trials (9.3%) are statistical
+outliers (above Q3 + 1.5×IQR = 33.3 ms), reaching 51.9 ms in the worst case,
+nearly double the median (28.1 ms) — consistent with graph search cost
+depending on the specific start-goal pair, not a measurement artifact. BC
+cost variance is negligible across all trials and worlds (std < 0.05 ms in
+every condition), as expected of a fixed-size forward pass. We report the
+full distribution (Figure 1c), not only the means, since the outlier tail
+in A* cost is itself evidence for the fusion argument: a planner whose
+worst-case cost is intermittently far above its average is a stronger
+candidate for cost-aware fusion than one with uniformly moderate cost.
+
 ## 4. Results
 
 Table 1 summarizes the fusion rule's performance against the two strongest

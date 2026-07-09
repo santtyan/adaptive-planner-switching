@@ -682,6 +682,28 @@ citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pare
   \label{fig:h1_real_validation}
 \end{figure}
 
+\textbf{Distribuição e outliers:} os valores acima são médias; a Figura~\ref{fig:h1_boxplots}
+mostra a distribuição completa (150 trials de custo A*, 300 de custo BC por mundo, e os 500
+trials de $\rho_{local}$). O custo do A* real não é constante entre trials --- em
+\textit{very\_dense}, 14 dos 150 trials (9,3\%) são outliers estatísticos (acima de
+$Q3+1{,}5\times IQR = 33{,}3$~ms), chegando a 51,9~ms no pior caso, quase o dobro da mediana
+(28,1~ms). Esses outliers correspondem a pares start-goal que exigem busca mais extensa na
+grade, comportamento esperado de busca em grafo, não um artefato de medição. O custo do BC,
+por contraste, tem variância desprezível em todos os mundos (desvio padrão $<0{,}05$~ms). A
+distribuição de $\rho_{local}$ mostra que a maioria dos trials em \textit{dense}/\textit{very\_dense}
+já nasce acima do limiar $\rho^*{=}0{,}30$ original, explicando por que o $\rho$-criterion
+raramente aciona o A* nesses mundos.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_boxplots.png}
+  \caption{(a)~Boxplot do custo de decisão A* por mundo, com outliers (círculos vermelhos)
+           --- a cauda longa em \textit{very\_dense} reflete trials com busca mais extensa.
+           (b)~Boxplot do custo BC --- variância desprezível. (c)~Boxplot de $\rho_{local}$
+           por mundo, com a linha tracejada marcando o limiar original $\rho^*{=}0{,}30$.}
+  \label{fig:h1_boxplots}
+\end{figure}
+
 \textbf{Reformulação de H1 com esse dado real:} em vez de ``o $\rho$-criterion supera
 qualquer planejador fixo em taxa de sucesso'' (verdadeiro apenas sob os planejadores mock da
 Seção~\ref{sec:validacao_fase1}), a tese sustentada por dados reais é \textbf{``o
