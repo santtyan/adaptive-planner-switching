@@ -100,8 +100,15 @@ class MultiAgentEnv2D:
 
     # ── Passo ─────────────────────────────────────────────────
     def step(self, actions: np.ndarray):
+        """Retorna (obs, reward, done_flags, all_done). `reward` inclui uma
+        penalidade COMPARTILHADA de colisão inter-robô (aplicada aos dois
+        agentes envolvidos, não só a quem "causou"), necessária para treino
+        MARL com incentivo real de coordenação — ausente na versão original
+        deste ambiente, que só servia para avaliar políticas já treinadas
+        independentemente. Ver [[project-treino-sparse-08jul]] (09/07/2026)."""
         self._step += 1
         actions = np.asarray(actions).reshape(self.N, 2)
+        reward = np.zeros(self.N, dtype=np.float32)
 
         for i in range(self.N):
             if self.done[i]:
@@ -133,19 +140,28 @@ class MultiAgentEnv2D:
             else:
                 self.idle_count[i] = 0
 
+            old_dist = self.prev_dist[i]
             dist = float(np.hypot(self.gx[i] - self.x[i], self.gy[i] - self.y[i]))
             goal = dist < GOAL_RADIUS
             self.prev_dist[i] = dist
 
+            rprox = float(np.clip(1.0 - dist / max(old_dist, 1e-3), 0.0, 1.0))
             if env_coll:
                 self.collided[i] = True
                 self.done[i] = True
+                reward[i] = R_COLLISION + rprox
             elif goal:
                 self.goal_done[i] = True
                 self.done[i] = True
                 self.t_goal[i] = self._step * DT
+                reward[i] = R_GOAL
+            else:
+                reward[i] = R_SURVIVAL + R_APPROACH * max(0.0, old_dist - dist)
 
-        # Colisão inter-robô (qualquer par vivo)
+        # Colisão inter-robô (qualquer par vivo) — penalidade COMPARTILHADA:
+        # os dois agentes envolvidos recebem R_COLLISION, não só um "culpado"
+        # arbitrário. Isso é o que diferencia este treino de RL independente:
+        # o incentivo de evitar o outro robô existe para ambos os lados.
         for i in range(self.N):
             for j in range(i + 1, self.N):
                 if self.done[i] and self.done[j]:
@@ -156,9 +172,13 @@ class MultiAgentEnv2D:
                         if not self.goal_done[k]:
                             self.collided[k] = True
                             self.done[k] = True
+                            reward[k] = R_COLLISION
 
         timeout = self._step >= self.max_steps
         all_done = bool(self.done.all() or timeout)
+        # Exposto como atributo (não no retorno) para não quebrar chamadores
+        # existentes que esperam `obs, done = env.step(actions)`.
+        self.last_reward = reward
         return self._all_obs(), all_done
 
     # ── Métricas do trial ─────────────────────────────────────

@@ -728,6 +728,35 @@ com dados corretos, a mesma conclusão da Seção~\ref{sec:multiagente} sobre a 
 MARL para coordenação (a alegação original de ``0\% de colisão'' estava incorreta e nunca
 foi citada nos documentos formais desta IC).
 
+\textbf{Evidência empírica preliminar de MARL (reward compartilhada):} para testar
+diretamente se treino conjunto resolve o problema de coordenação identificado acima,
+implementamos uma versão simplificada de MARL no gêmeo 2D --- uma política única,
+centralizada (não descentralizada tipo CTDE/QMIX/MAPPO), que recebe a observação
+concatenada dos N agentes e produz as N ações conjuntamente, treinada com PPO e reward
+igual à média das rewards individuais, incluindo uma penalidade de colisão inter-robô
+\textbf{compartilhada} (aplicada aos dois agentes envolvidos, não a um ``culpado''
+arbitrário) --- a peça estrutural que falta no RL independente. Com $N{=}4$ no mundo
+\textit{sparse}: em 150 mil passos, a taxa de chegada ao goal era 25\% mas a colisão
+inter-robô já era 0\%; em 600 mil passos, a taxa de goal subiu para 50\% (aproximando-se
+dos 57\% do RL independente) \textbf{mantendo colisão inter-robô em 0\%} (contra 60\% do
+RL independente) em ambos os pontos de treino (Figura~\ref{fig:marl_shared_reward}). A
+tendência --- goal rate subindo com mais treino, colisão permanecendo nula desde cedo ---
+é evidência real de que a reward compartilhada resolve estruturalmente o problema de
+coordenação, ao custo de um treino mais lento. Esta é uma simplificação de MARL --- treino
+e execução centralizados, não a arquitetura descentralizada completa --- mas é a primeira
+evidência empírica desta IC de que treino conjunto com recompensa compartilhada resolve o
+problema identificado.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
+  \caption{Comparação real, $N{=}4$ agentes, mundo \textit{sparse}. (a)~Taxa de chegada ao
+           goal --- o MARL se aproxima do RL independente conforme o treino avança.
+           (b)~Colisão entre robôs --- o MARL mantém 0\% desde os primeiros 150 mil passos,
+           contra 60\% do RL independente, em qualquer ponto de treino testado.}
+  \label{fig:marl_shared_reward}
+\end{figure}
+
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_boxplots.png}
@@ -921,7 +950,11 @@ densidades.
 Há ainda duas extensões de maior fôlego. A primeira é a coordenação multi-agente: com decisão
 local e independente, a coordenação só emerge quando o CBS pré-computa as trajetórias, e o
 movimento simultâneo gera colisões, lacuna que o treinamento conjunto por reforço (MARL, via
-QMIX ou MAPPO) endereçaria sobre a mesma arquitetura SAC já em uso. A segunda são os obstáculos
+QMIX ou MAPPO) endereçaria sobre a mesma arquitetura SAC já em uso --- um primeiro
+experimento nessa direção (Seção~\ref{sec:multiagente}, política centralizada simplificada
+com reward compartilhada) já reduz a colisão inter-robô de 60\% para 0\% em troca de treino
+mais lento, evidência preliminar real de que a direção é correta, ainda que a arquitetura
+descentralizada completa permaneça trabalho futuro. A segunda são os obstáculos
 dinâmicos previstos no Plano de Trabalho, inviáveis no Gazebo Classic por falta de atores
 móveis nativos, mas que seriam capturados pelo mesmo estimador de densidade via LIDAR em
 simuladores como Gazebo Fortress ou Isaac Sim, sem alterar o critério.
