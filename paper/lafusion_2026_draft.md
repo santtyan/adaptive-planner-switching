@@ -41,12 +41,13 @@ determined via 1,500 calibrated Monte Carlo trials (85.3% success vs. 76% best
 fixed planner, 78.7% best competing switcher, 2.9% regret against an oracle).
 To reduce dependence on calibrated models, we further validate the criterion
 with **real, non-mock planners** — a genuine grid-search A* and a trained
-imitation-learning policy — over 500 paired trials spanning a mixed-density
-pool in a lightweight 2D twin. This real validation **overturns the
-success-rate motivation**: the real classical planner outperforms the fusion
-rule and the learned policy alone across nearly the full density range tested
-(paired success: 90.6% A* vs. 85.8% fused; 8.4% regret, well above the 2.9%
-under calibrated models). What survives and strengthens is the
+imitation-learning policy — over 1,500 paired trials spanning a mixed-density
+pool in a lightweight 2D twin (matching the scale of the calibrated protocol).
+This real validation **overturns the success-rate motivation**: the real
+classical planner outperforms the fusion rule and the learned policy alone
+across nearly the full density range tested (paired success: 88.7% A* vs.
+84.1% fused; 9.1% regret, well above the 2.9% under calibrated models;
+p<0.000002, exact McNemar test on paired outcomes). What survives and strengthens is the
 **computational-cost motivation**: measured on the same trials, classical
 search cost grows from 9.3 ms to 32.7 ms with density, against a constant
 0.055 ms for the learned policy — a ~600× ratio, directly measured rather than
@@ -252,17 +253,24 @@ same data structure required of the classical benchmark in Section 3.2 —
 inside the lightweight 2D twin, replacing a straight-line policy that had
 been mislabeled "A*" in earlier multi-agent comparisons. We paired it with a
 Behavior-Cloning policy trained per density level (`sparse`/`dense`/`very_dense`),
-and revalidated the fusion criterion over 500 trials drawn from a **mixed
+and revalidated the fusion criterion over 1,500 trials drawn from a **mixed
 density pool** — not fixed per batch, but resampled per trial, matching the
 mixed-density structure of the original Monte Carlo protocol far more
-closely than a per-world fixed-batch test would. Each trial runs A*, the
-matched BC policy, and the fusion rule on the *same* start/goal pair
-(paired regret, as in Section 3.3, with the oracle now the best of the two
-real methods per trial) — 90.6% paired success for A*, 86.0% for BC, 85.8%
-for the fusion rule, against a 94.2% oracle (8.4% regret). A threshold sweep
-against these same 500 trials shows regret is minimized as τ→1.0 (i.e.,
-"use A* almost always"), not at τ=0.30: **no density band in this testbed
-has the learned policy outperforming A* in success rate.** We measured
+closely than a per-world fixed-batch test would, and matching its scale
+(1,500 trials) to allow direct comparison of statistical power between the
+two validations; a smaller 500-trial pilot (not reported in detail) showed
+the same qualitative pattern and was used to validate the protocol before
+scaling up. Each trial runs A*, the matched BC policy, and the fusion rule
+on the *same* start/goal pair (paired regret, as in Section 3.3, with the
+oracle now the best of the two real methods per trial) — 88.7% paired
+success for A*, 84.3% for BC, 84.1% for the fusion rule, against a 93.3%
+oracle (9.1% regret). The gap between A* and the fusion rule is
+statistically significant: of 1,500 trials, 199 were discordant (one method
+succeeded, the other failed), with A* winning 134 of those against 65 for
+the fusion rule (exact McNemar test, p<0.000002). A threshold sweep against
+the same data shows regret is minimized as τ→1.0 (i.e., "use A* almost
+always"), not at τ=0.30: **no density band in this testbed has the learned
+policy outperforming A* in success rate.** We measured
 decision cost on the same environment and trials: A* search time grows from
 9.3 ms (`sparse`) to 32.7 ms (`very_dense`), while the BC forward pass stays
 at a roughly constant 0.055 ms — a ~600× cost ratio at high density,
@@ -282,6 +290,33 @@ in A* cost is itself evidence for the fusion argument: a planner whose
 worst-case cost is intermittently far above its average is a stronger
 candidate for cost-aware fusion than one with uniformly moderate cost.
 
+**Parameter choices.** The A* rasterization grid uses 0.08 m resolution
+(a fidelity/search-time trade-off) and an extra 0.08 m safety margin beyond
+the robot radius, needed because the path-following controller cuts corners
+between discrete waypoints; without this margin, real-A* collision rate
+reached 40% in `very_dense` (a controller artifact, not a planning failure),
+dropping to the 0–9% range reported above once the margin was added. The
+1,500-trial count matches the calibrated protocol's scale, as discussed
+above.
+
+**A parallel correction in the multi-agent setting.** The earlier
+"independent A* beats independent SAC" finding (100%/0% success/collision
+vs. ~38%/100%) used the same mislabeled straight-line policy. Regenerated
+with real A* (per-agent grid search, no coordination, same experimental
+design, N=4, 20 trials per world): real A* still wins on goal-reaching rate
+(71%/55%/35% vs. 57%/36%/25% for SAC, sparse/dense/very\_dense), but
+**inter-robot collision is also high for real A*** (75%/80%/65%, vs.
+60%/50%/60% for SAC) — very different from the original 0%-collision claim.
+Real A* follows the shortest path rigidly, with no dynamic avoidance of
+other robots (planning ignores neighbors by design); the original
+straight-line policy, by stalling when misaligned, incidentally reduced
+collisions as a side effect of its control law, not of planning quality.
+The corrected, real finding is that no uncoordinated independent planner
+reliably avoids inter-robot collision, reinforcing with correct data the
+same conclusion motivating the MARL extension in Section 3.4 (the original
+"0% collision" claim was never cited in any formal document from this
+study).
+
 ## 4. Results
 
 Table 1 summarizes the fusion rule's performance against the two strongest
@@ -293,7 +328,8 @@ confirming ρ*=0.30 as the empirical minimum under calibrated models.
 
 Table 2 reports the real-planner revalidation (Section 3.5), and it tells a
 different, more nuanced story: under real A* and real BC, paired regret rises
-to 8.4% and the success-rate-optimal threshold degenerates toward τ→1.0 —
+to 9.1% (p<0.000002 against the fusion rule's success rate, exact McNemar
+test) and the success-rate-optimal threshold degenerates toward τ→1.0 —
 **the success-rate motivation for fusion does not hold** in this testbed. The
 computational-cost motivation, measured on the same trials, does hold and is
 stronger than the calibrated-benchmark estimate (~600× vs. ~10×). Figure 1b

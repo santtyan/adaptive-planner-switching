@@ -107,11 +107,12 @@ integra ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle, teve infraestrutura imp
 depurada (dois bugs críticos corrigidos), mas a validação quantitativa de navegação real não
 foi concluída nesta IC, por um terceiro bug não resolvido; esta lacuna é declarada como
 limitação central. Para reduzir a dependência de mock sem o Gazebo, revalidamos H1 com A* e
-BC reais no gêmeo 2D (500 trials pareados): a motivação por taxa de sucesso não se sustentou
-(A* real 90,6\% vs.\ adaptativo 85,8\%), mas a motivação por custo computacional se confirmou
-e ficou mais forte (razão de custo de $\sim$600$\times$ medida no mesmo ambiente, vs.\
-$\sim$10$\times$ estimado antes) --- H1 é reformulada como argumento de custo, não de taxa
-de acerto.
+BC reais no gêmeo 2D (1.500 trials pareados, mesma escala do Monte Carlo original): a
+motivação por taxa de sucesso não se sustentou (A* real 88,7\% vs.\ adaptativo 84,1\%,
+diferença estatisticamente significativa, $p<0{,}000002$), mas a motivação por custo
+computacional se confirmou e ficou mais forte (razão de custo de $\sim$600$\times$ medida
+no mesmo ambiente, vs.\ $\sim$10$\times$ estimado antes) --- H1 é reformulada como argumento
+de custo, não de taxa de acerto.
 \end{abstract}
 
 
@@ -652,15 +653,23 @@ binário, heurística octile --- mesma estrutura de dados exigida pelo parecer d
 SIGAA) dentro do gêmeo 2D, substituindo a política de linha reta que estava incorretamente
 rotulada como ``A*'' nas comparações multiagente anteriores, e revalidamos H1 com A* real e
 BC real (treinado especificamente por densidade, \textit{sparse}/\textit{dense}/\textit{very\_dense})
-num protocolo de 500 trials com \textbf{pool misto de densidades}, pareado por trial (mesma
-estrutura de regret do Monte Carlo original: regret = sucesso do oracle $-$ sucesso do
-método, oracle = melhor entre A* e BC em cada trial individual).
+num protocolo de \textbf{1.500 trials} com \textbf{pool misto de densidades}, pareado por
+trial (mesma estrutura de regret do Monte Carlo original: regret = sucesso do oracle $-$
+sucesso do método, oracle = melhor entre A* e BC em cada trial individual). O número de
+trials foi escolhido para igualar a escala do Monte Carlo original da
+Seção~\ref{sec:validacao_fase1} (também 1.500), permitindo comparação direta de poder
+estatístico entre as duas validações; um piloto inicial com 500 trials (não reportado em
+detalhe) já mostrava o mesmo padrão qualitativo, usado para validar o protocolo antes de
+escalar.
 
 \textbf{Achado principal: com planejadores reais, a motivação por taxa de sucesso para a
 comutação não se sustenta.} O A* real venceu em praticamente todo o espectro de densidade
-testado (sucesso pareado: 90,6\% A* vs.\ 86,0\% BC vs.\ 85,8\% do $\rho$-criterion com
-$\rho^*{=}0{,}30$; regret real de 8,4\% contra o oracle, bem acima dos 2,9\% do mock). Uma
-varredura de limiar $\tau$ contra os mesmos 500 trials confirma isso: o regret é minimizado
+testado (sucesso pareado: 88,7\% A* vs.\ 84,3\% BC vs.\ 84,1\% do $\rho$-criterion com
+$\rho^*{=}0{,}30$; regret real de 9,1\% contra o oracle, bem acima dos 2,9\% do mock). A
+diferença entre A* e o $\rho$-criterion é estatisticamente significativa: em 199 dos 1.500
+trials os dois métodos discordaram (um teve sucesso, o outro não), e o A* venceu 134 dessas
+discordâncias contra 65 do adaptativo --- teste de McNemar exato, $p<0{,}000002$. Uma
+varredura de limiar $\tau$ contra os mesmos dados confirma isso: o regret é minimizado
 quando $\tau \to 1{,}0$ (equivalente a ``usar A* quase sempre''), não em $\tau{=}0{,}30$ ---
 não existe, neste testbed, uma faixa de densidade onde o BC supera o A* em taxa de sucesso.
 
@@ -677,13 +686,13 @@ citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pare
   \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_real_validation.png}
   \caption{(a)~Taxa de sucesso real, A* vs.\ BC casado por densidade --- A* permanece à
            frente em todo regime. (b)~Custo de decisão real, escala logarítmica --- BC
-           $\sim$600$\times$ mais barato em \textit{very\_dense}. Dados reais, 500 trials
+           $\sim$600$\times$ mais barato em \textit{very\_dense}. Dados reais, 1.500 trials
            pareados, \texttt{results\_abstract/h1\_real\_2d\_mixed\_pool.csv}.}
   \label{fig:h1_real_validation}
 \end{figure}
 
 \textbf{Distribuição e outliers:} os valores acima são médias; a Figura~\ref{fig:h1_boxplots}
-mostra a distribuição completa (150 trials de custo A*, 300 de custo BC por mundo, e os 500
+mostra a distribuição completa (150 trials de custo A*, 300 de custo BC por mundo, e os 1.500
 trials de $\rho_{local}$). O custo do A* real não é constante entre trials --- em
 \textit{very\_dense}, 14 dos 150 trials (9,3\%) são outliers estatísticos (acima de
 $Q3+1{,}5\times IQR = 33{,}3$~ms), chegando a 51,9~ms no pior caso, quase o dobro da mediana
@@ -693,6 +702,31 @@ por contraste, tem variância desprezível em todos os mundos (desvio padrão $<
 distribuição de $\rho_{local}$ mostra que a maioria dos trials em \textit{dense}/\textit{very\_dense}
 já nasce acima do limiar $\rho^*{=}0{,}30$ original, explicando por que o $\rho$-criterion
 raramente aciona o A* nesses mundos.
+
+\textbf{Parâmetros da revalidação e por que foram escolhidos:} a grade de rasterização do
+A* usa resolução de 0,08~m (compromisso entre fidelidade geométrica e tempo de busca) e
+margem de segurança extra de 0,08~m além do raio do robô (necessária porque o controlador
+de perseguição de caminho corta cantos entre waypoints discretos; sem essa margem, a taxa
+de colisão do A* real chegava a 40\% em \textit{very\_dense}, um artefato do controlador,
+não do planejador --- com a margem, caiu para a faixa 0--9\% reportada acima). O número de
+trials (1.500) iguala a escala do Monte Carlo original para permitir comparação direta.
+
+\textbf{Achado complementar --- o mesmo tratamento aplicado ao multiagente:} o achado ``A*
+independente supera SAC independente'' de uma sessão anterior (100\%/0\% de sucesso/colisão
+vs.\ $\sim$38\%/100\%) também usava a política de linha reta em vez de A* real. Regerado
+com A* real (busca em grade por agente, sem coordenação, mesmo desenho experimental
+original, $N{=}4$, 20 trials/mundo): o A* real continua vencendo em taxa de chegada ao
+objetivo (71\%/55\%/35\% vs.\ 57\%/36\%/25\% do SAC, em \textit{sparse}/\textit{dense}/\textit{very\_dense}),
+mas \textbf{a taxa de colisão entre robôs também é alta para o A* real} (75\%/80\%/65\%,
+contra 60\%/50\%/60\% do SAC) --- bem diferente da alegação original de 0\% de colisão. A
+explicação: o A* real segue o caminho mais curto de forma rígida, sem qualquer desvio
+dinâmico de outros robôs (o planejamento ignora os vizinhos, por desenho); a política de
+linha reta original, por parar quando desalinhada, acabava reduzindo colisões por um efeito
+colateral do controlador, não por qualidade de planejamento. Dado real: nenhum planejador
+independente sem coordenação evita colisão entre robôs de forma confiável --- reforçando,
+com dados corretos, a mesma conclusão da Seção~\ref{sec:multiagente} sobre a necessidade de
+MARL para coordenação (a alegação original de ``0\% de colisão'' estava incorreta e nunca
+foi citada nos documentos formais desta IC).
 
 \begin{figure}[H]
   \centering
@@ -809,11 +843,12 @@ estatisticamente significativa ($p=0{,}020$), mas sobre planejadores mock. A val
 planejadores reais no Gazebo, planejada como o resultado principal da Fase~2, não foi
 concluída nesta IC por bugs de infraestrutura documentados na Seção~\ref{sec:integracao}
 --- ver Limitações. Para reduzir essa dependência de mock sem o Gazebo, implementamos um
-A* real no gêmeo 2D e revalidamos H1 com 500 trials reais pareados de pool misto de
-densidade (Seção~\ref{sec:h1_real}): \textbf{a motivação original --- que a política
-aprendida supera o A* em taxa de sucesso sob alta densidade --- não se sustentou} (A* real:
-90,6\% de sucesso pareado; $\rho$-criterion real: 85,8\%; regret real de 8,4\% contra o
-oracle). O que se sustentou, e ficou mais forte, foi H2: o custo de decisão do A* real
+A* real no gêmeo 2D e revalidamos H1 com 1.500 trials reais pareados de pool misto de
+densidade (Seção~\ref{sec:h1_real}, mesma escala do Monte Carlo original): \textbf{a
+motivação original --- que a política aprendida supera o A* em taxa de sucesso sob alta
+densidade --- não se sustentou} (A* real: 88,7\% de sucesso pareado; $\rho$-criterion real:
+84,1\%; regret real de 9,1\% contra o oracle; diferença estatisticamente significativa,
+teste de McNemar exato $p<0{,}000002$). O que se sustentou, e ficou mais forte, foi H2: o custo de decisão do A* real
 cresce de 9,3~ms (\textit{sparse}) a 32,7~ms (\textit{very\_dense}), contra $\sim$0,055~ms
 constantes do BC --- razão de $\sim$600$\times$, medida no mesmo ambiente e nos mesmos
 trials da taxa de sucesso. A tese sustentada por dados reais é que \textbf{o
@@ -862,9 +897,10 @@ ação e observação. O diagnóstico está registrado para retomada em trabalho
 Uma segunda limitação, descoberta ao tentar contornar a primeira: \textbf{a motivação
 original de H1 (taxa de sucesso) não se sustenta sob planejadores reais --- reformulada
 como argumento de custo}. Revalidamos H1 com A* real e BC real no gêmeo 2D
-(Seção~\ref{sec:h1_real}): o A* real supera o $\rho$-criterion e o BC em taxa de sucesso
-pareada em praticamente todo o espectro de densidade testado (regret real de 8,4\% contra
-o oracle, ante 2,9\% do mock). A motivação que se sustentou --- e ficou mais robusta, com
+(Seção~\ref{sec:h1_real}, 1.500 trials, mesma escala do Monte Carlo original): o A* real
+supera o $\rho$-criterion e o BC em taxa de sucesso pareada em praticamente todo o espectro
+de densidade testado (regret real de 9,1\% contra o oracle, ante 2,9\% do mock; diferença
+estatisticamente significativa, teste de McNemar exato $p<0{,}000002$). A motivação que se sustentou --- e ficou mais robusta, com
 custo medido no mesmo ambiente e trials da taxa de sucesso --- é a de H2: o A* real custa
 até $\sim$600$\times$ mais que o BC em alta densidade. Isso é declarado explicitamente
 como limitação de H1, não escondido: \textbf{o resultado quantitativo mais citável deste
