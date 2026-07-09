@@ -389,12 +389,23 @@ class TurtleBot3GazeboEnv(gym.Env):
         # Map normalised action → physical velocities
         v = float(action[0]) * LINEAR_VEL_MAX
         omega = float(action[1]) * ANGULAR_VEL_MAX
+
+        # Padrão-ouro RL+Gazebo (09/07/2026): pause/unpause a CADA passo, não só
+        # no reset. Sem isso a física roda contínua e assíncrona (real_time_
+        # update_rate=0) e o scan pode chegar dessincronizado da ação recém
+        # publicada — race condition clássica documentada em toda a literatura
+        # de RL+Gazebo (gym-gazebo2, PIC4rl-gym). Isso garante a propriedade MDP:
+        # exatamente 1 passo de física avança por chamada de step().
+        # Ver [[project-treino-sparse-08jul]].
+        self._node.pause_physics()
         self._node.publish_cmd(v, omega)
+        self._node.unpause_physics()
         # Guarda a ação normalizada p/ alimentar a próxima obs (resolve POMDP).
         self._last_action = (float(action[0]), float(action[1]))
 
         # Advance simulation one control step
         scan = self._node.wait_for_scan(timeout=SCAN_TIMEOUT)
+        self._node.pause_physics()
         self._last_scan = scan
         self._step_count += 1
 
