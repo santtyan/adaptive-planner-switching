@@ -176,12 +176,16 @@ services:
   gzclient:
     image: adaptive-planner:latest
     network_mode: host
+    devices:
+      - /dev/dri:/dev/dri   # GPU Intel do host — sem isso o gzclient renderiza via
+                            # software (ou falha: "Failed to query drm device")
     environment:
       - DISPLAY=${DISPLAY:-:1}
       - GAZEBO_MASTER_URI=http://localhost:11345
       - GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models:/opt/ros/humble/share/turtlebot3_description/meshes
-      - GAZEBO_RESOURCE_PATH=/opt/ros/humble/share/turtlebot3_description
+      - GAZEBO_RESOURCE_PATH=/usr/share/gazebo-11:/opt/ros/humble/share/turtlebot3_description
       - TURTLEBOT3_MODEL=waffle
+      - LIBGL_ALWAYS_SOFTWARE=0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ./ros2_ws/src:/workspace/ros2_ws/src:ro
