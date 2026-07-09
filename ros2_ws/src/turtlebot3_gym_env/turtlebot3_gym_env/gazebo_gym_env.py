@@ -48,7 +48,7 @@ from geometry_msgs.msg import Twist, Pose, Point, Quaternion
 from sensor_msgs.msg import LaserScan
 from gazebo_msgs.msg import ModelStates
 from nav_msgs.msg import Odometry
-from gazebo_msgs.srv import SetEntityState
+from gazebo_msgs.srv import SetEntityState, SpawnEntity, DeleteEntity
 from std_srvs.srv import Empty
 from nav2_msgs.srv import ClearEntireCostmap
 
@@ -67,10 +67,30 @@ from adaptive_planner_ros.obs_utils import (
 # Constants
 # ---------------------------------------------------------------------------
 
-ROBOT_NAME = "turtlebot3_waffle"
+# FIX (09/07/2026): era "turtlebot3_waffle", mas a entidade spawnada de fato
+# é "waffle" (docker-compose.yml: `spawn_entity.py -entity waffle`). Esse
+# mismatch fazia `_model_states.name.index(ROBOT_NAME)` levantar ValueError
+# SEMPRE (capturado silenciosamente), então get_robot_pose() nunca conseguia
+# usar /gazebo/model_states (pose real) mesmo com libgazebo_ros_state.so
+# carregado — caía sempre no fallback /odom (dead-reckoning, nunca resetado
+# pelos teleports de reset()), acumulando erro monstruoso ao longo de 650k+
+# steps. Causa raiz real do platô da noite inteira. Ver [[project-treino-sparse-08jul]].
+ROBOT_NAME = "waffle"
 CMD_VEL_TOPIC = "/cmd_vel"
 SCAN_TOPIC = "/scan"
 MODEL_STATES_TOPIC = "/gazebo/model_states"
+# FIX (09/07/2026): "/gazebo/set_entity_state" NUNCA EXISTIU nesta config —
+# libgazebo_ros_state.so não está de fato publicando nada (nem o tópico
+# model_states, nem este serviço), apesar de estar na linha de comando do
+# gzserver sem erro nos logs. `ros2 service list` confirma: só existem
+# /pause_physics, /unpause_physics, /spawn_entity, /delete_entity (SEM
+# prefixo /gazebo/). Isso significa que teleport_robot() FALHAVA
+# SILENCIOSAMENTE EM TODA CHAMADA a sessão inteira (e provavelmente todo o
+# histórico do projeto) — o robô NUNCA foi teleportado entre episódios.
+# Fix: teleport vira delete_entity + spawn_entity na pose alvo (usa serviços
+# que de fato existem e funcionam, confirmados pelo spawn inicial no
+# docker-compose.yml). Ver [[project-treino-sparse-08jul]].
+ROBOT_MODEL_SDF_PATH = "/opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf"
 
 GOAL_RADIUS = 0.25          # metres — episode success threshold
 # COLLISION_DIST imported from obs_utils (single source of truth)
@@ -143,7 +163,17 @@ class _GazeboEnvNode(Node):
         self._model_states: Optional[ModelStates] = None
         self._scan_seq: int = -1
         self._cached_pose: tuple = (0.0, 0.0, 0.0)  # (x, y, yaw) from last teleport
-        self._odom_pose: Optional[tuple] = None       # (x, y, yaw) from /odom (live)
+        self._odom_pose: Optional[tuple] = None       # (x, y, yaw) raw /odom (live, drifts)
+        # Correção de deriva de odometria (09/07/2026): o plugin diff_drive
+        # nunca sabe que teleportamos via /gazebo/set_entity_state, então
+        # continua integrando a partir do seu próprio estado interno — o
+        # offset entre o frame do /odom e o mundo real cresce a cada reset.
+        # Fix: ancorar (_odom_ref, _world_ref) logo após cada teleport e
+        # aplicar a transformação rígida odom->mundo em get_robot_pose().
+        # Ver [[project-treino-sparse-08jul]] (achado da odometria 09/07).
+        self._odom_ref: Optional[tuple] = None         # raw odom pose right after teleport
+        self._world_ref: Optional[tuple] = None        # teleport target (ground truth then)
+        self._awaiting_odom_ref: bool = False
 
         # Publishers
         self._cmd_pub = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
@@ -159,12 +189,26 @@ class _GazeboEnvNode(Node):
         # Service clients
         self._set_entity_cli = self.create_client(SetEntityState,
                                                    "/gazebo/set_entity_state")
+        self._spawn_cli = self.create_client(SpawnEntity, "/spawn_entity")
+        self._delete_cli = self.create_client(DeleteEntity, "/delete_entity")
+        try:
+            with open(ROBOT_MODEL_SDF_PATH) as f:
+                self._robot_sdf = f.read()
+        except OSError:
+            self._robot_sdf = None
         self._clear_costmap_cli = self.create_client(
             ClearEntireCostmap,
             "/global_costmap/clear_entirely",
         )
-        self._pause_cli = self.create_client(Empty, "/gazebo/pause_physics")
-        self._unpause_cli = self.create_client(Empty, "/gazebo/unpause_physics")
+        # FIX (09/07/2026): "/gazebo/pause_physics" e "/gazebo/unpause_physics"
+        # NUNCA existiram nesta configuração — os serviços reais publicados
+        # pelo gazebo_ros são "/pause_physics" e "/unpause_physics" (sem
+        # prefixo). service_is_ready() sempre retornava False (client apontava
+        # pro nome errado), então pause/unpause eram no-ops silenciosos a
+        # sessão inteira (mascarado pelo guard "if not ready: return").
+        # Ver [[project-treino-sparse-08jul]] (achado 09/07 ~07h).
+        self._pause_cli = self.create_client(Empty, "/pause_physics")
+        self._unpause_cli = self.create_client(Empty, "/unpause_physics")
 
         self.get_logger().info("TurtleBot3GazeboEnv node initialised")
 
@@ -182,6 +226,9 @@ class _GazeboEnvNode(Node):
         yaw = _quat_to_yaw(p.orientation.x, p.orientation.y,
                            p.orientation.z, p.orientation.w)
         self._odom_pose = (p.position.x, p.position.y, yaw)
+        if self._awaiting_odom_ref:
+            self._odom_ref = self._odom_pose
+            self._awaiting_odom_ref = False
 
     # ---- helpers ----------------------------------------------------------
 
@@ -205,12 +252,17 @@ class _GazeboEnvNode(Node):
         return self._scan  # return stale if timeout
 
     def get_robot_pose(self) -> Tuple[float, float, float]:
-        """Return (x, y, yaw) — priority: model_states > odom > cached teleport.
+        """Return (x, y, yaw) — priority: model_states > odom (drift-corrected) > cached teleport.
 
-        /gazebo/model_states requires libgazebo_ros_state.so (not loaded in headless
-        training). /odom is always available via turtlebot3_diff_drive plugin and
-        tracks the actual robot motion during each episode. Falls back to the cached
-        teleport position only before the first odom message arrives.
+        /gazebo/model_states requires libgazebo_ros_state.so (not confirmed
+        publishing as of 09/07/2026, see [[project-treino-sparse-08jul]]).
+        /odom drifts because turtlebot3_diff_drive has no notion of
+        teleport-based resets (/gazebo/set_entity_state) — it keeps
+        integrating from its own internal frame regardless. We correct this
+        by anchoring a rigid transform (odom frame -> world frame) at the
+        instant right after each teleport (see _odom_ref/_world_ref,
+        set by teleport_robot()) and applying it to every subsequent raw
+        odom reading, instead of trusting raw /odom directly.
         """
         if self._model_states is not None:
             try:
@@ -221,8 +273,21 @@ class _GazeboEnvNode(Node):
                                      p.orientation.z, p.orientation.w))
             except ValueError:
                 pass
-        if self._odom_pose is not None:
-            return self._odom_pose
+        if self._odom_pose is not None and self._odom_ref is not None and self._world_ref is not None:
+            px, py, pyaw = self._odom_pose
+            ox, oy, oyaw = self._odom_ref
+            tx, ty, tyaw = self._world_ref
+            dtheta = tyaw - oyaw
+            c, s = np.cos(dtheta), np.sin(dtheta)
+            dx, dy = px - ox, py - oy
+            wx = tx + c * dx - s * dy
+            wy = ty + s * dx + c * dy
+            wyaw = (tyaw + (pyaw - oyaw) + np.pi) % (2 * np.pi) - np.pi
+            return (float(wx), float(wy), float(wyaw))
+        # Ainda sem _odom_ref (ex.: logo após teleport, física ainda pausada,
+        # nenhum /odom novo chegou) — NUNCA usar odom cru aqui, pois carrega
+        # a deriva acumulada de resets anteriores. O teleport mais recente é
+        # a melhor estimativa disponível.
         return self._cached_pose
 
     def pause_physics(self, blocking: bool = True) -> None:
@@ -252,26 +317,49 @@ class _GazeboEnvNode(Node):
             rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
 
     def teleport_robot(self, x: float, y: float, yaw: float) -> bool:
-        """Move robot to (x, y, yaw) via /gazebo/set_entity_state.
+        """Move robot to (x, y, yaw) via delete_entity + spawn_entity.
 
-        Does NOT reset /clock — safe to call during training.
+        /gazebo/set_entity_state does not exist in this setup (see
+        ROBOT_MODEL_SDF_PATH comment above) — reimplemented as a
+        delete+respawn using the two services that are actually available
+        and already used at container startup. Bonus: respawning also gives
+        turtlebot3_diff_drive a fresh internal odometry integrator, so /odom
+        no longer drifts across episodes either.
+
         Returns True on success.
         """
+        if self._robot_sdf is None:
+            return False
 
+        del_req = DeleteEntity.Request()
+        del_req.name = ROBOT_NAME
+        del_future = self._delete_cli.call_async(del_req)
+        rclpy.spin_until_future_complete(self, del_future, timeout_sec=0.5)
+        # OK if delete fails (e.g. first call, entity not spawned yet by us).
 
-        req = SetEntityState.Request()
-        req.state.name = ROBOT_NAME
-        req.state.pose.position = Point(x=x, y=y, z=0.0)
+        spawn_req = SpawnEntity.Request()
+        spawn_req.name = ROBOT_NAME
+        spawn_req.xml = self._robot_sdf
         qx, qy, qz, qw = _yaw_to_quat(yaw)
-        req.state.pose.orientation = Quaternion(x=qx, y=qy, z=qz, w=qw)
-        req.state.twist.linear.x = 0.0
-        req.state.twist.angular.z = 0.0
-        req.state.reference_frame = "world"
+        spawn_req.initial_pose = Pose(
+            position=Point(x=x, y=y, z=0.01),
+            orientation=Quaternion(x=qx, y=qy, z=qz, w=qw),
+        )
+        spawn_req.reference_frame = "world"
 
-        future = self._set_entity_cli.call_async(req)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
+        future = self._spawn_cli.call_async(spawn_req)
+        rclpy.spin_until_future_complete(self, future, timeout_sec=1.0)
         if future.done() and future.result().success:
             self._cached_pose = (x, y, yaw)
+            self._world_ref = (x, y, yaw)
+            self._odom_ref = None
+            # NÃO espera aqui: a física está pausada durante o teleport (ver
+            # reset() em gazebo_gym_env — pause_physics() antes do teleport,
+            # unpause_physics() só depois), então nenhuma mensagem /odom nova
+            # é publicada ainda. A referência é capturada naturalmente pelo
+            # próximo spin (dentro de wait_for_scan, já chamado após o
+            # unpause) via _odom_cb.
+            self._awaiting_odom_ref = True
             return True
         return False
 
