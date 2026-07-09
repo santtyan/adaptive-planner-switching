@@ -39,23 +39,31 @@ from turtlebot3_gym_env.gazebo_gym_env import TurtleBot3GazeboEnv, _GazeboEnvNod
 
 
 def find_latest_checkpoint(models_dir: str, seed: int):
-    """Localiza o checkpoint mais recente (maior step) salvo por CheckpointCallback.
+    """Localiza o checkpoint mais recente (por DATA DE MODIFICAÇÃO) salvo por
+    CheckpointCallback.
 
     Retorna (model_path, replay_buffer_path_ou_None, vecnormalize_path_ou_None)
     ou None se nenhum checkpoint existir. Usado para auto-resume: se o container
     morrer (crash, reboot, docker stop) e for reiniciado, o treino continua do
     último checkpoint em vez de do zero — ver [[project-treino-sparse-08jul]].
+
+    IMPORTANTE: seleciona por mtime (data de modificação), NÃO pelo maior número
+    de step no nome do arquivo. Runs antigos abandonados (ex.: 21/06, antes do
+    fix "atrator ocioso") podem ter checkpoints com step NUMERICAMENTE MAIOR que
+    o run atual mas muito mais antigos — escolher por step teria retomado do
+    checkpoint errado (achado nesta sessão, 08/07, antes de aplicar em produção).
     """
     pattern = os.path.join(models_dir, f"sac_{seed}_ckpt_*_steps.zip")
     candidates = glob.glob(pattern)
     if not candidates:
         return None
 
+    best = max(candidates, key=os.path.getmtime)
+
     def step_of(path: str) -> int:
         m = re.search(r"_(\d+)_steps\.zip$", path)
         return int(m.group(1)) if m else -1
 
-    best = max(candidates, key=step_of)
     step = step_of(best)
     replay_path = os.path.join(
         models_dir, f"sac_{seed}_ckpt_replay_buffer_{step}_steps.pkl"
@@ -81,6 +89,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fresh", action="store_true",
                    help="Ignora checkpoints existentes e treina do zero "
                         "(padrão é AUTO-RESUME do checkpoint mais recente)")
+    # Exploração (08/07/2026): ent_coef=0.1 FIXO trava std no valor de
+    # inicialização (~exp(-3)=0.0498) porque remove o mecanismo de correção do
+    # SAC contra colapso de entropia (que só existe com "auto" + target_entropy).
+    # Ver [[project-treino-sparse-08jul]] para o diagnóstico completo.
+    p.add_argument("--ent-coef", default="0.1",
+                   help="'auto' restaura a correção automática de entropia; "
+                        "valor fixo (ex. '0.1') não reage à entropia atual")
+    p.add_argument("--target-entropy", type=float, default=None,
+                   help="Só usado com --ent-coef auto. Default SB3 é -dim(ação) "
+                        "= -2 (pode ser agressivo demais); -1.0 é mais permissivo")
+    p.add_argument("--reset-log-std-on-resume", action="store_true",
+                   help="Ao retomar de checkpoint, reinicializa só a camada "
+                        "log_std do ator (mantém crítico + resto do ator) — "
+                        "destrava exploração congelada sem perder o treino")
     # Early abort (Plan B) — DESLIGADO por padrão (20/06/2026).
     # O threshold antigo (ep_rew_mean<50 @ 300k) era inatingível em mundo denso
     # (R_GOAL=50 exigiria quase todo episódio fechando goal) → matava o run.
@@ -264,13 +286,27 @@ def main() -> None:
     resume_from = None if args.fresh else find_latest_checkpoint(
         args.models_dir, args.seed
     )
+    # ent_coef "auto" precisa de um target_entropy explícito quando queremos
+    # ser menos agressivos que o default do SB3 (-dim(ação)=-2).
+    ent_coef_arg = args.ent_coef if args.ent_coef == "auto" else float(args.ent_coef)
+    target_entropy_arg = (
+        args.target_entropy if args.target_entropy is not None else "auto"
+    )
+
     if resume_from is not None:
         model_path, replay_path, vecnorm_path = resume_from
         print(f"[Resume] Checkpoint encontrado: {model_path}")
         if vecnorm_path:
             train_env = VecNormalize.load(vecnorm_path, train_env.venv)
             print(f"[Resume] VecNormalize stats carregadas: {vecnorm_path}")
-        model = SAC.load(model_path, env=train_env, tensorboard_log=tb_log)
+        # Override de ent_coef/target_entropy no load: preserva crítico + pesos
+        # do ator (168k+ updates de aprendizado sobre a dinâmica do ambiente),
+        # só troca o REGIME de entropia (ver [[project-treino-sparse-08jul]]).
+        model = SAC.load(
+            model_path, env=train_env, tensorboard_log=tb_log,
+            ent_coef=ent_coef_arg, target_entropy=target_entropy_arg,
+        )
+        print(f"[Resume] ent_coef={ent_coef_arg} target_entropy={target_entropy_arg}")
         if replay_path:
             model.load_replay_buffer(replay_path)
             print(f"[Resume] Replay buffer carregado: {replay_path} "
@@ -278,6 +314,13 @@ def main() -> None:
         else:
             print("[Resume] AVISO: replay buffer não encontrado — "
                   "retomando com buffer vazio (menos ideal, mas não do zero).")
+        if args.reset_log_std_on_resume and hasattr(model.policy.actor, "log_std"):
+            log_std_layer = model.policy.actor.log_std
+            import torch.nn as nn
+            nn.init.zeros_(log_std_layer.weight)
+            nn.init.zeros_(log_std_layer.bias)  # log_std=0 → std≈1.0 (era ~0.05)
+            print("[Resume] log_std do ator resetado (std inicial ≈1.0) — "
+                  "crítico e resto do ator PRESERVADOS.")
         print(f"[Resume] Continuando de num_timesteps={model.num_timesteps}")
     else:
         model = SAC(
@@ -291,7 +334,8 @@ def main() -> None:
             gamma=0.99,
             train_freq=1,
             gradient_steps=1,         # 1 update/passo: evita divergência de Q-values com R_APPROACH=10
-            ent_coef=0.1,             # fixo: gSDE colapsa entropia com auto, 0.1 mantém exploração
+            ent_coef=ent_coef_arg,
+            target_entropy=target_entropy_arg,
             use_sde=True,             # gSDE: exploração suave (padrão-ouro robótica)
             sde_sample_freq=64,       # reamostra o ruído de exploração a cada 64 passos
             verbose=1,
