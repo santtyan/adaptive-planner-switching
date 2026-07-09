@@ -52,7 +52,7 @@ services:
         source /workspace/ros2_ws/install/setup.bash &&
         export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
         export GAZEBO_MODEL_DATABASE_URI="" &&
-        gzserver --lockstep /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so &
+        gzserver --lockstep /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so -slibgazebo_ros_state.so &
         GZPID=$! &&
         echo 'Aguardando Gazebo /spawn_entity...' &&
         until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
@@ -84,7 +84,7 @@ services:
         source /opt/ros/humble/setup.bash &&
         source /workspace/ros2_ws/install/setup.bash &&
         export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
-        gzserver --lockstep /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so &
+        gzserver --lockstep /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so -slibgazebo_ros_state.so &
         GZPID=\$! &&
         echo 'Waiting for Gazebo /spawn_entity service...' &&
         until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
