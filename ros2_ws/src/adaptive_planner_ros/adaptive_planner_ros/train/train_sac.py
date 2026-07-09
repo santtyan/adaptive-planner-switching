@@ -236,6 +236,54 @@ class BestRolloutModelCallback(BaseCallback):
         return True
 
 
+class NoImprovementCallback(BaseCallback):
+    """Padrão-ouro de early-stop (09/07/2026): sem melhora por N avaliações
+    consecutivas, em vez de limiar fixo checado num único step (PlanBCallback,
+    mais fraco — ver [[project-treino-sparse-08jul]], pesquisa sobre
+    StopTrainingOnNoModelImprovement do SB3 e detecção de platô por tendência).
+
+    Não aborta o treino sozinho — só ACUSA o platô cedo, de forma mais
+    sensível que o PlanB (que só checa em planb_step). Decisão de abortar ou
+    não fica com --planb-enable; este callback é só o SINAL.
+    """
+
+    def __init__(self, check_freq: int = 2_000, min_episodes: int = 20,
+                 patience: int = 10, min_delta: float = 1.0,
+                 verbose: int = 1) -> None:
+        super().__init__(verbose)
+        self._check_freq = check_freq
+        self._min_episodes = min_episodes
+        self._patience = patience
+        self._min_delta = min_delta
+        self._best = float("-inf")
+        self._evals_without_improvement = 0
+        self._flagged = False
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps % self._check_freq != 0:
+            return True
+        buf = self.model.ep_info_buffer
+        if buf is None or len(buf) < self._min_episodes:
+            return True
+        mean_reward = sum(ep["r"] for ep in buf) / len(buf)
+        if mean_reward > self._best + self._min_delta:
+            self._best = mean_reward
+            self._evals_without_improvement = 0
+        else:
+            self._evals_without_improvement += 1
+        if (self._evals_without_improvement >= self._patience
+                and not self._flagged):
+            self._flagged = True
+            print(
+                f"\n[NoImprovement] PLATÔ DETECTADO — sem melhora "
+                f"(Δ<{self._min_delta}) em {self._patience} avaliações "
+                f"consecutivas ({self._patience * self._check_freq} steps). "
+                f"Melhor ep_rew_mean={self._best:.1f} @ step {self.num_timesteps}. "
+                f"Isso é um SINAL, não aborta o treino automaticamente.\n"
+            )
+        return True
+
+
 def main() -> None:
     args = parse_args()
     os.makedirs(args.models_dir, exist_ok=True)
@@ -381,6 +429,10 @@ def main() -> None:
         threshold=args.stop_success_rate,
         patience=args.stop_patience,
         check_freq=args.eval_freq,
+    ), NoImprovementCallback(
+        check_freq=args.eval_freq,
+        patience=5,      # 5 avaliações sem melhora (~50k steps @ eval_freq=10k default)
+        min_delta=1.0,
     )]
     print(f"[StopOnSuccess] ativo: encerra se sr≥{args.stop_success_rate:.0%} "
           f"@ max-curriculum por {args.stop_patience} checagens.")
