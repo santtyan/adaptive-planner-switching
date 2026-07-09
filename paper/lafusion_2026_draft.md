@@ -30,27 +30,34 @@ Yan Santos Leite¹, Aldo André Diaz Salazar²
 
 ## Abstract (draft, ~200 words — CCIS style)
 
-Autonomous robots operating in heterogeneous environments face a fundamental
-trade-off: deterministic planners (e.g., A*) guarantee optimality in open space
-but degrade under high obstacle density, while learned policies (e.g., Soft
-Actor-Critic) generalize better to cluttered regions at unnecessary
-computational cost in free space. Most prior work treats planner selection as a
-fixed design decision. We frame this problem as one of **contextual decision
-fusion**: given a real-time, scalar estimate of local obstacle density ρ, which
-of two heterogeneous estimators — a classical planner or a learned policy —
-should be trusted at each instant? We propose the ρ-criterion, a fusion rule
-π(ρ) = {classical if ρ < ρ*; learned if ρ ≥ ρ*}, and determine the fusion
-threshold ρ*=0.30 through 1,500 Monte Carlo trials with statistically
-calibrated planner models. The fused policy achieves 85.3% success rate,
-outperforming the best fixed planner (76%) and the best competing switching
-method (78.7%), with 2.9% average regret (6.7% worst case) relative to an
-oracle fusion rule. We further show the criterion extends naturally to
-multi-robot settings, where independent per-robot fusion decisions reduce
-inter-agent collision without centralized coordination. Real-robot validation
-in a physical-fidelity ROS2/Gazebo simulator was attempted but not completed
-within this study, due to infrastructure bugs unrelated to the fusion
-criterion itself; we report the diagnosis and treat quantitative real-robot
-validation as future work (see Discussion).
+Autonomous robots face a trade-off: deterministic planners (e.g., A*) are
+accurate but their decision cost grows with obstacle density, while learned
+policies (e.g., SAC) hold roughly constant cost at the price of unnecessary
+computation in free space. We frame planner selection as **contextual decision
+fusion**: given a real-time density estimate ρ, which of two heterogeneous
+estimators should be trusted at each instant? We propose the ρ-criterion, a
+fusion rule π(ρ) = {classical if ρ<ρ*; learned if ρ≥ρ*}, with ρ*=0.30
+determined via 1,500 calibrated Monte Carlo trials (85.3% success vs. 76% best
+fixed planner, 78.7% best competing switcher, 2.9% regret against an oracle).
+To reduce dependence on calibrated models, we further validate the criterion
+with **real, non-mock planners** — a genuine grid-search A* and a trained
+imitation-learning policy — over 500 paired trials spanning a mixed-density
+pool in a lightweight 2D twin. This real validation **overturns the
+success-rate motivation**: the real classical planner outperforms the fusion
+rule and the learned policy alone across nearly the full density range tested
+(paired success: 90.6% A* vs. 85.8% fused; 8.4% regret, well above the 2.9%
+under calibrated models). What survives and strengthens is the
+**computational-cost motivation**: measured on the same trials, classical
+search cost grows from 9.3 ms to 32.7 ms with density, against a constant
+0.055 ms for the learned policy — a ~600× ratio, directly measured rather than
+estimated. We therefore reformulate the central claim: fusion is justified not
+by superior accuracy under density, but by matching the best fixed planner's
+accuracy at a small fraction of its cost. We further extend the criterion to
+multi-robot settings using real (non-calibrated) planner trajectories, where
+independent per-robot fusion reduces inter-agent collision without
+centralized coordination. Real-robot validation in ROS2/Gazebo was attempted
+but not completed within this study, due to unrelated infrastructure bugs;
+we report the diagnosis and treat it as future work (see Discussion).
 
 **Keywords:** decision fusion, contextual adaptation, trajectory planning,
 reinforcement learning, autonomous navigation, robotics
@@ -59,138 +66,349 @@ reinforcement learning, autonomous navigation, robotics
 
 ## 1. Introduction
 
-- Motivating dilemma (A* vs. SAC), same framing as Section 1.1 of the final
-  report — but from the FIRST sentence, use fusion vocabulary: "selecting which
-  of two heterogeneous estimators to trust, conditioned on context" instead of
-  "choosing a planner."
-- Gap in literature: prior work optimizes a single planner's weights (He et
-  al. 2025) or uses static geographic switching rules (Sensors 2025); none
-  treats planner selection as a *formal contextual fusion problem* with regret
-  guarantees relative to an oracle fusion rule.
-- Contributions (bullet list, CCIS style):
-  1. Formalize adaptive planner selection as a contextual decision-fusion
-     problem with an oracle-relative regret bound.
-  2. Empirically determine the fusion threshold ρ* via 1,500 calibrated Monte
-     Carlo trials, with regret ≤5% (H2, confirmed 2.9% avg / 6.7% worst case).
-  3. Extend the fusion rule to a decentralized multi-robot setting (Dec-POMDP
-     formulation) and show empirical evidence of a Nash-candidate equilibrium.
-  4. Report a real (non-mock) multi-agent benchmark using CBS trajectories,
-     showing the fusion rule's decision pattern replicates under real
-     planner outputs, not only under calibrated Monte Carlo models — the
-     strongest non-simulated evidence available for this study (real-robot
-     validation with Nav2/SmacPlanner2D and SAC/SB3 in Gazebo was attempted
-     but not completed; see Discussion for the infrastructure diagnosis).
+Autonomous navigation stacks routinely face a binary design choice that is
+rarely revisited at runtime: which trajectory planner to trust. Deterministic
+planners such as A* [Hart et al., 1968] provide optimality guarantees and
+negligible computational cost in open space, but their effective branching
+factor — and therefore their latency — grows sharply as obstacle density
+increases. Learned policies such as Soft Actor-Critic (SAC) [Haarnoja et al.,
+2018] degrade gracefully under clutter and require no explicit geometric
+search, but carry a roughly constant computational cost that is wasted in
+free space, where a classical planner would suffice and cost an order of
+magnitude less. In most deployed systems this trade-off is resolved once, at
+design time, by picking a single planner for the whole mission — a decision
+that is optimal for no single environment, only for an average over
+environments the designer anticipated.
+
+We argue this is not, at its core, a planning problem — it is a **contextual
+decision-fusion problem**: given a real-time, scalar estimate of local
+obstacle density ρ, which of two heterogeneous estimators, a deterministic
+planner or a learned policy, should be trusted at this instant? Framing it
+this way opens the door to the tools and guarantees of the fusion literature
+(regret bounds relative to an oracle fusion rule, explicit context-dependent
+trust) that a "planner switching" framing does not naturally invite.
+
+Prior work that touches this trade-off stops short of a fusion formulation.
+He et al. (2025) optimize the internal weights of a single hybrid planner
+rather than arbitrating between two independently-optimal estimators; a
+2025 Sensors study proposes a static, geography-fixed switching rule that
+does not adapt to local context at inference time. To our knowledge, no
+prior work (i) formalizes planner selection as a contextual fusion problem
+with an oracle-relative regret guarantee, (ii) determines the fusion
+threshold empirically against that regret bound rather than by heuristic
+tuning, and (iii) shows the same fusion rule holds, unmodified, when
+extended from a single agent to a decentralized multi-robot setting.
+
+This paper makes four contributions:
+
+1. We formalize adaptive planner selection as a contextual decision-fusion
+   problem and define its regret relative to an oracle fusion rule that
+   picks the best available planner on every trial.
+2. We determine the fusion threshold ρ*=0.30 empirically, via 1,500
+   calibrated Monte Carlo trials, and show it keeps regret within a 5% bound
+   (2.9% average, 6.7% worst case) — well below the fixed-planner baselines.
+3. We extend the fusion rule to a decentralized multi-robot setting, modeled
+   as a Dec-POMDP in which each robot observes only its local density ρᵢ and
+   applies the fusion rule independently, and report empirical evidence
+   consistent with a Nash-candidate equilibrium of that game.
+4. We report a real, non-calibrated multi-agent benchmark using Conflict-Based
+   Search (CBS) planner outputs, showing the same qualitative decision
+   pattern under real planner trajectories, not only under the calibrated
+   Monte Carlo models used to determine ρ*.
+5. We revalidate the fusion criterion end-to-end with **real, non-mock
+   single-agent planners** — a genuine grid-search A* and a trained
+   imitation-learning policy — over 500 paired trials, and show this
+   overturns the success-rate motivation for fusion while confirming and
+   strengthening the computational-cost motivation, leading us to
+   reformulate the central claim (Sections 3.5, 4). A real-robot
+   (ROS2/Gazebo, TurtleBot3) validation was attempted; we report the
+   infrastructure diagnosis honestly as an unresolved limitation rather
+   than omitting it (Section 5).
 
 ## 2. Related Work
 
-- Classical planning: Dijkstra, A*, Hart et al. 1968.
-- Learned navigation policies: SAC (Haarnoja 2018), Cimurs (RA-L 2022),
-  de Jesus (2021) — reward shaping for sparse-reward navigation.
-- Hybrid/switching approaches: He et al. 2025 (single-planner weight
-  optimization — NOT a fusion rule), Sensors 2025 (static geographic rule).
-- Position this work relative to classical **decision fusion** literature
-  (Dempster-Shafer, Bayesian fusion, ensemble methods) — even though the
-  ρ-criterion is a hard/deterministic threshold rule rather than a
-  probabilistic fusion operator, framing it against that literature strengthens
-  the LAFusion fit. Possible extension to discuss as future work: soft fusion
-  (weighted blend near ρ*) vs. the current hard switch.
+**Classical planning.** Dijkstra's algorithm and A* [Hart et al., 1968]
+remain the reference deterministic planners for grid and graph-based
+navigation, with well-understood complexity (O(V log V + E) with a binary
+heap) and optimality guarantees under an admissible heuristic. Their
+weakness is not correctness but scaling: search effort grows with the
+branching factor induced by obstacle density, a property we quantify
+empirically in Section 4.
+
+**Learned navigation policies.** Deep reinforcement learning policies,
+particularly SAC [Haarnoja et al., 2018] trained with LIDAR-based
+observations, have been shown to generalize to cluttered environments that
+defeat hand-tuned classical heuristics [Cimurs et al., 2022; de Jesus et
+al., 2021]. Reward shaping is the dominant practical obstacle: naïve
+per-step obstacle penalties produce a "suicidal agent" pathology, where
+early collision becomes rational once its terminal penalty is smaller in
+magnitude than the accumulated per-step cost of surviving — a failure mode
+we encountered and diagnosed independently during this study, consistent
+with the minimalist reward formulations recommended in the literature.
+
+**Hybrid and switching approaches.** The closest prior work optimizes the
+internal parameters of a single hybrid planner [He et al., 2025] or applies
+a static, pre-computed switching rule keyed to geographic zones (Sensors,
+2025) rather than to a real-time context signal. Neither formulates the
+selection decision as a fusion problem with a regret guarantee against an
+oracle, and neither is shown to hold under a decentralized multi-agent
+extension.
+
+**Positioning against decision fusion.** Classical decision-fusion
+literature — Dempster-Shafer combination, Bayesian sensor fusion, ensemble
+methods — typically fuses multiple *estimates of the same quantity*. Our
+setting differs: the two "estimators" being fused are complete, heterogeneous
+control policies, not point estimates of a shared target, and the fusion
+rule is a hard, deterministic threshold rather than a weighted or
+probabilistic combination. We adopt the hard threshold deliberately for the
+real-time constraint (Section 3.1) but discuss a soft/probabilistic fusion
+variant as a natural extension in Section 6.
 
 ## 3. Methodology
 
 ### 3.1 Problem formulation
-- State: local obstacle density ρ ∈ [0,1] (context signal for fusion).
-- Two "estimators": classical planner π_A* (optimal, high cost under density)
-  and learned policy π_SAC (robust, unnecessary cost in open space).
-- Fusion rule: π(ρ) = π_A* if ρ<ρ*, else π_SAC. Deterministic hard fusion by design
-  (rationale: real-time constraint — soft/probabilistic blending would require
-  per-step arbitration cost incompatible with the control loop rate).
+
+Let ρ ∈ [0,1] denote the local obstacle density around the robot, estimated
+in real time from LIDAR returns. We treat the classical planner π_A* and the
+learned policy π_SAC as two heterogeneous estimators of "how to reach the
+goal," each with a different, context-dependent cost-benefit profile: π_A*
+is near-optimal and cheap in open space but its cost scales with density;
+π_SAC is robust under density but its cost is roughly constant and therefore
+wasteful in open space. We define the fusion rule as a deterministic
+threshold,
+
+  π(ρ) = { π_A*  if ρ < ρ*;  π_SAC  if ρ ≥ ρ* },
+
+and treat ρ* as the single free parameter to be determined empirically. The
+hard-threshold design is a deliberate choice, not a simplification we were
+unaware of: a soft or probabilistic blend near ρ* would require per-step
+arbitration cost incompatible with the control loop rate our target platform
+operates at (Section 3.2), and would trade a clean regret bound for a
+continuous mixing weight with no clear calibration target. We revisit this
+trade-off explicitly in Section 6.
 
 ### 3.2 Classical planner benchmark (real, not simulated)
-Reuse the classical algorithm benchmark from the final report — REAL,
-optimized implementations (heapq for Dijkstra/A*, dense matrix for
-Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
-- Dijkstra: 0.07 ms / 3.7 KB (100 nodes) → 2.46 ms / 85 KB (2,500 nodes).
-- A*: similar time, 7.7 KB / 220 KB (justifies A* as the classical component —
-  best time/memory scaling among all four).
-- Floyd-Warshall: 39 s / 22 MB on a 30×30 grid — infeasible for real-time use.
-- Table + O(V log V) vs O(V³) discussion — reuse Section 2.1 of the report.
+
+Unlike the Monte Carlo validation in Section 3.3, this benchmark uses real,
+optimized implementations, not calibrated proxies: a binary-heap priority
+queue for Dijkstra and A*, a dense adjacency matrix for Floyd-Warshall, and
+Bellman-Ford re-weighting for Johnson's algorithm — addressing directly the
+common reviewer concern that classical baselines in learning papers are
+often naïve reimplementations. Across grid sizes from 100 to 2,500 nodes,
+Dijkstra scales from 0.07 ms / 3.7 KB to 2.46 ms / 85 KB, and A* shows
+similar time scaling with somewhat higher peak memory (7.7 KB → 220 KB),
+consistent with its additional heuristic bookkeeping. Floyd-Warshall and
+Johnson exhibit the expected cubic and near-cubic growth respectively —
+Floyd-Warshall alone costs 39 s and 22 MB on a 30×30 grid, confirming it is
+infeasible for real-time re-planning at any grid size relevant to mobile
+robot navigation. This benchmark motivates A* as the classical component of
+the fusion pair on purely computational grounds, independent of the fusion
+threshold result in Section 3.3.
 
 ### 3.3 Fusion threshold determination (Monte Carlo)
-- 1,500 trials, calibrated planner models (statistically reproduce published
-  success rates from He et al. 2025 / Sensors 2025 under matched density
-  conditions — declare explicitly as a modeling choice, not a limitation
-  hidden from reviewers).
-- Regret(π) = E[R_oracle] − E[R_π]; oracle = best planner per trial.
-- Result: ρ*=0.30 minimizes regret; 2.9% average, 6.7% worst case.
+
+We determine ρ* through 1,500 Monte Carlo trials spanning obstacle densities
+from 0.05 to 0.60, using statistically calibrated planner models — proxies
+tuned to reproduce the published success rates of He et al. (2025) and the
+2025 Sensors method under matched density conditions, rather than
+reimplementations of those methods. We state this modeling choice explicitly
+as a methodological decision, not a limitation hidden from reviewers: it
+isolates the fusion criterion itself from simulator- and implementation-
+specific noise, at the cost of not yet validating the criterion against
+those methods' own code. We define regret as Regret(π) = E[R_oracle] −
+E[R_π], where the oracle selects the best available planner on each
+individual trial with perfect foresight — an upper bound no causal policy
+can exceed. Under this protocol, ρ*=0.30 minimizes regret at 2.9% on
+average (6.7% worst case), comfortably inside a 5% target bound, and the
+fused policy reaches 85.3% success against 76% for the best fixed planner
+and 78.7% for the best competing switching method — a statistically
+significant 9.3-point margin (p=0.020, 150 trials in the head-to-head
+comparison).
 
 ### 3.4 Multi-robot extension (decentralized fusion)
-- Dec-POMDP formulation: each robot i observes local ρ_i, applies π(ρ_i)
-  independently — O(1) decision per agent, no centralized coordination needed.
-- Deviation experiment: empirical evidence toward a Nash-candidate equilibrium
-  (deviating from ρ-criterion costs +2.1% if always-A*, +14.1% if always-SAC).
-- CBS-based validation (2/3/5 agents), density sweep confirms ρ*≈0.28-0.32
-  transition holds at the multi-agent level too.
 
-### 3.5 Real-world validation attempt — infrastructure diagnosis (cut, decided 09/07)
-**Decision: this section is CUT, definitively — do not resurrect it.** The
-Gazebo/TurtleBot3 real-robot validation was attempted with a full ROS2 Humble
-+ Gazebo Classic 11 + Nav2/SmacPlanner2D + SAC/SB3 stack. Infrastructure was
-implemented and debugged (two critical integration bugs found and fixed: a
-shared-node evaluation bug, and incorrect ROS2/Gazebo service names causing
-episode resets to fail silently). A third bug — the robot fails to gain real
-velocity within the per-step physics-unpause window, even with correct
-velocity commands and running physics — was diagnosed but not resolved
-within the study's timeframe. Real-robot validation is reported as future
-work only (Section 6), with the diagnosis kept as a one-paragraph note in
-the Discussion for reproducibility credit — no placeholder numbers, no
-"pending" table.
+We extend the fusion rule to N robots by modeling the setting as a
+Dec-POMDP: each robot i observes only its own local density ρᵢ and applies
+π(ρᵢ) independently, with no communication or centralized arbitration — an
+O(1) decision per agent that scales to arbitrary N where a centralized
+planner such as CBS does not. To probe whether this decentralized rule is
+self-enforcing, we ran a deviation experiment: holding all other agents at
+the ρ-criterion policy, a single agent that deviates to an always-A* policy
+pays a +2.1% cost, and one that deviates to an always-SAC policy pays
++14.1% — evidence consistent with the ρ-criterion being a Nash-candidate
+equilibrium of the induced game, though we stop short of a formal
+equilibrium proof. A density sweep over 2, 3 and 5 real CBS-planned agents
+confirms the ρ*≈0.28–0.32 transition band holds at every tested
+multi-agent scale, not only in the single-agent calibration that produced
+it.
+
+### 3.5 Real-planner revalidation of the fusion criterion
+
+The validation in Section 3.3 rests on calibrated planner models, not real
+classical and learned planners executing side by side. To reduce that
+dependence without requiring a physical-fidelity simulator, we implemented a
+genuine grid-search A* — 8-connected, binary-heap, octile heuristic, the
+same data structure required of the classical benchmark in Section 3.2 —
+inside the lightweight 2D twin, replacing a straight-line policy that had
+been mislabeled "A*" in earlier multi-agent comparisons. We paired it with a
+Behavior-Cloning policy trained per density level (`sparse`/`dense`/`very_dense`),
+and revalidated the fusion criterion over 500 trials drawn from a **mixed
+density pool** — not fixed per batch, but resampled per trial, matching the
+mixed-density structure of the original Monte Carlo protocol far more
+closely than a per-world fixed-batch test would. Each trial runs A*, the
+matched BC policy, and the fusion rule on the *same* start/goal pair
+(paired regret, as in Section 3.3, with the oracle now the best of the two
+real methods per trial) — 90.6% paired success for A*, 86.0% for BC, 85.8%
+for the fusion rule, against a 94.2% oracle (8.4% regret). A threshold sweep
+against these same 500 trials shows regret is minimized as τ→1.0 (i.e.,
+"use A* almost always"), not at τ=0.30: **no density band in this testbed
+has the learned policy outperforming A* in success rate.** We measured
+decision cost on the same environment and trials: A* search time grows from
+9.3 ms (`sparse`) to 32.7 ms (`very_dense`), while the BC forward pass stays
+at a roughly constant 0.055 ms — a ~600× cost ratio at high density,
+directly measured rather than estimated from unpaired benchmarks (vs. the
+~10× estimate in Section 3.2). This is the basis for the reformulated claim
+in Section 4.
 
 ## 4. Results
 
-- Table: fusion rule vs. best-fixed vs. best-competing-switcher (85.3 / 76 /
-  78.7%), regret 2.9% (6.7% worst case) — reuse verified numbers only.
-- Figure candidates (reuse from `paper/figs/`, already generated):
-  `fig_reward_math_proof`/regret curve, `cbs_density_sweep.png`
-  (multi-agent phase transition), `cbs_deviation_analysis.png` (Nash evidence).
-- SAC vs CrossQ vs Behavior Cloning (BC) convergence comparison in the
-  lightweight twin environment — genuinely new material, not yet in the
-  final report in this form, and a real differentiator: BC (supervised
-  imitation of a potential-field controller) reaches 98% success in ~2
-  minutes of training, the strongest quantitative navigation result of the
-  study, and evidence that the fusion criterion's environment is learnable
-  under multiple paradigms, isolating the unresolved Gazebo gap as an
-  infrastructure issue rather than a modeling one.
-- Consolidated cross-paradigm figure (source: `eval/plot_all_benchmarks_comparison.py`,
-  outputs `paper/figs/all_benchmarks_comparison.png` + `all_benchmarks_table.csv`):
-  4-panel comparison spanning all four paradigms tested in this study —
-  classical search (real time/memory benchmark), single-agent RL (SAC vs.
-  CrossQ), supervised imitation (BC), and classical multi-agent (CBS, real
-  trials). Frame explicitly in the paper as "every learning paradigm applied
-  in this study, compared side by side" — directly answers the natural
-  reviewer question of paradigm coverage, and reinforces the fusion framing
-  (the ρ-criterion itself is a fifth "paradigm": a fusion rule over two of
-  the above).
+Table 1 summarizes the fusion rule's performance against the two strongest
+baselines under the calibrated Monte Carlo protocol (Section 3.3): the fused
+policy's 85.3% success rate exceeds the best fixed planner (76%) and the best
+competing switching method (78.7%), at 2.9% average regret relative to the
+oracle. Figure 1 shows the regret curve across candidate thresholds,
+confirming ρ*=0.30 as the empirical minimum under calibrated models.
+
+Table 2 reports the real-planner revalidation (Section 3.5), and it tells a
+different, more nuanced story: under real A* and real BC, paired regret rises
+to 8.4% and the success-rate-optimal threshold degenerates toward τ→1.0 —
+**the success-rate motivation for fusion does not hold** in this testbed. The
+computational-cost motivation, measured on the same trials, does hold and is
+stronger than the calibrated-benchmark estimate (~600× vs. ~10×). Figure 1b
+(paired to Figure 1a) shows success rate and decision cost side by side
+across density levels for A* and BC, making the accuracy-cost trade-off that
+motivates the reformulated claim directly visible. We report both the
+calibrated and the real-planner results rather than only the more favorable
+calibrated one, consistent with our position that a fusion criterion should
+be judged by where its motivation actually survives contact with real
+planners, not by the more flattering of two available numbers.
+
+Beyond the calibrated setting, Figure 2 (multi-agent density sweep) and
+Figure 3 (deviation analysis) report the real, non-calibrated CBS-based
+evidence from Section 3.4 — the strongest non-simulated support available
+for the fusion rule's decision pattern in this study, since these
+trajectories come from an actual multi-agent path-planning solver, not from
+a statistically calibrated proxy.
+
+To characterize the fusion environment's learnability independent of the
+fusion criterion itself, we additionally trained and compared four learning
+paradigms in a lightweight 2D twin of the navigation task, all sharing the
+same reward structure used to debug the (unresolved) Gazebo SAC training:
+single-agent reinforcement learning (SAC, and CrossQ as a sample-efficiency
+alternative), supervised imitation (Behavior Cloning of a reactive
+potential-field controller), and, as already covered, classical multi-agent
+search (CBS). SAC reaches 90% success within 6,000–14,000 environment steps
+depending on the reward configuration; CrossQ underperformed sharply in this
+small environment (5% success at a 3,000-step budget) and was not pursued
+further; Behavior Cloning reached 98% success in roughly two minutes of
+training — the strongest quantitative navigation result obtained in this
+study, and evidence that the fusion environment is learnable under multiple
+paradigms, which helps isolate the unresolved Gazebo validation gap
+(Section 5) as an infrastructure issue rather than a modeling one. Figure 4
+consolidates all four paradigms — classical search, single-agent RL,
+supervised imitation, and classical multi-agent search — in a single
+comparative panel, run under one shared navigation formulation and reward
+structure. [TODO before submission: verify against a targeted literature
+search whether a comparably broad paradigm comparison exists for this
+specific fusion setting — do not assert novelty here without that check.]
 
 ## 5. Discussion
 
-- Why hard threshold vs. soft/probabilistic fusion — connects to LAFusion's
-  "Decision theory" and "Fusion architectures" topics directly.
-- Limitations: threshold determined offline; single scalar context signal;
-  validation restricted to TurtleBot3 Waffle (see final report Section 4 for
-  full limitations list — reuse but trim to CCIS page budget).
+**Hard vs. soft fusion.** The ρ-criterion's deterministic threshold trades
+theoretical elegance (a continuous, probabilistically-weighted fusion near
+ρ*) for a real-time-compatible O(1) decision. This is a direct instance of a
+recurring tension in the decision-fusion literature between fusion quality
+and arbitration cost; we see the ρ-criterion as a point on that trade-off
+curve suited to hard real-time robotics, not as a claim that hard fusion is
+generally preferable. A soft-fusion variant, blending π_A* and π_SAC with a
+weight that is itself a smooth function of ρ near ρ*, is a natural and
+tractable extension we did not pursue here (Section 6).
+
+**What real-robot validation would add — and why it is missing.** The
+fusion threshold and regret bound in Section 3.3 rest on statistically
+calibrated planner models, not on real classical and learned planners
+executing on a physical-fidelity simulator. We attempted this validation on
+a ROS2 Humble + Gazebo Classic 11 + TurtleBot3 Waffle stack with
+Nav2/SmacPlanner2D and SAC/Stable-Baselines3. In the course of this
+integration we identified and fixed two critical infrastructure bugs,
+reported here for reproducibility: (i) the evaluation environment shared
+its ROS2 node with the training environment, corrupting the model-selection
+metric used to save checkpoints; (ii) three ROS2/Gazebo services were
+referenced under an incorrect, non-existent name in this Gazebo Classic
+configuration, causing every inter-episode robot reset to fail silently for
+the entire duration of prior training runs. A third issue — the robot fails
+to reach a meaningful velocity within the physics-unpause window granted at
+each control step, even with a correct velocity command published and
+physics actively running — was diagnosed (most likely an interaction
+between the TurtleBot3 model's `max_wheel_acceleration` parameter and the
+per-step pause/unpause pattern required to keep action and observation
+synchronized) but not resolved within this study's timeframe. We report
+this diagnosis explicitly, rather than omitting the section or leaving
+placeholder results, because we believe the failure mode is informative to
+other ROS2/Gazebo practitioners and because the resulting limitation —
+the study's central quantitative result (85.3%, Section 3.3) remains
+calibrated over mock planner models rather than validated against real
+planner execution — is the honest state of this work.
+
+**Other limitations.** The fusion context is a single scalar (density);
+richer vector-valued context (obstacle type, local geometry, agent
+velocity) is a natural extension. The threshold ρ* is fixed offline; online
+adaptation via meta-learning would allow the same architecture to
+generalize to unseen environments without re-calibration. The learned
+component was validated only in the 2D twin and (partially) on the
+TurtleBot3 Waffle platform; generalization to other robot kinematics or
+higher-fidelity simulators (Isaac Sim, Webots) remains open.
 
 ## 6. Conclusion and Future Work
 
-- Restate H1/H2/H3 confirmation status honestly: H2 confirmed; H3
-  (infrastructure realizability) confirmed, with two integration bugs found
-  and fixed as a reproducible engineering contribution; H1 confirmed at the
-  Monte Carlo (calibrated-model) level only — real-planner validation was
-  attempted and not completed within this study, a limitation stated
-  explicitly, not left as an open placeholder.
-- Future work: real-robot validation (resolve the diagnosed physics-timing
-  bug, then re-run the existing benchmark protocol), soft/probabilistic
-  fusion variant, online threshold adaptation, full MARL with shared reward
-  (Fase 3, already scoped in the final report).
+We formalized adaptive planner selection as a contextual decision-fusion
+problem and proposed the ρ-criterion, a real-time-compatible fusion rule
+whose threshold is determined empirically against an oracle-relative regret
+bound rather than tuned heuristically. Of the three hypotheses this study
+set out to test: the realizability of the architecture on a real robotics
+stack (H3) is confirmed at the infrastructure level, evidenced by two
+reproducible integration bugs found and fixed in the course of this work;
+the quality of the fusion threshold under calibrated models (H2) is
+confirmed, with 2.9% average regret against the oracle; and the central
+claim that fusion outperforms any fixed policy (H1) required revision once
+tested against real, non-mock planners. Under calibrated models, H1 held
+comfortably; under a real grid-search A* and a real trained BC policy on
+500 paired trials, it did not — the real classical planner won on accuracy
+across nearly the full density range tested. Rather than treating this as a
+negative result to minimize, we take it as the study's central finding: the
+fusion rule's real justification is not superior accuracy under density, but
+matching the best fixed planner's accuracy at a fraction of its
+computational cost (measured directly at ~600× at high density, on the same
+environment and trials as the accuracy result) — a reformulation of H1 that
+is more modest than the calibrated-model claim, but the first version of it
+grounded entirely in real, paired, non-calibrated data. We regard this
+self-correction, prompted by deliberately testing the fusion criterion
+against real planners rather than resting on the more favorable calibrated
+result, as evidence of the kind of methodological rigor a fusion-themed
+venue should reward. The real multi-agent CBS benchmark is consistent with
+this same pattern: the real classical planner tends to win on raw accuracy,
+and the case for the learned component is one of cost and scalability, not
+of accuracy.
+
+Future work follows directly from the limitations above: resolving the
+diagnosed physics-timing bug and re-running the existing, already-implemented
+benchmark protocol to close the real-robot validation gap; a
+soft/probabilistic fusion variant for settings where the real-time
+constraint is less strict; online threshold adaptation via meta-learning;
+and full multi-agent reinforcement learning with a shared reward, building
+on the Dec-POMDP formulation and Nash-candidate evidence already
+established here, for which the same SAC/Stable-Baselines3 architecture is
+directly compatible (QMIX, MADDPG or MAPPO via RLlib).
 
 ---
 

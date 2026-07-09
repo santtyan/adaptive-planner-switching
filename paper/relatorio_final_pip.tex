@@ -99,15 +99,19 @@ limiar que separa os dois regimes, $\rho^* = 0{,}30$, foi obtido por experimento
 cenários cobrindo densidades de $0{,}05$ a $0{,}60$ revelaram o ponto em que um planejador
 passa a superar o outro.
 
-A Fase~1 confirmou a tese: o critério adaptivo atingiu 85,3\% de taxa de sucesso, contra 76\%
-do melhor método fixo, ficando a apenas 2,9\% de um seletor ideal. O estudo dos algoritmos
-clássicos justificou a escolha do A* (o Floyd-Warshall, por exemplo, leva 39~s e 22~MB num
-grid $30{\times}30$, inviável em tempo real). A Fase~2, que integra ROS2~Humble, Gazebo~Classic
-e TurtleBot3~Waffle, teve sua infraestrutura implementada e depurada extensivamente
-(dois bugs críticos de integração identificados e corrigidos), mas a validação
-quantitativa de navegação real não foi concluída dentro do prazo desta IC, por um
-terceiro bug de infraestrutura não resolvido; esta lacuna é declarada como limitação
-central do trabalho.
+A Fase~1 confirmou a tese sobre modelos calibrados: o critério adaptivo atingiu 85,3\% de
+taxa de sucesso, contra 76\% do melhor método fixo, ficando a apenas 2,9\% de um seletor
+ideal. O estudo dos algoritmos clássicos justificou a escolha do A* (o Floyd-Warshall, por
+exemplo, leva 39~s e 22~MB num grid $30{\times}30$, inviável em tempo real). A Fase~2, que
+integra ROS2~Humble, Gazebo~Classic e TurtleBot3~Waffle, teve infraestrutura implementada e
+depurada (dois bugs críticos corrigidos), mas a validação quantitativa de navegação real não
+foi concluída nesta IC, por um terceiro bug não resolvido; esta lacuna é declarada como
+limitação central. Para reduzir a dependência de mock sem o Gazebo, revalidamos H1 com A* e
+BC reais no gêmeo 2D (500 trials pareados): a motivação por taxa de sucesso não se sustentou
+(A* real 90,6\% vs.\ adaptativo 85,8\%), mas a motivação por custo computacional se confirmou
+e ficou mais forte (razão de custo de $\sim$600$\times$ medida no mesmo ambiente, vs.\
+$\sim$10$\times$ estimado antes) --- H1 é reformulada como argumento de custo, não de taxa
+de acerto.
 \end{abstract}
 
 
@@ -223,6 +227,7 @@ tempo e $O(V^2)$ de memória, o segundo em $O(V \cdot E \cdot \log V)$ com rebal
 Bellman-Ford.
 
 \subsection{Critério Adaptivo \texorpdfstring{$\rho$}{rho}}
+\label{sec:criterio_adaptivo}
 
 A densidade local de obstáculos é calculada em uma janela $w$ ao redor da pose atual do
 robô na costmap de ocupação:
@@ -335,6 +340,7 @@ escolha como componente clássico do framework adaptivo.
 % ── Espaço reservado para imagens do Gazebo ──────────────────
 
 \subsection{Validação do Critério Adaptivo \texorpdfstring{$\rho$}{rho} --- Fase 1 (Monte Carlo)}
+\label{sec:validacao_fase1}
 
 Experimentos com 1.500 trials controlados em ambiente de simulação 2D (Monte Carlo calibrado).
 Todos os métodos comparados nesta fase utilizam modelos de planejamento calibrados
@@ -636,6 +642,54 @@ futuro) seria construído.
   \label{fig:all_benchmarks}
 \end{figure}
 
+\subsection{Revalidação de H1 com planejadores reais no gêmeo 2D}
+\label{sec:h1_real}
+
+A validação de H1 relatada na Seção~\ref{sec:validacao_fase1} usa planejadores mock
+calibrados estatisticamente (declarado explicitamente ali). Para reduzir essa dependência
+sem precisar do Gazebo, implementamos um \textbf{A* real} (busca em grade 8-conectada, heap
+binário, heurística octile --- mesma estrutura de dados exigida pelo parecer do consultor
+SIGAA) dentro do gêmeo 2D, substituindo a política de linha reta que estava incorretamente
+rotulada como ``A*'' nas comparações multiagente anteriores, e revalidamos H1 com A* real e
+BC real (treinado especificamente por densidade, \textit{sparse}/\textit{dense}/\textit{very\_dense})
+num protocolo de 500 trials com \textbf{pool misto de densidades}, pareado por trial (mesma
+estrutura de regret do Monte Carlo original: regret = sucesso do oracle $-$ sucesso do
+método, oracle = melhor entre A* e BC em cada trial individual).
+
+\textbf{Achado principal: com planejadores reais, a motivação por taxa de sucesso para a
+comutação não se sustenta.} O A* real venceu em praticamente todo o espectro de densidade
+testado (sucesso pareado: 90,6\% A* vs.\ 86,0\% BC vs.\ 85,8\% do $\rho$-criterion com
+$\rho^*{=}0{,}30$; regret real de 8,4\% contra o oracle, bem acima dos 2,9\% do mock). Uma
+varredura de limiar $\tau$ contra os mesmos 500 trials confirma isso: o regret é minimizado
+quando $\tau \to 1{,}0$ (equivalente a ``usar A* quase sempre''), não em $\tau{=}0{,}30$ ---
+não existe, neste testbed, uma faixa de densidade onde o BC supera o A* em taxa de sucesso.
+
+\textbf{A motivação que permanece válida --- e agora mais forte --- é a de custo
+computacional (H2).} Medimos o custo de decisão de A* e BC no mesmo ambiente e nos mesmos
+trials: o tempo de busca do A* cresce de 9,3~ms (\textit{sparse}) para 26,4~ms
+(\textit{dense}) e 32,7~ms (\textit{very\_dense}), enquanto o BC mantém custo
+$\sim$constante de 0,055~ms (1 \textit{forward pass}) --- uma razão de $\sim$\textbf{600$\times$}
+em \textit{very\_dense}, medida diretamente, mais forte que a estimativa de $\sim$10$\times$
+citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pareados).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_real_validation.png}
+  \caption{(a)~Taxa de sucesso real, A* vs.\ BC casado por densidade --- A* permanece à
+           frente em todo regime. (b)~Custo de decisão real, escala logarítmica --- BC
+           $\sim$600$\times$ mais barato em \textit{very\_dense}. Dados reais, 500 trials
+           pareados, \texttt{results\_abstract/h1\_real\_2d\_mixed\_pool.csv}.}
+  \label{fig:h1_real_validation}
+\end{figure}
+
+\textbf{Reformulação de H1 com esse dado real:} em vez de ``o $\rho$-criterion supera
+qualquer planejador fixo em taxa de sucesso'' (verdadeiro apenas sob os planejadores mock da
+Seção~\ref{sec:validacao_fase1}), a tese sustentada por dados reais é \textbf{``o
+$\rho$-criterion mantém taxa de sucesso próxima da do melhor planejador fixo (A*) pagando
+uma fração pequena do seu custo computacional em alta densidade''} --- uma versão mais
+modesta, porém integralmente real e internamente consistente (sucesso e custo medidos no
+mesmo ambiente, mesmos trials), do argumento original de H1+H2.
+
 % ── Espaço reservado para imagens de trajetória ──────────────
 
 \subsection{Extensão Multi-Agente}
@@ -725,17 +779,29 @@ seleção de planejador de trajetória baseado na densidade local de obstáculos
 As três hipóteses formuladas na Seção~1.1 foram endereçadas da seguinte forma.
 
 A hipótese central do trabalho (\textbf{H1}), de que a seleção adaptiva supera qualquer
-método fixo, foi \textbf{confirmada na Fase~1; não validada com planejadores reais nesta
-IC}: com 1.500 trials Monte Carlo, o $\rho$-criterion alcançou 85,3\% de taxa de sucesso
-contra 76\% do PPO fixo (melhor método fixo testado), diferença de 9,3 pontos percentuais
-estatisticamente significativa ($p=0{,}020$). A confirmação com planejadores reais no
-Gazebo, planejada como o resultado principal da Fase~2, não foi concluída dentro do prazo
-desta IC por bugs de infraestrutura ROS2/Gazebo Classic documentados na
-Seção~\ref{sec:integracao} --- ver Limitações. A evidência real mais próxima de um cenário
-não-calibrado disponível é o resultado multi-agente da Seção~\ref{sec:multiagente}
-(planejadores CBS reais, não calibrados estatisticamente): o A* independente supera o SAC
-independente em taxa de sucesso e colisão em todos os cenários testados, reforçando que a
-arquitetura de seleção contextual é sólida mesmo fora do regime de mock.
+método fixo, foi \textbf{reformulada com dados reais: confirmada como argumento de custo
+computacional, não de taxa de sucesso}. Na validação Monte Carlo com modelos calibrados
+(Seção~\ref{sec:validacao_fase1}), com 1.500 trials, o $\rho$-criterion alcançou 85,3\% de
+taxa de sucesso contra 76\% do PPO fixo (melhor método fixo testado), diferença
+estatisticamente significativa ($p=0{,}020$), mas sobre planejadores mock. A validação com
+planejadores reais no Gazebo, planejada como o resultado principal da Fase~2, não foi
+concluída nesta IC por bugs de infraestrutura documentados na Seção~\ref{sec:integracao}
+--- ver Limitações. Para reduzir essa dependência de mock sem o Gazebo, implementamos um
+A* real no gêmeo 2D e revalidamos H1 com 500 trials reais pareados de pool misto de
+densidade (Seção~\ref{sec:h1_real}): \textbf{a motivação original --- que a política
+aprendida supera o A* em taxa de sucesso sob alta densidade --- não se sustentou} (A* real:
+90,6\% de sucesso pareado; $\rho$-criterion real: 85,8\%; regret real de 8,4\% contra o
+oracle). O que se sustentou, e ficou mais forte, foi H2: o custo de decisão do A* real
+cresce de 9,3~ms (\textit{sparse}) a 32,7~ms (\textit{very\_dense}), contra $\sim$0,055~ms
+constantes do BC --- razão de $\sim$600$\times$, medida no mesmo ambiente e nos mesmos
+trials da taxa de sucesso. A tese sustentada por dados reais é que \textbf{o
+$\rho$-criterion mantém taxa de sucesso próxima da do melhor planejador fixo pagando uma
+fração pequena do seu custo computacional em alta densidade} --- uma versão mais modesta,
+porém integralmente real, da formulação original. A evidência multi-agente da
+Seção~\ref{sec:multiagente} (CBS real) é consistente com este mesmo padrão: o A*
+independente supera o SAC independente em taxa de sucesso e colisão em todos os cenários
+testados --- o planejador clássico real tende a vencer em acerto bruto, e o argumento de
+adotar a política aprendida é de custo/escalabilidade, não de acerto.
 
 A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}:
 o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,9\% em relação a um
@@ -762,17 +828,28 @@ qualquer par (clássico, RL) em domínios onde a densidade local de obstáculos 
 estimável em tempo real a partir do LIDAR do robô.
 
 O trabalho tem limitações que apontam suas próprias continuações. A principal é que a
-\textbf{validação com planejadores reais em Gazebo não foi concluída nesta IC}. A Fase~2
-identificou e corrigiu dois bugs de infraestrutura reais (Seção~\ref{sec:integracao}), mas
-um terceiro --- o robô não ganha velocidade efetiva dentro da janela de física despausada
-concedida a cada passo de controle, mesmo com comando correto publicado e física em
-execução --- não foi resolvido dentro do prazo. A hipótese mais provável é a interação
-entre o parâmetro \texttt{max\_wheel\_acceleration} do modelo TurtleBot3 e o padrão de
-pausar/despausar a física por passo, necessário para sincronizar ação e observação.
-Consequentemente, \textbf{o resultado quantitativo mais citável deste trabalho (85,3\%, H1)
-permanece calibrado sobre planejadores mock estatísticos, não sobre execução real} --- a
-limitação central a ser resolvida em trabalho futuro, com o diagnóstico já registrado para
-retomada. O critério usa um contexto
+\textbf{validação com planejadores reais em Gazebo (robô físico) não foi concluída nesta
+IC}. A Fase~2 identificou e corrigiu dois bugs de infraestrutura reais
+(Seção~\ref{sec:integracao}), mas um terceiro --- o robô não ganha velocidade efetiva
+dentro da janela de física despausada concedida a cada passo de controle, mesmo com comando
+correto publicado e física em execução --- não foi resolvido dentro do prazo. A hipótese
+mais provável é a interação entre o parâmetro \texttt{max\_wheel\_acceleration} do modelo
+TurtleBot3 e o padrão de pausar/despausar a física por passo, necessário para sincronizar
+ação e observação. O diagnóstico está registrado para retomada em trabalho futuro.
+
+Uma segunda limitação, descoberta ao tentar contornar a primeira: \textbf{a motivação
+original de H1 (taxa de sucesso) não se sustenta sob planejadores reais --- reformulada
+como argumento de custo}. Revalidamos H1 com A* real e BC real no gêmeo 2D
+(Seção~\ref{sec:h1_real}): o A* real supera o $\rho$-criterion e o BC em taxa de sucesso
+pareada em praticamente todo o espectro de densidade testado (regret real de 8,4\% contra
+o oracle, ante 2,9\% do mock). A motivação que se sustentou --- e ficou mais robusta, com
+custo medido no mesmo ambiente e trials da taxa de sucesso --- é a de H2: o A* real custa
+até $\sim$600$\times$ mais que o BC em alta densidade. Isso é declarado explicitamente
+como limitação de H1, não escondido: \textbf{o resultado quantitativo mais citável deste
+trabalho (85,3\%, H1 na formulação original) permanece calibrado sobre planejadores mock};
+a versão sustentada por dados reais é mais modesta (sucesso comparável ao melhor fixo, a
+uma fração pequena do seu custo), não a formulação original de ``supera qualquer método
+fixo em acerto''. O critério usa um contexto
 unidimensional (a densidade escalar) e um limiar fixado offline; versões futuras podem
 incorporar contexto vetorial e ajustar o limiar online por meta-aprendizado, adaptando-o a
 novos ambientes sem reconfiguração manual. A avaliação restringiu-se ao TurtleBot3 Waffle em

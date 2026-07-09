@@ -1,0 +1,13 @@
+method,world,success_rate,n_trials
+astar,sparse,1.0000,100
+astar,dense,0.9500,100
+astar,very_dense,0.7300,100
+sac,sparse,0.7700,100
+sac,dense,0.5500,100
+sac,very_dense,0.4000,100
+bc,sparse,0.9800,100
+bc,dense,0.9400,100
+bc,very_dense,0.5700,100
+adaptive,sparse,0.9800,100
+adaptive,dense,0.9400,100
+adaptive,very_dense,0.5700,100
