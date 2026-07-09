@@ -819,11 +819,11 @@ constantes do BC --- razão de $\sim$600$\times$, medida no mesmo ambiente e nos
 trials da taxa de sucesso. A tese sustentada por dados reais é que \textbf{o
 $\rho$-criterion mantém taxa de sucesso próxima da do melhor planejador fixo pagando uma
 fração pequena do seu custo computacional em alta densidade} --- uma versão mais modesta,
-porém integralmente real, da formulação original. A evidência multi-agente da
-Seção~\ref{sec:multiagente} (CBS real) é consistente com este mesmo padrão: o A*
-independente supera o SAC independente em taxa de sucesso e colisão em todos os cenários
-testados --- o planejador clássico real tende a vencer em acerto bruto, e o argumento de
-adotar a política aprendida é de custo/escalabilidade, não de acerto.
+porém integralmente real, da formulação original. Esse mesmo padrão --- planejador clássico
+real vencendo em acerto bruto, com a política aprendida justificada por custo/escalabilidade,
+não por acerto --- é consistente com a evidência multi-agente real da
+Seção~\ref{sec:multiagente} (CBS real, 93\% RRT*/6\% PPO em espaço esparso: o clássico
+domina onde é barato).
 
 A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}:
 o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,9\% em relação a um
