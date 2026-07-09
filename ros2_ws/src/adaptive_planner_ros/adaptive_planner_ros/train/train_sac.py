@@ -299,14 +299,38 @@ def main() -> None:
         if vecnorm_path:
             train_env = VecNormalize.load(vecnorm_path, train_env.venv)
             print(f"[Resume] VecNormalize stats carregadas: {vecnorm_path}")
-        # Override de ent_coef/target_entropy no load: preserva crítico + pesos
-        # do ator (168k+ updates de aprendizado sobre a dinâmica do ambiente),
-        # só troca o REGIME de entropia (ver [[project-treino-sparse-08jul]]).
-        model = SAC.load(
-            model_path, env=train_env, tensorboard_log=tb_log,
-            ent_coef=ent_coef_arg, target_entropy=target_entropy_arg,
-        )
-        print(f"[Resume] ent_coef={ent_coef_arg} target_entropy={target_entropy_arg}")
+        # IMPORTANTE: NÃO passar ent_coef/target_entropy no load() quando o
+        # checkpoint foi salvo com ent_coef FIXO — SAC.load() usa
+        # set_parameters(exact_match=True) internamente, e um checkpoint fixo
+        # não tem 'ent_coef_optimizer' salvo, o que causa
+        # "ValueError: Names of parameters do not match" se _setup_model()
+        # recriar a rede esperando esse optimizer (achado em produção, 08/07).
+        # Fix: carrega NORMAL (preserva exact_match), depois troca o regime de
+        # entropia manualmente SEM reconstruir a rede (preserva pesos e
+        # optimizers do crítico/ator intactos).
+        model = SAC.load(model_path, env=train_env, tensorboard_log=tb_log)
+        print(f"[Resume] ent_coef salvo no checkpoint: {model.ent_coef}")
+        if ent_coef_arg == "auto" and not isinstance(model.ent_coef, str):
+            import numpy as np
+            import torch as th
+            model.ent_coef = "auto"
+            model.target_entropy = (
+                float(target_entropy_arg) if target_entropy_arg != "auto"
+                else float(-np.prod(model.action_space.shape).astype(np.float32))
+            )
+            init_value = 1.0
+            model.log_ent_coef = th.log(
+                th.ones(1, device=model.device) * init_value
+            ).requires_grad_(True)
+            model.ent_coef_optimizer = th.optim.Adam(
+                [model.log_ent_coef], lr=model.lr_schedule(1)
+            )
+            print(f"[Resume] Trocado para ent_coef=auto, "
+                  f"target_entropy={model.target_entropy} "
+                  f"(crítico/ator PRESERVADOS, só o regime de entropia mudou)")
+        elif ent_coef_arg != "auto":
+            model.ent_coef = ent_coef_arg
+            print(f"[Resume] ent_coef mantido/definido como {ent_coef_arg}")
         if replay_path:
             model.load_replay_buffer(replay_path)
             print(f"[Resume] Replay buffer carregado: {replay_path} "
@@ -315,10 +339,12 @@ def main() -> None:
             print("[Resume] AVISO: replay buffer não encontrado — "
                   "retomando com buffer vazio (menos ideal, mas não do zero).")
         if args.reset_log_std_on_resume and hasattr(model.policy.actor, "log_std"):
-            log_std_layer = model.policy.actor.log_std
+            # log_std é um nn.Parameter direto (matriz gSDE [n_features, n_actions]
+            # neste setup, não nn.Linear com weight/bias — confirmado inspecionando
+            # o checkpoint real em produção, 08/07). Todos os ~512 valores estavam
+            # travados perto de -3.0 (init padrão), confirmando o diagnóstico.
             import torch.nn as nn
-            nn.init.zeros_(log_std_layer.weight)
-            nn.init.zeros_(log_std_layer.bias)  # log_std=0 → std≈1.0 (era ~0.05)
+            nn.init.constant_(model.policy.actor.log_std, 0.0)  # std≈1.0 (era ~0.05)
             print("[Resume] log_std do ator resetado (std inicial ≈1.0) — "
                   "crítico e resto do ator PRESERVADOS.")
         print(f"[Resume] Continuando de num_timesteps={model.num_timesteps}")
