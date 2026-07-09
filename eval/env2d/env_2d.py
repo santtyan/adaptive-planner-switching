@@ -25,9 +25,13 @@ from obs_utils import (
     COLLISION_DIST, GOAL_DISTANCE_MAX,
 )
 
-# ── Constantes (idênticas ao gazebo_gym_env.py) ───────────────
+# ── Constantes ────────────────────────────────────────────────
+# ATENÇÃO (09/07): NÃO eram idênticas ao gazebo_gym_env.py — o Gazebo usa
+# R_SURVIVAL=0.0, este arquivo tinha 0.1 hardcoded. Divergência que quebrava a
+# regra "validar no 2D antes do Gazebo". R_SURVIVAL agora é configurável via env
+# var R_SURVIVAL_OVERRIDE para testar a config EXATA do Gazebo (default 0.1).
 MAX_STEPS    = 200
-R_SURVIVAL   = 0.1
+R_SURVIVAL   = float(os.environ.get("R_SURVIVAL_OVERRIDE", "0.1"))
 R_COLLISION  = -100.0
 R_GOAL       = 100.0
 R_APPROACH   = 10.0

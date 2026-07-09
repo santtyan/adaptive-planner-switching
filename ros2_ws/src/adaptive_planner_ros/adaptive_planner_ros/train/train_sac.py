@@ -247,8 +247,16 @@ def main() -> None:
     # DummyVecEnv + VecNormalize SÓ de recompensa (norm_obs=False): estabiliza o
     # crítico do SAC sem alterar a observação — assim a inferência NÃO precisa
     # das stats do VecNormalize (a política observa obs cruas).
+    # info_keywords: sem isso não dá pra saber a taxa real de colisão/sucesso
+    # a partir do monitor.csv/TensorBoard — só o ep_rew_mean agregado, que não
+    # diferencia "quase evitou colisão" de "colidiu na largada" (ambos ~-99/-100
+    # dado R_COLLISION=-100 dominante). Achado em produção 08-09/07 — ver
+    # [[project-treino-sparse-08jul]].
     train_env = DummyVecEnv([
-        lambda: Monitor(TurtleBot3GazeboEnv(node=node, seed=args.seed))
+        lambda: Monitor(
+            TurtleBot3GazeboEnv(node=node, seed=args.seed),
+            info_keywords=("collision", "goal_reached", "curr_max_dist", "success_rate"),
+        )
     ])
     train_env = VecNormalize(
         train_env, norm_obs=False, norm_reward=True, clip_reward=10.0,
