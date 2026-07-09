@@ -80,6 +80,24 @@ Boxplots de distribuição e outliers gerados na sequência (revelando, por exem
 
 Uma citação incorreta introduzida durante essa reformulação (atribuindo o achado tainted da Fase 4 à Seção 3.4, que na verdade cita dados CBS reais e limpos) foi encontrada e corrigida no mesmo dia, ao auditar consistência entre documentos.
 
+## Fase 9 — Escala, significância estatística e MARL real (09/07/2026, ~19-20h)
+
+Auditoria adicional revelou três pontos a fechar antes de considerar a revalidação de H1 completa:
+
+1. **Escala e significância.** A revalidação de H1 (Fase 8) usava 500 trials, sem justificativa explícita para essa escolha e sem teste de significância estatística. Corrigido: rerodado com 1.500 trials (mesma escala do Monte Carlo original, permitindo comparação direta de poder estatístico) — resultado consistente com a amostra menor (A* real 88,7% vs. ρ-criterion real 84,1%, regret 9,1%), confirmando que não era artefato de amostra pequena. Teste de McNemar exato pareado confirma significância (p<0,000002).
+
+2. **Outliers ainda não mostrados.** Distribuição completa (não só médias) do custo de decisão A*/BC e de ρ_local, por mundo, gerada via boxplots — revelando que 14 dos 150 trials de custo A* em `very_dense` são outliers estatísticos (até 51,9 ms, quase o dobro da mediana), atribuídos corretamente a pares start-goal que exigem busca mais extensa, não a artefato de medição.
+
+3. **A citação multi-agente corrigida (Fase 8) ainda não tinha sido regerada com A* real** — só removida do texto. Regerado com busca real por agente: o A* real continua vencendo em taxa de chegada ao goal, mas **também tem colisão inter-robô alta (75-80%)**, muito diferente da alegação original (com a política de linha reta) de 0% de colisão — o "0% de colisão" era um artefato específico do controlador de linha reta (parava quando desalinhado), não qualidade de planejamento. Conclusão qualitativa preservada (nenhum planejador independente sem coordenação evita colisão de forma confiável), mas agora com dado correto.
+
+Por fim, uma pergunta direta do Yan — "não conseguimos fazer nenhum MARL em 2D só pra comparar?" — revelou que `MultiAgentEnv2D` nunca teve reward implementada (só servia para avaliar políticas já treinadas independentemente, não para treinar). Implementado:
+- Reward real por agente, com **penalidade de colisão inter-robô compartilhada** (os dois agentes envolvidos recebem a penalidade, não só um "culpado" arbitrário) — o elemento estrutural que falta no RL independente.
+- Política única centralizada (observação e ação concatenadas dos N agentes), treinada com PPO padrão do SB3.
+- Primeira tentativa de treino colapsou para uma política parada (0% de sucesso) — causa: `VecNormalize(norm_reward=True)` esmagava o sinal de recompensa esparsa (±100). Desabilitar a normalização de reward resolveu.
+- Resultado real (N=4, `sparse`): RL independente 57% goal / 60% colisão inter-robô. MARL centralizado, 150 mil passos: 25% goal / **0%** colisão. MARL centralizado, 600 mil passos: 50% goal / **0%** colisão — tendência clara de goal rate subindo com o treino enquanto a colisão permanece nula desde cedo.
+
+Este é o primeiro resultado empírico desta IC (não apenas formalização teórica) mostrando que treino conjunto com recompensa compartilhada resolve o problema de coordenação identificado desde a Fase 4 — ainda uma simplificação de MARL (treino e execução centralizados, não a arquitetura descentralizada completa tipo QMIX/MAPPO), mas evidência real, não apenas prometida como trabalho futuro.
+
 ---
 
 ## Lições gerais deste processo
@@ -88,3 +106,5 @@ Uma citação incorreta introduzida durante essa reformulação (atribuindo o ac
 - **Validar em ambiente rápido antes do lento evita horas de debug no ambiente errado** — a regra "2D antes do Gazebo", quando seguida, isolou corretamente cada causa raiz em minutos em vez de horas.
 - **Um resultado que não se sustenta sob dados reais não deve ser escondido atrás do resultado calibrado mais favorável** — a reformulação de H1 é o exemplo mais direto disso nesta IC.
 - **Corrigir um bug de padrão repetido exige checar todas as ocorrências do mesmo padrão**, não só a instância que motivou a investigação original (aconteceu duas vezes: o bug do `PlanBCallback`, e a política de linha reta rotulada como "A*" em dois lugares diferentes do código).
+- **Perguntas simples ("dá pra comparar com MARL?") às vezes revelam que a peça básica nunca existiu** — `MultiAgentEnv2D` nunca teve função de reward, apesar de já ser usado para "avaliar" políticas há semanas; só apareceu ao tentar treinar de verdade pela primeira vez.
+- **Normalização de reward pode destruir sinal esparso.** `VecNormalize(norm_reward=True)` colapsou o treino de MARL para uma política parada — recompensas terminais grandes (±100) contra a maioria dos passos com recompensa pequena fazem a normalização por variância comprimir o sinal que mais importa.
