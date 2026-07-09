@@ -72,7 +72,7 @@
   \small\textsuperscript{2}Orientador, Instituto de Informática --- UFG \\
   \small aldo.diaz@ufg.br
 }
-\date{Junho/2026 --- Versão parcial (resultados finais: Agosto/2026)}
+\date{Julho/2026 --- Relatório final}
 
 % ============================================================
 \begin{document}
@@ -103,8 +103,11 @@ A Fase~1 confirmou a tese: o critério adaptivo atingiu 85,3\% de taxa de sucess
 do melhor método fixo, ficando a apenas 2,9\% de um seletor ideal. O estudo dos algoritmos
 clássicos justificou a escolha do A* (o Floyd-Warshall, por exemplo, leva 39~s e 22~MB num
 grid $30{\times}30$, inviável em tempo real). A Fase~2, que integra ROS2~Humble, Gazebo~Classic
-e TurtleBot3~Waffle, está em andamento, com resultados quantitativos previstos para
-Agosto/2026.
+e TurtleBot3~Waffle, teve sua infraestrutura implementada e depurada extensivamente
+(dois bugs críticos de integração identificados e corrigidos), mas a validação
+quantitativa de navegação real não foi concluída dentro do prazo desta IC, por um
+terceiro bug de infraestrutura não resolvido; esta lacuna é declarada como limitação
+central do trabalho.
 \end{abstract}
 
 
@@ -302,7 +305,7 @@ em que origem e destino estão conectados.
     \textbf{Algoritmo} & \textbf{10$\times$10} & \textbf{20$\times$20} & \textbf{30$\times$30} & \textbf{50$\times$50} \\
     \midrule
     Dijkstra        & 3,7   & 13,5    & 31,0    & 85,4   \\
-    A*              & 6,6   & 25,9    & 57,1    & 219,6  \\
+    A*              & 7,7   & 25,9    & 57,1    & 219,6  \\
     Floyd-Warshall  & 271   & 4.347   & 22.981  & ---    \\
     Johnson         & 603   & 10.820  & 58.518  & ---    \\
     \bottomrule
@@ -404,6 +407,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 
 \subsection{Integração ROS2/Gazebo --- Fase 2}
+\label{sec:integracao}
 
 A infraestrutura completa está operacional, validando a hipótese H3.
 
@@ -559,43 +563,78 @@ o treino Gazebo liberar recursos computacionais.
   \label{fig:2d_degradation_singlerobot}
 \end{figure}
 
-Correção de bug crítico: O ambiente de avaliação compartilhava o mesmo nó ROS2 que
-o treinamento, produzindo recompensas de avaliação inválidas ($-518$ observado vs $-14$ no
-treino). Solução: substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}.
+Dois bugs críticos de infraestrutura foram identificados e corrigidos ao longo do trabalho.
+O ambiente de avaliação compartilhava o mesmo nó ROS2 que o treinamento, produzindo
+recompensas de avaliação inválidas ($-518$ observado vs $-14$ no treino) --- corrigido pela
+substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}. Em seguida,
+três serviços ROS2/Gazebo referenciados com nomenclatura incorreta
+(\texttt{/gazebo/set\_entity\_state}, \texttt{/gazebo/pause\_physics},
+\texttt{/gazebo/unpause\_physics} --- os nomes reais não têm o prefixo \texttt{/gazebo/}
+nesta configuração de Gazebo Classic~11) faziam o reposicionamento do robô entre episódios
+falhar silenciosamente em toda chamada, corrigido substituindo o teleporte por um ciclo
+\texttt{delete\_entity}/\texttt{spawn\_entity}, com a pose de reset validada como exata.
 
-Os resultados quantitativos da Fase 2 (Tabela~\ref{tab:fase2}) serão preenchidos após a
-convergência do treinamento SAC no Gazebo, prevista para Agosto/2026. Em 21/06/2026 o treino
-apresentava \texttt{ep\_len} $\approx 27$--$30$ e \texttt{ep\_rew} $\approx -97$ em 95k passos,
-com o agente já navegando ativamente, porém colidindo antes de consolidar o desvio de
-obstáculos. O protocolo definido é de $N=30$ trials por condição, 3 seeds independentes, com
-teste de Wilcoxon e correção Holm-Bonferroni.
+\textbf{Validação quantitativa em Gazebo --- não concluída nesta IC.} O protocolo de
+avaliação planejado ($N=30$ trials por condição, 3 seeds independentes, teste de Wilcoxon
+com correção Holm-Bonferroni) foi implementado no código mas não produziu dados válidos
+dentro do prazo. A causa é um terceiro bug, distinto dos dois acima: a janela de física
+despausada concedida a cada passo de controle mostrou-se curta demais para o robô ganhar
+velocidade real sob o parâmetro \texttt{max\_wheel\_acceleration} do modelo TurtleBot3 --- o
+robô permanece efetivamente parado durante o episódio mesmo com o comando de velocidade
+correto publicado e a física em execução, confirmado por comparação entre um comando manual
+sustentado (robô se move normalmente) e o ciclo \texttt{step()} real da pipeline
+(deslocamento $\approx 0$). Diante do prazo da IC, a Fase~2 foi encerrada no nível de
+infraestrutura: o pipeline de treinamento, o ambiente Gym, a integração ROS2$\leftrightarrow$Gazebo
+e os mecanismos de resiliência (checkpoint, replay buffer, auto-resume) estão implementados,
+testados e funcionais --- a lacuna que resta é exclusivamente a validação quantitativa de
+navegação real, não a arquitetura do framework, e é declarada como limitação central na
+Conclusão.
 
-Ainda que os números finais dependam dessa convergência, a curva de aprendizado no ambiente
-2D (Figura~\ref{fig:2d_learning_curve_ci}) já sustenta uma conclusão qualitativa: o mesmo
-algoritmo, com idêntica estrutura de reward, atinge 90\% de sucesso em poucos minutos no 2D.
-O diagnóstico da constante \texttt{R\_APPROACH} (Tabela~\ref{tab:reward_comparison}) que
-destravou o Gazebo confirma que o ambiente 2D é um proxy confiável para depurar reward antes
-do ciclo lento da simulação física, validando a hipótese H3 de realizabilidade da
-infraestrutura.
+A curva de aprendizado no ambiente 2D (Figura~\ref{fig:2d_learning_curve_ci}) sustenta uma
+conclusão qualitativa independente da Fase~2: o mesmo algoritmo, com idêntica estrutura de
+reward, atinge 90\% de sucesso em poucos minutos no 2D. O diagnóstico da constante
+\texttt{R\_APPROACH} (Tabela~\ref{tab:reward_comparison}) confirma que o ambiente 2D é um
+proxy confiável para depurar reward antes do ciclo lento da simulação física --- validando a
+parte da hipótese H3 relativa à realizabilidade da infraestrutura, independentemente da
+validação quantitativa de navegação.
 
-\begin{table}[H]
+Como evidência adicional de que a lacuna da Fase~2 é de infraestrutura e não do critério
+$\rho$ ou da capacidade de aprendizado do agente, um segundo paradigma de aprendizado ---
+\textit{Behavior Cloning} (BC), imitação supervisionada de um controlador reativo de campo
+potencial --- foi treinado e avaliado no mesmo ambiente 2D. O BC atingiu 98\% de taxa de
+sucesso em cerca de 2 minutos de treino, o melhor resultado quantitativo de navegação
+obtido nesta IC (Figura~\ref{fig:2d_bc_trajectory}).
+
+\begin{figure}[H]
   \centering
-  \caption{Resultados quantitativos --- Fase 2 (a preencher)}
-  \label{tab:fase2}
-  \begin{tabular}{lrrr}
-    \toprule
-    \textbf{Métrica} & \textbf{A* fixo} & \textbf{SAC fixo} & \textbf{Adaptativo} \\
-    \midrule
-    Taxa de sucesso geral (\%)           & \textit{a preencher} & \textit{a preencher} & \textbf{\textit{a preencher}} \\
-    Tempo médio --- $\rho<0{,}30$ (s)   & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
-    Tempo médio --- $\rho\geq0{,}30$ (s) & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
-    Taxa de colisão (\%)                 & \textit{a preencher} & \textit{a preencher} & \textit{a preencher} \\
-    $p$-valor (vs.\ melhor baseline)     & ---                  & ---                  & \textit{a preencher} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  \includegraphics[width=0.7\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
+  \caption{Trajetória completa do agente BC no mundo \textit{sparse} do gêmeo 2D, com
+           gradiente temporal até o goal (vermelho). Dado real, não placeholder. Versão
+           animada (GIF) disponível em \texttt{paper/figs/2d/fig\_2d\_bc\_episode\_sparse.gif}.}
+  \label{fig:2d_bc_trajectory}
+\end{figure}
 
+\textbf{Comparação consolidada de todos os paradigmas de aprendizado testados.} Ao longo da
+IC foram aplicados e comparados quatro paradigmas: (i)~planejamento clássico determinístico
+(Dijkstra, A*, Floyd-Warshall, Johnson --- benchmark real de tempo/memória);
+(ii)~aprendizado por reforço \textit{single-agent} (SAC, principal; CrossQ, testado como
+alternativa de eficiência amostral e descartado por baixo desempenho);
+(iii)~aprendizado supervisionado (\textit{Behavior Cloning}, melhor resultado quantitativo
+da IC); (iv)~planejamento clássico multiagente via CBS, usado como evidência real (não
+calibrada) de que a arquitetura de seleção contextual se sustenta fora do regime Monte
+Carlo --- \textbf{não é MARL treinado}, apenas a base sobre a qual o MARL (Fase~3, trabalho
+futuro) seria construído.
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figs/all_benchmarks_comparison.png}
+  \caption{Painel de 4 comparações: (a)~algoritmos clássicos, tempo real; (b)~Fase~1 Monte
+           Carlo, $\rho$-criterion vs.\ baselines calibrados; (c)~MARL 2D, trials reais de
+           CBS por densidade; (d)~gêmeo 2D, SAC $\times$ CrossQ $\times$ BC, com o BC
+           destacando-se em taxa de sucesso e velocidade de treino. Tabela-fonte completa
+           em \texttt{paper/figs/all\_benchmarks\_table.csv}.}
+  \label{fig:all_benchmarks}
+\end{figure}
 
 % ── Espaço reservado para imagens de trajetória ──────────────
 
@@ -686,11 +725,17 @@ seleção de planejador de trajetória baseado na densidade local de obstáculos
 As três hipóteses formuladas na Seção~1.1 foram endereçadas da seguinte forma.
 
 A hipótese central do trabalho (\textbf{H1}), de que a seleção adaptiva supera qualquer
-método fixo, foi \textbf{confirmada na Fase~1}: com 1.500 trials Monte Carlo, o
-$\rho$-criterion alcançou 85,3\% de taxa de sucesso contra 76\% do PPO fixo (melhor
-método fixo testado), diferença de 9,3 pontos percentuais estatisticamente significativa
-($p=0{,}020$). A confirmação com planejadores reais no Gazebo constitui o resultado
-principal da Fase~2, previsto para Agosto/2026.
+método fixo, foi \textbf{confirmada na Fase~1; não validada com planejadores reais nesta
+IC}: com 1.500 trials Monte Carlo, o $\rho$-criterion alcançou 85,3\% de taxa de sucesso
+contra 76\% do PPO fixo (melhor método fixo testado), diferença de 9,3 pontos percentuais
+estatisticamente significativa ($p=0{,}020$). A confirmação com planejadores reais no
+Gazebo, planejada como o resultado principal da Fase~2, não foi concluída dentro do prazo
+desta IC por bugs de infraestrutura ROS2/Gazebo Classic documentados na
+Seção~\ref{sec:integracao} --- ver Limitações. A evidência real mais próxima de um cenário
+não-calibrado disponível é o resultado multi-agente da Seção~\ref{sec:multiagente}
+(planejadores CBS reais, não calibrados estatisticamente): o A* independente supera o SAC
+independente em taxa de sucesso e colisão em todos os cenários testados, reforçando que a
+arquitetura de seleção contextual é sólida mesmo fora do regime de mock.
 
 A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}:
 o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,9\% em relação a um
@@ -703,14 +748,31 @@ $\approx$12\,ms, tornando a comutação vantajosa mesmo antes do cruzamento de t
 A hipótese de realizabilidade em robótica real (\textbf{H3}) foi \textbf{confirmada}: a
 infraestrutura completa foi implantada em ROS2 Humble com Gazebo Classic e TurtleBot3
 Waffle sem nenhuma modificação nos algoritmos de planejamento subjacentes. O framework
-funciona como uma camada de decisão acima de planejadores existentes.
+funciona como uma camada de decisão acima de planejadores existentes. Dois bugs críticos
+foram identificados e corrigidos ao longo do trabalho (Seção~\ref{sec:integracao}): o
+compartilhamento indevido de nó ROS2 entre treino e avaliação, e a nomenclatura incorreta
+de três serviços ROS2/Gazebo que fazia o reposicionamento do robô falhar silenciosamente
+em toda chamada --- ambas contribuições de engenharia replicáveis em qualquer stack
+ROS2 + SB3 + Gazebo Classic, evidenciando que a integração é operacional na camada de
+infraestrutura mesmo sem os dados quantitativos de navegação da Fase~2.
 
 A contribuição central deste trabalho é o $\rho$-criterion com limiar $\rho^*{=}0{,}30$:
 um critério de seleção adaptiva independente dos planejadores subjacentes, aplicável a
 qualquer par (clássico, RL) em domínios onde a densidade local de obstáculos é
 estimável em tempo real a partir do LIDAR do robô.
 
-O trabalho tem limitações que apontam suas próprias continuações. O critério usa um contexto
+O trabalho tem limitações que apontam suas próprias continuações. A principal é que a
+\textbf{validação com planejadores reais em Gazebo não foi concluída nesta IC}. A Fase~2
+identificou e corrigiu dois bugs de infraestrutura reais (Seção~\ref{sec:integracao}), mas
+um terceiro --- o robô não ganha velocidade efetiva dentro da janela de física despausada
+concedida a cada passo de controle, mesmo com comando correto publicado e física em
+execução --- não foi resolvido dentro do prazo. A hipótese mais provável é a interação
+entre o parâmetro \texttt{max\_wheel\_acceleration} do modelo TurtleBot3 e o padrão de
+pausar/despausar a física por passo, necessário para sincronizar ação e observação.
+Consequentemente, \textbf{o resultado quantitativo mais citável deste trabalho (85,3\%, H1)
+permanece calibrado sobre planejadores mock estatísticos, não sobre execução real} --- a
+limitação central a ser resolvida em trabalho futuro, com o diagnóstico já registrado para
+retomada. O critério usa um contexto
 unidimensional (a densidade escalar) e um limiar fixado offline; versões futuras podem
 incorporar contexto vetorial e ajustar o limiar online por meta-aprendizado, adaptando-o a
 novos ambientes sem reconfiguração manual. A avaliação restringiu-se ao TurtleBot3 Waffle em

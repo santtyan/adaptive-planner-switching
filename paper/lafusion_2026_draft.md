@@ -1,10 +1,10 @@
 # LAFusion 2026 — Draft (Springer CCIS format, ~10 pages, English)
 
-**STATUS: rascunho inicial (09/07/2026, madrugada) — precisa de revisão humana antes de submeter.**
+**STATUS: rascunho inicial (09/07/2026) — precisa de revisão humana antes de submeter.**
 Reaproveita SOMENTE dados verificados (Fase 1 Monte Carlo + benchmark clássico real +
-achado MARL 2D). NÃO inclui números da Fase 2 Gazebo (ainda não convergida) —
-tratada honestamente como trabalho em andamento/futuro, coerente com o padrão já
-usado no relatório final.
+achado MARL 2D + resultado BC 2D). Gazebo foi descartado definitivamente nesta IC
+(decisão 09/07/2026) — Seção 3.5 cortada, tratado como diagnóstico de infraestrutura
++ trabalho futuro, nunca como placeholder aberto.
 
 ---
 
@@ -46,8 +46,11 @@ outperforming the best fixed planner (76%) and the best competing switching
 method (78.7%), with 2.9% average regret (6.7% worst case) relative to an
 oracle fusion rule. We further show the criterion extends naturally to
 multi-robot settings, where independent per-robot fusion decisions reduce
-inter-agent collision without centralized coordination. [Placeholder: one
-sentence on real-robot/Gazebo validation status once available.]
+inter-agent collision without centralized coordination. Real-robot validation
+in a physical-fidelity ROS2/Gazebo simulator was attempted but not completed
+within this study, due to infrastructure bugs unrelated to the fusion
+criterion itself; we report the diagnosis and treat quantitative real-robot
+validation as future work (see Discussion).
 
 **Keywords:** decision fusion, contextual adaptation, trajectory planning,
 reinforcement learning, autonomous navigation, robotics
@@ -71,9 +74,12 @@ reinforcement learning, autonomous navigation, robotics
      Carlo trials, with regret ≤5% (H2, confirmed 2.9% avg / 6.7% worst case).
   3. Extend the fusion rule to a decentralized multi-robot setting (Dec-POMDP
      formulation) and show empirical evidence of a Nash-candidate equilibrium.
-  4. [If Fase 2 lands in time] Validate the fusion rule with real classical
-     and learned planners (Nav2/SmacPlanner2D, SAC/SB3) on a physical-fidelity
-     ROS2/Gazebo simulation.
+  4. Report a real (non-mock) multi-agent benchmark using CBS trajectories,
+     showing the fusion rule's decision pattern replicates under real
+     planner outputs, not only under calibrated Monte Carlo models — the
+     strongest non-simulated evidence available for this study (real-robot
+     validation with Nav2/SmacPlanner2D and SAC/SB3 in Gazebo was attempted
+     but not completed; see Discussion for the infrastructure diagnosis).
 
 ## 2. Related Work
 
@@ -104,7 +110,7 @@ Reuse the classical algorithm benchmark from the final report — REAL,
 optimized implementations (heapq for Dijkstra/A*, dense matrix for
 Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
 - Dijkstra: 0.07 ms / 3.7 KB (100 nodes) → 2.46 ms / 85 KB (2,500 nodes).
-- A*: similar time, 6.6 KB / 220 KB (justifies A* as the classical component —
+- A*: similar time, 7.7 KB / 220 KB (justifies A* as the classical component —
   best time/memory scaling among all four).
 - Floyd-Warshall: 39 s / 22 MB on a 30×30 grid — infeasible for real-time use.
 - Table + O(V log V) vs O(V³) discussion — reuse Section 2.1 of the report.
@@ -125,11 +131,19 @@ Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
 - CBS-based validation (2/3/5 agents), density sweep confirms ρ*≈0.28-0.32
   transition holds at the multi-agent level too.
 
-### 3.5 [Conditional] Real-world validation
-- ROS2 Humble + Gazebo Classic + TurtleBot3 Waffle, Nav2/SmacPlanner2D (C++)
-  vs. SAC/Stable-Baselines3. **Only include this section with real numbers.**
-  If not ready by submission, state as future work in Section 6, do NOT use
-  placeholders in a submitted paper.
+### 3.5 Real-world validation attempt — infrastructure diagnosis (cut, decided 09/07)
+**Decision: this section is CUT, definitively — do not resurrect it.** The
+Gazebo/TurtleBot3 real-robot validation was attempted with a full ROS2 Humble
++ Gazebo Classic 11 + Nav2/SmacPlanner2D + SAC/SB3 stack. Infrastructure was
+implemented and debugged (two critical integration bugs found and fixed: a
+shared-node evaluation bug, and incorrect ROS2/Gazebo service names causing
+episode resets to fail silently). A third bug — the robot fails to gain real
+velocity within the per-step physics-unpause window, even with correct
+velocity commands and running physics — was diagnosed but not resolved
+within the study's timeframe. Real-robot validation is reported as future
+work only (Section 6), with the diagnosis kept as a one-paragraph note in
+the Discussion for reproducibility credit — no placeholder numbers, no
+"pending" table.
 
 ## 4. Results
 
@@ -138,9 +152,24 @@ Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
 - Figure candidates (reuse from `paper/figs/`, already generated):
   `fig_reward_math_proof`/regret curve, `cbs_density_sweep.png`
   (multi-agent phase transition), `cbs_deviation_analysis.png` (Nash evidence).
-- [NEW, if 2D comparison matrix finishes tonight] SAC vs CrossQ vs BC
-  convergence comparison in the lightweight twin environment — genuinely new
-  material not yet in the final report, could differentiate this paper.
+- SAC vs CrossQ vs Behavior Cloning (BC) convergence comparison in the
+  lightweight twin environment — genuinely new material, not yet in the
+  final report in this form, and a real differentiator: BC (supervised
+  imitation of a potential-field controller) reaches 98% success in ~2
+  minutes of training, the strongest quantitative navigation result of the
+  study, and evidence that the fusion criterion's environment is learnable
+  under multiple paradigms, isolating the unresolved Gazebo gap as an
+  infrastructure issue rather than a modeling one.
+- Consolidated cross-paradigm figure (source: `eval/plot_all_benchmarks_comparison.py`,
+  outputs `paper/figs/all_benchmarks_comparison.png` + `all_benchmarks_table.csv`):
+  4-panel comparison spanning all four paradigms tested in this study —
+  classical search (real time/memory benchmark), single-agent RL (SAC vs.
+  CrossQ), supervised imitation (BC), and classical multi-agent (CBS, real
+  trials). Frame explicitly in the paper as "every learning paradigm applied
+  in this study, compared side by side" — directly answers the natural
+  reviewer question of paradigm coverage, and reinforces the fusion framing
+  (the ρ-criterion itself is a fifth "paradigm": a fusion rule over two of
+  the above).
 
 ## 5. Discussion
 
@@ -152,10 +181,16 @@ Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
 
 ## 6. Conclusion and Future Work
 
-- Restate H1/H2/H3 confirmation status honestly (H1/H2 confirmed at Fase 1
-  level; H3 infrastructure confirmed; Fase 2 quantitative validation ongoing).
-- Future work: soft/probabilistic fusion variant, online threshold adaptation,
-  full MARL with shared reward (Fase 3, already scoped in the final report).
+- Restate H1/H2/H3 confirmation status honestly: H2 confirmed; H3
+  (infrastructure realizability) confirmed, with two integration bugs found
+  and fixed as a reproducible engineering contribution; H1 confirmed at the
+  Monte Carlo (calibrated-model) level only — real-planner validation was
+  attempted and not completed within this study, a limitation stated
+  explicitly, not left as an open placeholder.
+- Future work: real-robot validation (resolve the diagnosed physics-timing
+  bug, then re-run the existing benchmark protocol), soft/probabilistic
+  fusion variant, online threshold adaptation, full MARL with shared reward
+  (Fase 3, already scoped in the final report).
 
 ---
 
@@ -174,14 +209,17 @@ Floyd-Warshall, Bellman-Ford re-weighting for Johnson):
 - [ ] Have Prof. Aldo review before submission (co-author, INF/UFG).
 - [ ] Grammar/English pass — this draft is written directly in English but
       needs a native-level polish pass before submission.
-- [ ] Verify 10-page CCIS limit including references — current section list is
-      ambitious, likely needs trimming (Section 3.5 is the first candidate to
-      cut/shrink if real Gazebo data isn't ready).
+- [ ] Verify 10-page CCIS limit including references — Section 3.5 was cut
+      definitively (Gazebo validation discontinued, 09/07), which helps the
+      budget.
 
 ## Ainda falta (para fechar o rascunho)
-- Decidir se a Seção 3.5 (Gazebo real) entra ou não, dependendo do platô ser
-  resolvido a tempo (ver [[project-treino-sparse-08jul]]).
-- Traduzir/adaptar as figuras existentes (estão em português — Springer CCIS
+- ~~Decidir se a Seção 3.5 (Gazebo real) entra ou não~~ — RESOLVIDO (09/07):
+  Gazebo descartado definitivamente nesta IC; Seção 3.5 cortada, tratada só
+  como nota de diagnóstico na Discussão + trabalho futuro na Conclusão.
+- Gerar a versão em inglês do GIF/figura do BC 2D (`fig_2d_bc_trajectory_sparse.png`,
+  já existe em português no relatório final — traduzir legendas).
+- Traduzir/adaptar as demais figuras existentes (estão em português — Springer CCIS
   exige texto e legendas em inglês).
 - Escrever a bibliografia em formato Springer (não ABNT, que é o formato do
   relatório final).

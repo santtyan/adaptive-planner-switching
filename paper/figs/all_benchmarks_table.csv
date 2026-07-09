@@ -1,15 +1,15 @@
-benchmark,método,métrica_principal,valor,métrica_secundária,valor_secundário,n_trials,tipo
-Clássicos (100 nós),dijkstra,tempo_ms,0.07126819982659066,memória_kb,3.7109375,5,real
-Clássicos (100 nós),astar,tempo_ms,0.07226219986478093,memória_kb,6.59375,5,real
-Clássicos (100 nós),floyd_warshall,tempo_ms,20.856254999853263,memória_kb,270.5578125,5,real
-Clássicos (100 nós),johnson,tempo_ms,5.456486199909705,memória_kb,603.040625,5,real
-Fase 1 Monte Carlo (1.500 trials),ρ-criterion (adaptivo),success_rate_%,85.3,regret_%,2.9,1500,calibrado
-Fase 1 Monte Carlo (1.500 trials),melhor fixo,success_rate_%,76.0,regret_%,,1500,calibrado
-Fase 1 Monte Carlo (1.500 trials),melhor switch concorrente,success_rate_%,78.7,regret_%,,1500,calibrado
-MARL 2D (CBS real),world=sparse,n_trials,240.0,-,,240,real
-MARL 2D (CBS real),world=dense,n_trials,240.0,-,,240,real
-MARL 2D (CBS real),world=very_dense,n_trials,240.0,-,,240,real
-2D twin — SAC×CrossQ×BC (09/07),SAC (R_SURVIVAL=0.1),success_%,90.0,steps,14000.0,50,real_2D
-2D twin — SAC×CrossQ×BC (09/07),"SAC (R_SURVIVAL=0.0, config Gazebo)",success_%,90.0,steps,6000.0,50,real_2D
-2D twin — SAC×CrossQ×BC (09/07),CrossQ,success_%,5.0,steps,3000.0,50,real_2D
-2D twin — SAC×CrossQ×BC (09/07),BC (imitação supervisionada),success_%,98.0,steps,,50,real_2D
+benchmark,método,paradigma,métrica_principal,valor,métrica_secundária,valor_secundário,n_trials,tipo
+Clássicos (100 nós),dijkstra,Clássico (busca),tempo_ms,0.0819792496713489,memória_kb,4.0078125,4,real
+Clássicos (100 nós),astar,Clássico (busca),tempo_ms,0.08306124982482282,memória_kb,7.65625,4,real
+Clássicos (100 nós),floyd_warshall,Clássico (busca),tempo_ms,23.78022824996151,memória_kb,286.267578125,4,real
+Clássicos (100 nós),johnson,Clássico (busca),tempo_ms,6.118280749888072,memória_kb,619.689453125,4,real
+Fase 1 Monte Carlo (1.500 trials),ρ-criterion (adaptivo),"ρ-criterion (fusão clássico+RL, calibrado)",success_rate_%,85.3,regret_%,2.9,1500,calibrado
+Fase 1 Monte Carlo (1.500 trials),melhor fixo,Clássico ou RL fixo (calibrado),success_rate_%,76.0,regret_%,,1500,calibrado
+Fase 1 Monte Carlo (1.500 trials),melhor switch concorrente,Clássico ou RL fixo (calibrado),success_rate_%,78.7,regret_%,,1500,calibrado
+MARL 2D (CBS real),world=sparse,Clássico multiagente (CBS) — MARL não treinado,n_trials,240.0,-,,240,real
+MARL 2D (CBS real),world=dense,Clássico multiagente (CBS) — MARL não treinado,n_trials,240.0,-,,240,real
+MARL 2D (CBS real),world=very_dense,Clássico multiagente (CBS) — MARL não treinado,n_trials,240.0,-,,240,real
+2D twin — SAC×CrossQ×BC (09/07),SAC (R_SURVIVAL=0.1),RL (SAC),success_%,90.0,steps,14000.0,50,real_2D
+2D twin — SAC×CrossQ×BC (09/07),"SAC (R_SURVIVAL=0.0, config Gazebo)",RL (SAC),success_%,90.0,steps,6000.0,50,real_2D
+2D twin — SAC×CrossQ×BC (09/07),CrossQ,RL (CrossQ),success_%,5.0,steps,3000.0,50,real_2D
+2D twin — SAC×CrossQ×BC (09/07),BC (imitação supervisionada),Supervisionado (BC),success_%,98.0,steps,,50,real_2D

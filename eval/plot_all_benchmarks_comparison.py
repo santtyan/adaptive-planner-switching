@@ -21,12 +21,17 @@ os.makedirs(FIGS, exist_ok=True)
 rows = []
 
 # 1. Classical algorithms — REAL benchmark (time/memory, 100 nodes)
+# Filtra reachable=True: trials sem caminho encontrado terminam cedo e usam
+# menos memória, distorcendo a média para baixo (causa histórica da
+# divergência 6,6 vs 7,7 KB do A* — ver [[project-numeros-canonicos]]).
 df = pd.read_csv(os.path.join(RES, "classical_benchmark.csv"))
+if "reachable" in df.columns:
+    df = df[df.reachable.astype(str).isin(["True", "1"])]
 d100 = df[df.n_nodes == 100]
 for algo in ["dijkstra", "astar", "floyd_warshall", "johnson"]:
     sub = d100[d100.algorithm == algo]
     rows.append({
-        "benchmark": "Clássicos (100 nós)", "método": algo,
+        "benchmark": "Clássicos (100 nós)", "método": algo, "paradigma": "Clássico (busca)",
         "métrica_principal": "tempo_ms", "valor": sub.time_ms.mean(),
         "métrica_secundária": "memória_kb", "valor_secundário": sub.peak_memory_kb.mean(),
         "n_trials": len(sub), "tipo": "real",
@@ -42,6 +47,7 @@ for name, val in [("ρ-criterion (adaptivo)", adaptive_success),
                    ("melhor switch concorrente", switch_best)]:
     rows.append({
         "benchmark": "Fase 1 Monte Carlo (1.500 trials)", "método": name,
+        "paradigma": "ρ-criterion (fusão clássico+RL, calibrado)" if "ρ" in name else "Clássico ou RL fixo (calibrado)",
         "métrica_principal": "success_rate_%", "valor": val,
         "métrica_secundária": "regret_%", "valor_secundário": regret if "ρ" in name else np.nan,
         "n_trials": 1500, "tipo": "calibrado",
@@ -59,6 +65,7 @@ for dens in ["sparse", "dense", "very_dense"]:
             sr = np.nan
         rows.append({
             "benchmark": "MARL 2D (CBS real)", "método": f"world={dens}",
+            "paradigma": "Clássico multiagente (CBS) — MARL não treinado",
             "métrica_principal": "n_trials", "valor": len(d),
             "métrica_secundária": "-", "valor_secundário": np.nan,
             "n_trials": len(d), "tipo": "real",
@@ -66,17 +73,17 @@ for dens in ["sparse", "dense", "very_dense"]:
 
 # 4. 2D SAC/CrossQ/BC comparison (esta madrugada, 09/07)
 twod_results = [
-    ("SAC (R_SURVIVAL=0.1)", 90, 14000, "steps_to_90pct"),
-    ("SAC (R_SURVIVAL=0.0, config Gazebo)", 90, 6000, "steps_to_90pct"),
-    ("CrossQ", 5, 3000, "success_at_timeout"),
-    ("BC (imitação supervisionada)", 98, None, "final_success_pct_2min"),
+    ("SAC (R_SURVIVAL=0.1)", 90, 14000, "steps_to_90pct", "RL (SAC)"),
+    ("SAC (R_SURVIVAL=0.0, config Gazebo)", 90, 6000, "steps_to_90pct", "RL (SAC)"),
+    ("CrossQ", 5, 3000, "success_at_timeout", "RL (CrossQ)"),
+    ("BC (imitação supervisionada)", 98, None, "final_success_pct_2min", "Supervisionado (BC)"),
 ]
-for name, sr, steps, note in twod_results:
+for name, sr, steps, note, paradigma in twod_results:
     rows.append({
         "benchmark": "2D twin — SAC×CrossQ×BC (09/07)", "método": name,
         "métrica_principal": "success_%", "valor": sr,
         "métrica_secundária": "steps", "valor_secundário": steps,
-        "n_trials": 50, "tipo": "real_2D",
+        "n_trials": 50, "tipo": "real_2D", "paradigma": paradigma,
     })
 
 table = pd.DataFrame(rows)
