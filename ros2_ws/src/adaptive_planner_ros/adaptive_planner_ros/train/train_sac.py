@@ -137,9 +137,20 @@ class PlanBCallback(BaseCallback):
         if self._triggered:
             return True
         if self.num_timesteps >= self._check_step:
-            mean_reward = self.logger.name_to_value.get(
-                "rollout/ep_rew_mean", float("inf")
-            )
+            # FIX (09/07/2026): lia de self.logger.name_to_value, que só é
+            # populado no dump por episódio do SB3 — a chave costuma estar
+            # ausente no instante exato da checagem, caindo no default +inf,
+            # o que torna `mean_reward < threshold` sempre False. MESMO BUG
+            # já documentado e corrigido em BestRolloutModelCallback (20/06),
+            # nunca replicado aqui — o PlanB ficou funcionalmente morto desde
+            # sempre (achado em produção: treino passou de 300k/500k/650k
+            # sem nunca abortar, ep_rew_mean=-99 o tempo todo). Ver
+            # [[project-treino-sparse-08jul]]. Fix: ler de ep_info_buffer,
+            # igual aos outros dois callbacks.
+            buf = self.model.ep_info_buffer
+            if buf is None or len(buf) < 5:
+                return True
+            mean_reward = sum(ep["r"] for ep in buf) / len(buf)
             if mean_reward < self._threshold:
                 print(
                     f"\n[PlanB] ep_rew_mean={mean_reward:.1f} < {self._threshold} "
