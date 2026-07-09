@@ -98,6 +98,18 @@ Por fim, uma pergunta direta do Yan — "não conseguimos fazer nenhum MARL em 2
 
 Este é o primeiro resultado empírico desta IC (não apenas formalização teórica) mostrando que treino conjunto com recompensa compartilhada resolve o problema de coordenação identificado desde a Fase 4 — ainda uma simplificação de MARL (treino e execução centralizados, não a arquitetura descentralizada completa tipo QMIX/MAPPO), mas evidência real, não apenas prometida como trabalho futuro.
 
+## Fase 10 — Motivação do critério e chattering (09/07/2026, ~20-21h)
+
+Duas lacunas apontadas diretamente pelo Yan, fechadas na mesma sessão:
+
+**Motivação da criação do ρ-criterion.** O relatório definia a fórmula do critério (densidade local, limiar 0,30) mas nunca explicava *por que* densidade foi escolhida como variável de contexto, nem *por que* um limiar rígido em vez de fusão suave — essa justificativa só existia no rascunho do LAFusion. Adicionado no início da Seção 2.2 dos dois documentos: densidade é a variável que *causa* o trade-off (custo do A* cresce com obstáculos, custo do SAC/BC é ~constante), não apenas uma métrica correlacionada; o limiar rígido é uma escolha deliberada por restrição de tempo real, não uma limitação não percebida — revisitada como trabalho futuro (fusão suave/probabilística).
+
+**Chattering no critério — pesquisa de padrão-ouro.** A pedido do Yan ("como tornar o critério mais científico"), pesquisa de literatura atual (controle supervisório chaveado, predição conformal para calibração de limiar, bandits contextuais, mixture-of-experts) revelou um defeito clássico não testado: o ρ-criterion usa um limiar único sem histerese, um padrão conhecido por causar oscilação de decisão ("chattering") perto do limiar em sistemas de controle chaveado (literatura de Hespanha & Morse, décadas de maturidade). Testado nos dados reais: confirmado — 46 de 300 episódios (15%) com 2 ou mais trocas de planejador, média de 3,4 trocas por episódio, um caso chegando a 48 trocas num único episódio de 200 passos.
+
+Descoberta colateral no processo: a validação de H1 usada até este ponto (Fase 8-9) decidia o planejador **uma única vez no reset do episódio**, não a cada passo como o critério está formalmente definido ("em tempo de execução") — o chattering só se manifesta na versão per-step, que é a correta.
+
+Corrigido com histerese (dois limiares: ρ_low=0,28 para voltar ao A*, ρ_high=0,32 para ir ao SAC/BC, zona morta entre os dois — padrão-ouro de controle supervisório). Piloto de 100 trials confirma a correção: chattering cai de 15% para 5% dos episódios, máximo de trocas por episódio cai de 48 para 4. A rodada completa de 1.500 trials (mesma escala das validações anteriores) ficou pendente para a próxima sessão, assim como a calibração do limiar via predição conformal (linha de pesquisa de 2025 identificada como o padrão-ouro mais atual para thresholds com garantia formal, ainda não implementada).
+
 ---
 
 ## Lições gerais deste processo
@@ -107,4 +119,5 @@ Este é o primeiro resultado empírico desta IC (não apenas formalização teó
 - **Um resultado que não se sustenta sob dados reais não deve ser escondido atrás do resultado calibrado mais favorável** — a reformulação de H1 é o exemplo mais direto disso nesta IC.
 - **Corrigir um bug de padrão repetido exige checar todas as ocorrências do mesmo padrão**, não só a instância que motivou a investigação original (aconteceu duas vezes: o bug do `PlanBCallback`, e a política de linha reta rotulada como "A*" em dois lugares diferentes do código).
 - **Perguntas simples ("dá pra comparar com MARL?") às vezes revelam que a peça básica nunca existiu** — `MultiAgentEnv2D` nunca teve função de reward, apesar de já ser usado para "avaliar" políticas há semanas; só apareceu ao tentar treinar de verdade pela primeira vez.
+- **"Decide uma vez" e "decide a cada passo" são políticas diferentes, mesmo quando o critério é o mesmo por escrito.** A validação de H1 rodou por duas fases inteiras (8 e 9) com uma política decide-uma-vez-no-reset sem que isso fosse percebido como divergente da definição formal do critério — só apareceu ao investigar chattering, que não pode existir numa política que decide uma única vez.
 - **Normalização de reward pode destruir sinal esparso.** `VecNormalize(norm_reward=True)` colapsou o treino de MARL para uma política parada — recompensas terminais grandes (±100) contra a maioria dos passos com recompensa pequena fazem a normalização por variância comprimir o sinal que mais importa.
