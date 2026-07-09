@@ -84,7 +84,7 @@ def collect_demonstrations(env: TurtleBot3GazeboEnv, n_episodes: int):
         done = False
         steps = 0
         while not done and steps < 300:
-            x, y, yaw = env.get_robot_pose()
+            x, y, yaw = env._node.get_robot_pose()
             gx, gy = env._goal
             action = expert_action(x, y, yaw, gx, gy)
             obs_list.append(obs.copy())
