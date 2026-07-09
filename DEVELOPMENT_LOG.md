@@ -1,0 +1,90 @@
+# Log de Desenvolvimento — adaptive-planner-switching
+
+Registro cronológico do processo de pesquisa desta IC (PIBIC/FAPEG PI08078-2024): decisões tomadas, bugs encontrados e corrigidos, e o porquê de cada mudança de rumo. Este documento complementa o relatório final (`paper/relatorio_final_pip.md`), que descreve o método final; aqui está o processo que levou até ele.
+
+## Por que este documento existe
+
+O relatório final tem limite de páginas (15, referencial, regra oficial do PIP/UFG) e descreve metodologia final, não a jornada de depuração. Mas o processo de chegar até os resultados finais é, em si, evidência de rigor científico e de engenharia: tentativas que não deram certo, hipóteses refutadas por dados reais, bugs de infraestrutura raiz encontrados sob pressão de prazo. Registrar isso separadamente evita inchar o relatório formal enquanto mantém o processo auditável.
+
+---
+
+## Fase 1 — Fundação (2025)
+
+**Plano de trabalho aprovado.** Objetivo geral: comparar métodos clássicos e modernos de planejamento de trajetória, com foco em adaptabilidade.
+
+**13/06/2025 — Parecer do Consultor SIGAA.** Recomendação: comparar clássicos usando implementações otimizadas, não didáticas. Resposta aplicada desde então: `heapq` para Dijkstra/A*, matriz densa para Floyd-Warshall, Bellman-Ford para Johnson.
+
+**01/04/2026 — Relatório Parcial aprovado.** Narrativa: RRT* (clássico) vs. PPO (RL), validado com dados reais de CBS (`atb033/multi_agent_path_planning`) sobre benchmarks públicos. Essa narrativa evoluiu depois para A*/SmacPlanner2D vs. SAC, com nota de transição explícita no relatório final (o critério ρ e o limiar 0,30 permanecem inalterados nessa troca, pois medem uma propriedade do ambiente, não do planejador).
+
+## Fase 2 — Descoberta dos mocks (14/05/2026)
+
+Auditoria do código revelou que os planejadores em `validation_abstract/planners/` (`rrt_star.py`, `ppo_planner.py`) são **mocks estatísticos**, não implementações reais: `MockRRTStarPlanner` gera linha reta interpolada, `PPOPlannerMockScientific` sorteia sucesso com probabilidade calibrada para reproduzir taxas publicadas na literatura. Decisão tomada então: declarar isso explicitamente no relatório como "validação Monte Carlo do critério" em vez de "validação com planejadores reais" — decisão que se mostraria crucial dois meses depois (ver Fase 6).
+
+## Fase 3 — Reward shaping no Gazebo (junho de 2026)
+
+Treino SAC no Gazebo apresentava o padrão clássico de *suicidal agent*: `ep_len_mean` caindo para ~8 passos, agente colidindo cedo de propósito. Causa raiz: penalidade de obstáculo por passo acumulava mais magnitude negativa ao longo do episódio do que a penalidade terminal de colisão, tornando racional colidir cedo. Correção seguindo Cimurs et al. (2022): eliminar o piso de penalidade por passo, usar recompensa de sobrevivência constante + progresso clipado ≥ 0 + terminais grandes (±100).
+
+Currículo de distância adicionado (começa com goals próximos, expande com taxa de sucesso) para dar sinal de recompensa terminal alcançável desde o início do treino.
+
+## Fase 4 — Achado multi-agente e extensão teórica (19-21/06/2026)
+
+Formalização do problema multi-agente como Dec-POMDP (cada robô observa ρᵢ local, decide independentemente). Experimento de desvio (dados reais de CBS): agente que desvia da política ρ-criterion para sempre-A* paga +2,1%, para sempre-SAC paga +14,1% — evidência de equilíbrio de Nash candidato, não uma prova formal.
+
+Um achado paralelo desse período (21/06, `eval_multi_2d.py`, comparando "A*" independente com SAC independente em N=4 robôs) mostrou 100%/0% de sucesso/colisão para "A*" contra ~38%/100% para SAC. **Este achado tinha um problema não descoberto até 09/07/2026: o "A*" ali é, na verdade, uma política analítica de linha reta até o goal, não busca A* real** (ver Fase 6). Nunca chegou a ser citado no relatório final ou no LAFusion — mas ficou registrado internamente como um achado forte, o que quase levou a uma citação incorreta meses depois.
+
+## Fase 5 — A regra "2D antes do Gazebo" e o platô do SAC (julho de 2026)
+
+Treino SAC no Gazebo travado em `ep_rew_mean ≈ -100` por 250 mil passos ou mais, mesmo após corrigir o *suicidal agent*. Regra do projeto (violada e depois relembrada): sempre validar reward/política no ambiente 2D leve (Env2D, ~1000× mais rápido que o Gazebo) antes de gastar horas no Gazebo.
+
+Ao aplicar a regra: `env_2d.py` tinha `R_SURVIVAL=0,1` hardcoded, divergente do `R_SURVIVAL=0,0` real do Gazebo — a validação 2D nunca tinha sido feita com a configuração exata. Corrigido, parametrizado via variável de ambiente. Com a config correta, o SAC convergia normalmente no 2D — isolando o platô do Gazebo como um problema de infraestrutura, não de reward.
+
+Resiliência de treino adicionada (commit `b6f0b5f`): auto-resume por checkpoint, replay buffer salvo, `restart: unless-stopped` no Docker — nunca mais perder um treino a um crash de container.
+
+## Fase 6 — A madrugada dos bugs de infraestrutura (08-09/07/2026)
+
+A investigação mais longa e mais produtiva da IC. Em ordem de descoberta:
+
+1. **Exploração congelada**: `ent_coef` fixo em vez de `"auto"` impedia o SAC de re-explorar após um platô. Corrigido com lógica de troca pós-`load()` (não é possível simplesmente passar `ent_coef="auto"` no `SAC.load()` de um checkpoint com `ent_coef` fixo — o `set_parameters(exact_match=True)` rejeita a mudança de estrutura; a correção troca o modo manualmente após o load normal).
+
+2. **Física assíncrona**: padrão-ouro de RL+Gazebo exige pausar a física a cada passo de controle, não só no reset — sem isso, ação e observação podem dessincronizar. Implementado; regressão inicial de fps (12 → <1) por causa de chamadas bloqueantes de serviço a cada passo, corrigida trocando para chamadas não-bloqueantes.
+
+3. **`PlanBCallback` nunca disparava**: bug de padrão repetido (mesmo tipo de erro já visto e corrigido em outro callback antes) — o callback lia uma métrica do logger que só é populada em intervalos específicos, sempre caindo no valor padrão `+inf`. O treino passou de 300k, 500k, até 650.886 passos com `ep_rew_mean=-99` sustentado sem nunca abortar. Corrigido para ler `model.ep_info_buffer` diretamente.
+
+4. **Nomes de serviço ROS2/Gazebo errados**: `/gazebo/set_entity_state`, `/gazebo/pause_physics`, `/gazebo/unpause_physics` **nunca existiram** nesta configuração de Gazebo Classic 11 — os nomes reais publicados não têm o prefixo `/gazebo/`. Consequência: `teleport_robot()` falhava silenciosamente em toda chamada, a sessão inteira (e provavelmente todo o histórico do projeto) — o robô nunca foi reposicionado entre episódios. Corrigido: `pause_physics`/`unpause_physics` com os nomes certos; `teleport_robot()` reimplementado como `delete_entity`+`spawn_entity` (os únicos serviços que de fato existem).
+
+5. **Odometria nunca resetada**: consequência direta do bug 4 — sem teleporte funcional, `/odom` (dead-reckoning) acumulava erro monstruoso ao longo de milhares de episódios. Corrigido junto com o bug 4 (respawnar a entidade também reseta o integrador interno do plugin `diff_drive`).
+
+6. **`docker compose restart` não aplica mudanças de `command:`** — descoberto ao investigar por que um fix já commitado (`--lockstep`) parecia não ter efeito. Só `docker compose up -d` ou `--force-recreate` aplicam mudanças de comando; isso significa que vários fixes anteriores da noite podem nunca ter sido de fato testados como se pensava.
+
+7. **Robô não ganha velocidade real dentro de `env.step()`**: mesmo com todos os bugs acima corrigidos, o robô permanecia praticamente parado durante episódios reais. Diagnosticado por comparação: um comando manual sustentado (`ros2 topic pub`, sem pausar física) movia o robô normalmente; o ciclo `step()` real da pipeline (pausa → publica → despausa → espera 1 scan → pausa de novo), não. Hipótese mais provável: `max_wheel_acceleration` do modelo TurtleBot3 não tem tempo de gerar velocidade real dentro da janela minúscula de física despausada por passo. **Não resolvido.**
+
+8. **`gzclient` (GUI) não renderiza robôs spawnados dinamicamente**: bug cosmético, sem relação com os anteriores. Tentativas: GPU passthrough (`/dev/dri`), correção de `GAZEBO_RESOURCE_PATH`, caminhos absolutos de mesh, respawn com cliente já conectado. Nenhuma resolveu. Não afeta os resultados (robô funciona, só não aparece na janela). **Não resolvido, mas isolado como irrelevante.**
+
+## Fase 7 — Decisão de descartar o Gazebo (09/07/2026, ~15h)
+
+Diante do prazo da IC e do bug 7 não resolvido, decisão consciente: encerrar a Fase 2 (Gazebo) no nível de infraestrutura, sem validação quantitativa de navegação real. O orientador (Prof. Dr. Aldo André Díaz Salazar), consultado via mensagem, sugeriu buscar apoio técnico (grupo Pequi Mecânico) antes de descartar — decisão final sobre retomar ou não fica para reunião de acompanhamento.
+
+Relatório final e artigo LAFusion reescritos para tratar essa lacuna como limitação central declarada, não como resultado "pendente" ou placeholder vazio.
+
+## Fase 8 — Revalidação de H1 com planejadores reais (09/07/2026, ~17-19h)
+
+Ao tentar reduzir a dependência de mock sem o Gazebo, nova descoberta: o "A*" usado nas comparações multi-agente do ambiente 2D (`eval_multi_2d.py`, ver Fase 4) era uma política de linha reta, não busca real.
+
+Implementado A* real (`eval/env2d/astar_planner.py`): busca em grade 8-conectada, heap binário, heurística octile. Primeiro teste revelou colisões inesperadas (40% em `very_dense`) — causa: o controlador de perseguição de caminho cortava cantos perto de obstáculos; corrigido com margem de segurança extra na rasterização.
+
+Revalidação de H1 com protocolo correto (pool misto de densidade, pareado por trial, 500 trials): **a motivação original de H1 (política aprendida supera A* em taxa de sucesso sob densidade) não se sustentou com dados reais** — A* real venceu em quase todo o espectro testado (90,6% vs. 85,8% do ρ-criterion, regret real de 8,4% contra 2,9% do mock). A motivação que sobreviveu, mais forte que antes, foi a de custo computacional: A* real custa até ~600× mais que uma política de imitação supervisionada em alta densidade, medido no mesmo ambiente e trials do resultado de sucesso.
+
+H1 reformulada em ambos os documentos: de "supera qualquer planejador fixo em acerto" para "mantém acerto comparável ao melhor fixo pagando uma fração pequena do seu custo computacional". Decisão consciente de terminar essa investigação até o fim (medir custo, reformular os dois documentos) em vez de deixar pela metade, por prioridade declarada de maximizar rigor para submissões com prêmio (LAFusion 2026, CONPEEX).
+
+Boxplots de distribuição e outliers gerados na sequência (revelando, por exemplo, que 14 dos 150 trials de custo A* em `very_dense` são outliers estatísticos, chegando a quase o dobro da mediana) — reforça o argumento de fusão sensível a custo com um planejador de pior-caso intermitente.
+
+Uma citação incorreta introduzida durante essa reformulação (atribuindo o achado tainted da Fase 4 à Seção 3.4, que na verdade cita dados CBS reais e limpos) foi encontrada e corrigida no mesmo dia, ao auditar consistência entre documentos.
+
+---
+
+## Lições gerais deste processo
+
+- **Bugs de infraestrutura, não de algoritmo, dominaram o tempo de depuração.** Nenhum dos problemas graves encontrados nesta IC (nomes de serviço, callbacks silenciosamente quebrados, Docker não aplicando config) era sobre RL, reward, ou o critério ρ em si.
+- **Validar em ambiente rápido antes do lento evita horas de debug no ambiente errado** — a regra "2D antes do Gazebo", quando seguida, isolou corretamente cada causa raiz em minutos em vez de horas.
+- **Um resultado que não se sustenta sob dados reais não deve ser escondido atrás do resultado calibrado mais favorável** — a reformulação de H1 é o exemplo mais direto disso nesta IC.
+- **Corrigir um bug de padrão repetido exige checar todas as ocorrências do mesmo padrão**, não só a instância que motivou a investigação original (aconteceu duas vezes: o bug do `PlanBCallback`, e a política de linha reta rotulada como "A*" em dois lugares diferentes do código).

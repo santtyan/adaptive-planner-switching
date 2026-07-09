@@ -332,6 +332,9 @@ HE, X. et al. Multi-objective trajectory optimization for autonomous vehicles. *
 ### Repositório do Projeto
 Código completo disponível em: https://github.com/santtyan/adaptive-planner-switching
 
+### Processo de Desenvolvimento e Depuração
+O log cronológico completo do processo de pesquisa (decisões tomadas, bugs de infraestrutura encontrados e corrigidos, e o porquê de cada mudança de rumo, incluindo o processo que levou à reformulação de H1 na Seção 3.3) está documentado em `DEVELOPMENT_LOG.md`, na raiz do repositório público acima.
+
 ### Infraestrutura Utilizada
 Python 3.10, ROS2 Humble, Gazebo Classic 11, Docker, Stable-Baselines3 2.3, NumPy, Pandas, timeit, tracemalloc.
 
