@@ -225,16 +225,30 @@ class _GazeboEnvNode(Node):
             return self._odom_pose
         return self._cached_pose
 
-    def pause_physics(self) -> None:
-        """Pausa a física do Gazebo — elimina race condition teleport vs scan."""
-        if self._pause_cli.wait_for_service(timeout_sec=0.5):
-            future = self._pause_cli.call_async(Empty.Request())
+    def pause_physics(self, blocking: bool = True) -> None:
+        """Pausa a física do Gazebo — elimina race condition teleport vs scan.
+
+        blocking=False (09/07/2026): usado no step() por-passo, onde o
+        round-trip bloqueante (wait_for_service+spin_until_future_complete,
+        até 0,5s CADA) derrubou o fps de ~8 para <1 quando chamado a cada
+        step. Empty service call do Gazebo é processado quase instantaneamente
+        no lado do servidor — não precisamos esperar confirmação a cada passo,
+        só garantir que o request foi enfileirado. blocking=True mantido para
+        teleport/reset (chamado só 1x/episódio, custo desprezível, e ali
+        queremos garantia forte antes do teleport). Ver [[project-treino-sparse-08jul]].
+        """
+        if not self._pause_cli.service_is_ready():
+            return
+        future = self._pause_cli.call_async(Empty.Request())
+        if blocking:
             rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
 
-    def unpause_physics(self) -> None:
+    def unpause_physics(self, blocking: bool = True) -> None:
         """Retoma a física — o próximo scan publicado é garantidamente pós-teleport."""
-        if self._unpause_cli.wait_for_service(timeout_sec=0.5):
-            future = self._unpause_cli.call_async(Empty.Request())
+        if not self._unpause_cli.service_is_ready():
+            return
+        future = self._unpause_cli.call_async(Empty.Request())
+        if blocking:
             rclpy.spin_until_future_complete(self, future, timeout_sec=0.5)
 
     def teleport_robot(self, x: float, y: float, yaw: float) -> bool:
@@ -397,15 +411,15 @@ class TurtleBot3GazeboEnv(gym.Env):
         # de RL+Gazebo (gym-gazebo2, PIC4rl-gym). Isso garante a propriedade MDP:
         # exatamente 1 passo de física avança por chamada de step().
         # Ver [[project-treino-sparse-08jul]].
-        self._node.pause_physics()
+        self._node.pause_physics(blocking=False)
         self._node.publish_cmd(v, omega)
-        self._node.unpause_physics()
+        self._node.unpause_physics(blocking=False)
         # Guarda a ação normalizada p/ alimentar a próxima obs (resolve POMDP).
         self._last_action = (float(action[0]), float(action[1]))
 
         # Advance simulation one control step
         scan = self._node.wait_for_scan(timeout=SCAN_TIMEOUT)
-        self._node.pause_physics()
+        self._node.pause_physics(blocking=False)
         self._last_scan = scan
         self._step_count += 1
 
