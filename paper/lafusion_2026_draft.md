@@ -514,3 +514,19 @@ MAPPO via RLlib).
   exige texto e legendas em inglês).
 - Escrever a bibliografia em formato Springer (não ABNT, que é o formato do
   relatório final).
+- **NOVO (17/07/2026) — achados desta sessão ainda não incorporados:**
+  - **Route efficiency metric**: `rerun_h1_mixed.py`/`rerun_h1_hysteresis.py` agora
+    registram `route_efficiency = distância percorrida / distância ótima A*` por
+    trial (A*~0,75-0,76; BC/adaptativo~0,85-0,86 — valores <1,0 esperados por causa
+    do GOAL_RADIUS). Pode virar uma métrica adicional na Seção 3.5/Table 1, fechando
+    o item "route efficiency in simulated urban scenarios" do plano de trabalho oficial.
+  - **Urban grid scenario** (`env_2d.py::WORLDS["urban_grid"]`): novo mundo com 4
+    quarteirões sólidos e corredores de 1,4m formando um cruzamento em "+" — primeira
+    validação de A* real navegando por um layout com semântica de rua (98% sucesso,
+    2% colisão em 100 trials), diferente das arenas circulares abertas usadas até
+    agora. Ainda falta rodar o BC/ρ-criterion nesse mundo e testar obstáculo móvel
+    programado (Peça C do plano, ainda não implementada) para fechar completamente o
+    item "dynamic obstacles" do plano de trabalho.
+  - Considerar se esses dois itens justificam uma nova subseção 3.6 ("Towards urban
+    scenarios and dynamic obstacles") ou se ficam só como trabalho futuro na
+    Discussão/Conclusão — decisão pendente do Yan.

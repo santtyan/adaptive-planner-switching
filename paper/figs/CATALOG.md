@@ -1,155 +1,68 @@
 # Catálogo de Figuras — `paper/figs/`
 
-Índice organizado **por utilidade**. Cada figura tem `.png` (150 dpi) + `.pdf`.
-Todas geradas pelos scripts em `eval/` (saída fixa em `paper/figs/`).
+Reescrito 17/07/2026 (faxina de imagens). Pasta reduzida de 108 imagens únicas
+para as **16 essenciais** — cada uma com uso real confirmado em
+`relatorio_final_pip.md`/`.tex` (sincronizados) ou `README.md`. As demais
+(~92, incluindo todo o histórico de depuração de treino/reward, screenshots
+antigos de mundos não usados, painéis de defesa/tese não referenciados, e
+duplicatas) foram removidas do repositório — recuperáveis via `git log`/`git
+show` se precisar no futuro.
 
-## Estrutura de pastas (reorganizado 21/06/2026)
+Exceção: `gazebo_screenshots/` foi mantida por decisão explícita do Yan
+mesmo sem uso atual em nenhum documento — são fotos reais do TurtleBot3 no
+Gazebo, não regeráveis por script (única evidência visual de que a simulação
+rodou de verdade).
 
-A raiz de `paper/figs/` foi esvaziada; cada figura vive numa subpasta temática:
+## Estrutura de pastas
 
 | Subpasta | Conteúdo |
 |---|---|
-| `core/` | Núcleo da tese: ρ-criterion, switching, regret, summary, sensibilidade |
-| `benchmark/` | Benchmarks clássicos, tempo/memória, success_by_density, outcome_matrix |
-| `cbs/` | Tudo de CBS (escalabilidade, desvio, sweep, anotações espaciais) |
-| `marl/` | Motivação MARL (degradation/summary), snapshot multi-agente, roadmap |
-| `obs/` | Espaço de observação 29-dim, arquitetura do sistema |
-| `training/` | Diagnóstico de treino, reward, curvas, currículo, throughput |
-| `2d/` | Env2D: trajetórias, heatmaps, compare, learning curve, GIFs |
-| `pareto/` | Justificativa formal τ*=0,30 (Pareto) |
-| `thesis/` | Conteúdo de defesa/tese (ablação, painéis) |
-| `gazebo_screenshots/` | Capturas do Gazebo (pendente) |
-| `misc/` | Slides avulsos |
+| `core/` | ρ-criterion, switching heatmap, teste estatístico, progressão de densidade |
+| `benchmark/` | Tempo dos algoritmos clássicos |
+| `cbs/` | Escalabilidade do CBS multiagente |
+| `marl/` | MARL, degradação por densidade, roadmap |
+| `2d/` | Gêmeo 2D: BC, comparação de trajetórias, heatmap, degradação, learning curve, H1 real |
+| `pareto/` | Justificativa formal do limiar τ*=0,30 |
+| `gazebo_screenshots/` | Capturas reais do Gazebo (mantidas por valor de evidência, sem uso em documento hoje) |
 
-> Duplicata removida: `fig_2d_learning_curve.{png,pdf}` da raiz (mantida em `2d/`).
-> Nos `.tex`, todos os `\includegraphics` usam `figs/<subpasta>/<arquivo>`.
+## As 16 figuras essenciais
 
-Legenda de uso:
-- 📄 **Relatório final** (`relatorio_final_pip.tex`/`.md`)
-- 📝 **Resumo CONPEEX** (`resumo_conpeex_2026.tex`/`.md`)
-- 🖼️ **Slide CONPEEX** (`generate_conpeex_slide.py`)
-- 💤 **Não referenciada** (disponível para artigo/IEEE Access; ainda não inserida)
-- ⛔ **Não publicar** (motivo na coluna Notas)
-
----
-
-## 1. Núcleo da tese — critério ρ e seleção adaptiva
-
-| Figura | Uso | Notas |
+| Figura | Onde é usada | Notas |
 |---|---|---|
-| `planner_time_vs_density.png` | 📄 | Motivação ρ*=0,30 (Seção 2) — tempo vs densidade |
-| `switching_heatmap.png` | 📄 📝 | Heatmap espacial do switcher (modelo analítico) |
-| `density_progression.png` | 📄 📝 | Progressão sparse→dense, decisão A*/SAC |
-| `success_by_density.png` | 📄 | Taxa de sucesso por faixa ρ (Fase 2, placeholder) |
-| `outcome_matrix.png` | 📄 | Matriz goal/colisão/timeout (Fase 2, placeholder) |
-| `trajectory_comparison.png` | 📄 (placeholder) | Trajetórias A*/SAC/Adaptativo — gerar pós-convergência |
-| `rho_sensitivity.png` | ⛔ | **NÃO PUBLICAR**: métrica de sucesso bruto tem pico em 0,20, não 0,30 — enfraquece H2. Refazer com regret vs oracle |
-| `fig_adaptive_switching.png` | 💤 | Diagrama conceitual do switching |
+| `benchmark/benchmark_time.png` | Relatório final 3.1; README | Tempo dos 4 algoritmos clássicos |
+| `pareto/fig_pareto_boxplot_main.png` | Relatório final 3.2 | Justificativa formal τ*=0,30 |
+| `core/fig_statistical_test.png` | Relatório final 3.2 | Sucesso por densidade, IC 95% |
+| `core/switching_heatmap.png` | Relatório final 3.3; README | Decisão espacial A*/SAC |
+| `core/density_progression.png` | README | Progressão sparse→dense |
+| `2d/fig_2d_learning_curve_ci.png` | Relatório final 3.3/3.4 | Convergência SAC 2D, 3 seeds |
+| `2d/fig_2d_compare_dense.png` | Relatório final 3.3/3.4 | Trajetórias A*/SAC/Adaptativo |
+| `2d/fig_2d_heatmap_dense.png` | Relatório final 3.3/3.4 | Mapa de decisão ρ-criterion |
+| `2d/fig_2d_degradation_singlerobot.png` | Relatório final 3.3/3.4 | Degradação por densidade fora da distribuição |
+| `2d/fig_2d_bc_trajectory_sparse.png` | Relatório final 3.3 | Trajetória do agente BC (98% sucesso) |
+| `2d/fig_2d_bc_episode_sparse.gif` | Relatório final 3.3 (citado no texto) | Versão animada do BC |
+| `all_benchmarks_comparison.png` | Relatório final 3.3 | Painel consolidado 4 paradigmas |
+| `2d/fig_2d_h1_real_validation.png` | Relatório final 3.3/3.5 | Sucesso e custo reais, A* vs BC |
+| `2d/fig_2d_h1_boxplots.png` | Relatório final 3.3/3.5 | Distribuição/outliers de custo |
+| `marl/fig_marl_shared_reward_comparison.png` | Relatório final 3.3/3.5 | RL independente vs MARL centralizado |
+| `cbs/cbs_scalability.png` | Relatório final 3.4/3.6 | Tempo CBS vs N agentes |
+| `marl/fig_marl_degradation_by_density_2d.png` | Relatório final 3.6 | Motivação MARL (degradação RL independente) |
+| `marl/roadmap_marl_tj.png` | Relatório final 4/Conclusão; README | Roadmap Fase 1/2/3 |
 
-## 2. Benchmark de algoritmos clássicos
+## O que foi removido (17/07/2026)
 
-| Figura | Uso | Notas |
-|---|---|---|
-| `benchmark_time.png` | 📄 | Tempo de execução (log-log) |
-| `benchmark_memory.png` | 📄 | Memória de pico |
+- **`training/` inteira** (~25 arquivos): diagnóstico de *suicidal agent*, colapso de entropia, race condition de reset, gargalo de LIDAR, iterações de reward, currículo — histórico de depuração de processo, não resultado científico. Preservado em `DEVELOPMENT_LOG.md` (texto) e recuperável via git se precisar regenerar alguma figura.
+- **`thesis/`** (6 arquivos): painéis de defesa/sensibilidade nunca referenciados em nenhum documento formal.
+- **`obs/`** (3 arquivos): diagrama de observação 29-dim e arquitetura do sistema — nunca entraram no relatório final.
+- **Variantes não usadas de `2d/`**: mundos `sparse`/`very_dense` sem uso (só `dense` está no relatório), GIFs de episódio, versão antiga de `fig_2d_learning_curve` (órfã na raiz de `figs/`, superada por `fig_2d_learning_curve_ci` com IC 95%).
+- **Variantes não usadas de `benchmark/`**: `benchmark_memory`, `outcome_matrix`, `success_by_density` e outras — eram placeholders/mock nunca promovidos a figura final.
+- **Variantes não usadas de `cbs/`**: `cbs_canyon_annotation`, `cbs_density_sweep`, `cbs_deviation_analysis`, `cbs_spatial_annotation`, `cbs_tpg_comparison`, `cbs_ppo_ratio_*` — citados em texto no relatório mas sem figura própria inserida; podem ser reincorporados no futuro se decidir ilustrar esses parágrafos (ver git history).
+- **Variantes não usadas de `core/`**: `fig_adaptive_switching`, `fig_bootstrap_ci_global`, `fig_composite_heatmap`, `fig_planner_usage_distribution`, `fig_regret_analysis`, `fig_summary_panel`, `trajectory_comparison`, `duration_boxplot`, `density_heatmap`.
+- **`core/rho_sensitivity.png`**: já estava marcado como ⛔ não publicar (métrica errada, pico em ρ=0,20).
+- **Resto de `pareto/`**: `fig_pareto_threshold`, `fig_pareto_detail`, `fig_pareto_boxplot_time`, `fig_pareto_equations_panel` — redundantes com `fig_pareto_boxplot_main`, que já está no relatório.
+- **Resto de `marl/`**: variantes de motivação (`fig_marl_motivation_*`), snapshot multiagente, GIFs de episódio — superados pelas 2 figuras MARL já no relatório.
+- **`misc/conpeex_slide.png`**: slide do CONPEEX (evento já passou, resumo já submetido — ver `project_documents_status.md`).
 
-## 3. Multi-agente / CBS / motivação MARL (Fase 3)
+## Se precisar recuperar algo
 
-| Figura | Uso | Notas |
-|---|---|---|
-| `cbs_scalability.png` | 📄 | Tempo CBS vs N agentes (motiva decisão local) |
-| `cbs_tpg_comparison.png` | 📄 | CBS discreto → schedule cinemático (TPG) |
-| `cbs_deviation_analysis.png` | 📄 | Experimento de desvio (Nash candidato) |
-| `cbs_density_sweep.png` | 📄 | Transição de fase ρ≈0,28–0,32 (2/3/5 agentes) |
-| `cbs_spatial_annotation.png` | 📄 | 3 agentes, 19% SAC zona densa |
-| `cbs_canyon_annotation.png` | 📄 | 5 agentes canyon, 44% SAC |
-| `cbs_ppo_ratio_comparison.png` | 📄 | 100 cenários reais (parcial) |
-| `roadmap_marl_tj.png` | 📄 | Roadmap Fase 1/2/3 (MARL + teoria dos jogos) |
-| `fig_marl_motivation_summary.png` | 📄 | **FIGURA CHAVE**: A* vs SAC vs CBS — nenhum resolve tudo → MARL necessário (dados sintéticos → substituir por Gazebo) |
-| `fig_marl_motivation_degradation.png` | 📄 | Curva de degradação goal_rate + inter_collision vs N agentes |
-| `cbs_ppo_ratio_2agents.png` | 💤 | Variante de 2 agentes (superada por `_comparison`) |
-
-## 4. Arquitetura SAC e espaço de observação
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_system_architecture.png` | 💤 | Diagrama de blocos do sistema completo |
-| `fig_obs_29dim.png` | 💤 | Espaço de observação 29-dim (canônica) |
-| `fig_obs_space_29dim.png` | 💤 | Variante do diagrama 29-dim (duplicata — preferir `fig_obs_29dim`) |
-| `fig_curriculum_schedule.png` | 💤 | Currículo de distância 1→3 m |
-| `fig_lidar_downsampling.png` | 💤 | Subamostragem LIDAR 360→24 raios |
-
-## 5. Diagnóstico do treino — *suicidal agent* e reward (20/06/2026)
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_suicidal_agent_diagnosis.png` | 💤 | Âncora: integral de penalidade vs colidir cedo |
-| `fig_reward_iterations.png` | 💤 | Jornada das 6 versões de reward até convergir |
-| `fig_ep_len_comparison.png` | 💤 | ep_len por versão de reward |
-| `fig_reward_math_proof.png` | 💤 | Prova matemática por que cada reward falhou |
-| `fig_sparse_world_signal.png` | 💤 | Breakthrough sparse.world (ep_rew=+19,9) |
-| `fig_world_curriculum.png` | 💤 | Currículo por densidade de mundo (sparse→dense) |
-| `fig_ent_coef_collapse.png` | 💤 | Colapso de entropia (auto+gSDE) vs fixo 0,1 |
-| `fig_ep_len_suicidal_signature.png` | 💤 | Assinatura: ep_len cai ao ativar SAC (dados reais) |
-| `fig_obstacle_reward_field.png` | 💤 | Campo de penalidade de obstáculo antes/depois |
-| `fig_obstacle_reward_directional.png` | 💤 | Penalidade direcional de obstáculo |
-| `fig_reward_rebalance.png` | 💤 | Rebalanceamento de magnitudes antes/depois |
-| `fig_goldstandard_reward_comparison.png` | 💤 | Nosso reward vs Cimurs/de Jesus/HMP-DRL |
-| `fig_reward_components.png` | 💤 | Componentes do reward shaping |
-| `fig_sac_reward_shaping.png` | 💤 | Reward shaping SAC (visão geral) |
-
-## 6. Otimização de treino / throughput / ROI
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_cpu_bottleneck.png` | 💤 | Gargalo CPU-bound |
-| `fig_scan_throughput.png` | 💤 | Throughput de entrega de scan (LIDAR 5 Hz) |
-| `fig_optimization_roi.png` | 💤 | Quick wins hierarquizadas por ROI |
-| `fig_sample_efficiency_ladder.png` | 💤 | Escada de sample-efficiency (SAC→DroQ/CrossQ) |
-| `fig_planb_trigger.png` | 💤 | Gatilho do PlanB |
-| `fig_reset_race_condition.png` | 💤 | Bug de race condition no reset |
-| `fig_spawn_safety.png` | 💤 | Validação de spawn sem colisão |
-
-## 7. Curvas de aprendizado
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_sac_learning_curve_live.png` | 💤 | Curva ao vivo (`plot_live_training_curve.py`) |
-| `sac_learning_curve.png` | 💤 | Curva de aprendizado (snapshot) |
-
-## 8. Mundos e densidade
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_world_density_comparison.png` | 💤 | Comparação de densidade entre mundos |
-| `density_heatmap.png` | 💤 | Heatmap de densidade |
-| `duration_boxplot.png` | 💤 | Boxplot de duração de episódio |
-
-## 9. Justificativa formal de τ*=0,30 — Pareto e retorno marginal (21/06/2026)
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `fig_pareto_threshold.png` | 📄 | Curva joelho: sucesso × uso de SAC por τ — τ*=0,30 é o ponto de retorno marginal decrescente |
-| `fig_pareto_detail.png` | 📄 | Painel 3-em-1: fração SAC / regret / retorno marginal |
-| `fig_pareto_boxplot_main.png` | 📄 | **FIGURA CHAVE**: boxplot sucesso por τ (50 trials) + caixa de equações (τ*=argmin R(τ), ROI=dS/df_SAC) |
-| `fig_pareto_boxplot_time.png` | 📄 | Boxplot tempo de planejamento SAC vs A* + T(ρ)∝ρ·N² anotada |
-| `fig_pareto_equations_panel.png` | 📄 | Painel 5-em-1 completo para o relatório (boxplot+equações+joelho+regret+ROI) |
-
-## 10. Apresentação
-
-| Figura | Uso | Notas |
-|---|---|---|
-| `conpeex_slide.png` | 🖼️ | Slide único CONPEEX (regenerar após fotos Gazebo) |
-
----
-
-## 11. Screenshote Gazebo (pendentes)
-
-## Pendências de figuras
-
-- ⛔ `rho_sensitivity.png` — refazer com regret vs oracle antes de qualquer uso.
-- 📸 `gz_sparse.png`, `gz_dense.png`, `gz_very_dense.png` — **fotos do TurtleBot3 no Gazebo**,
-  referenciadas como placeholder no relatório e no resumo. Capturar manualmente após
-  convergência do SAC (Julho/2026). Ao adicionar, descomentar `\includegraphics` e
-  regenerar o slide via `python3 paper/generate_conpeex_slide.py`.
-- 🧹 Duplicata: `fig_obs_space_29dim.png` ≈ `fig_obs_29dim.png` — usar a segunda.
+Os arquivos removidos continuam no histórico do git (`git log --diff-filter=D -- paper/figs/`).
+Para restaurar um arquivo específico: `git checkout <commit-antes-da-remoção> -- paper/figs/<caminho>`.

@@ -33,6 +33,12 @@ results/figures/*.pdf
 # Logs
 *.log
 
+# LaTeX build artifacts
+*.aux
+*.out
+*.toc
+paper/relatorio_final_pip.pdf
+
 # Modelos treinados (grandes)
 *.pkl
 *.pth

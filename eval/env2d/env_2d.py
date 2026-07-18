@@ -69,17 +69,98 @@ WORLDS = {
             ( 1.8,  0.8, 0.15), (-0.3, -0.5, 0.15), ( 0.0, -1.8, 0.15),
         ],
     },
+    # Cenário urbano: 4 quarteirões sólidos separados por 2 corredores (rua
+    # horizontal em y=0, rua vertical em x=0, ambos com 1,4m de largura —
+    # folga suficiente para o robô + margem de segurança do A*, ver nota
+    # abaixo) formando um cruzamento em "+". Fecha os itens "obstáculos
+    # móveis"/"cenário urbano" do plano de trabalho oficial (ver
+    # [[project-plano-trabalho]]) — layout com semântica de rua, diferente
+    # das arenas circulares abertas dos mundos acima. Cada quarteirão é
+    # representado por 4 segmentos de borda (para o raycast/A*) MAIS o
+    # retângulo em "blocks" (para o teste de robô dentro do bloco, que
+    # distância-à-borda sozinha não cobre).
+    #
+    # Largura mínima do corredor: testado com 0,8m (0,4m de cada lado do
+    # eixo) e o A* falhava sistematicamente perto dos cruzamentos — a
+    # margem de segurança do AStarPolicy (ROBOT_RADIUS 0,17 + margem 0,08 =
+    # 0,25m) expande cada quarteirão, e com só 0,4m de meia-largura a folga
+    # líquida no centro do corredor caía a 0,15m, abaixo da resolução da
+    # grade (0,08m) — corredor rasterizado como bloqueado de ponta a ponta.
+    # Com 0,7m de meia-largura, a folga líquida sobe para 0,45m.
+    "urban_grid": {
+        "size": 4.0,
+        "obstacles": [],
+        "blocks": [   # (xmin, ymin, xmax, ymax) — quarteirões sólidos
+            (0.7, 0.7, 1.9, 1.9),      # nordeste
+            (-1.9, 0.7, -0.7, 1.9),    # noroeste
+            (0.7, -1.9, 1.9, -0.7),    # sudeste
+            (-1.9, -1.9, -0.7, -0.7),  # sudoeste
+        ],
+        "walls": [
+            # Quarteirão nordeste (x:[0.7,1.9], y:[0.7,1.9])
+            (0.7, 0.7, 1.9, 0.7), (1.9, 0.7, 1.9, 1.9),
+            (1.9, 1.9, 0.7, 1.9), (0.7, 1.9, 0.7, 0.7),
+            # Quarteirão noroeste (x:[-1.9,-0.7], y:[0.7,1.9])
+            (-1.9, 0.7, -0.7, 0.7), (-0.7, 0.7, -0.7, 1.9),
+            (-0.7, 1.9, -1.9, 1.9), (-1.9, 1.9, -1.9, 0.7),
+            # Quarteirão sudeste (x:[0.7,1.9], y:[-1.9,-0.7])
+            (0.7, -1.9, 1.9, -1.9), (1.9, -1.9, 1.9, -0.7),
+            (1.9, -0.7, 0.7, -0.7), (0.7, -0.7, 0.7, -1.9),
+            # Quarteirão sudoeste (x:[-1.9,-0.7], y:[-1.9,-0.7])
+            (-1.9, -1.9, -0.7, -1.9), (-0.7, -1.9, -0.7, -0.7),
+            (-0.7, -0.7, -1.9, -0.7), (-1.9, -0.7, -1.9, -1.9),
+        ],
+    },
 }
+
+
+def _point_in_block(px, py, xmin, ymin, xmax, ymax, margin=0.0) -> bool:
+    """True se o ponto (com folga `margin`) está dentro do retângulo."""
+    return (xmin - margin <= px <= xmax + margin and
+            ymin - margin <= py <= ymax + margin)
+
+
+def _point_segment_dist(px, py, x1, y1, x2, y2) -> float:
+    """Distância mínima do ponto (px,py) ao segmento (x1,y1)-(x2,y2)."""
+    sx, sy = x2 - x1, y2 - y1
+    seg_len2 = sx * sx + sy * sy
+    if seg_len2 < 1e-12:
+        return float(np.hypot(px - x1, py - y1))
+    t = np.clip(((px - x1) * sx + (py - y1) * sy) / seg_len2, 0.0, 1.0)
+    cx, cy = x1 + t * sx, y1 + t * sy
+    return float(np.hypot(px - cx, py - cy))
+
+
+def _raycast_segment(ox, oy, dx, dy, best, x1, y1, x2, y2):
+    """Interseção raio-segmento genérica (não precisa ser eixo-alinhado).
+
+    Generaliza o caso particular usado antes só para as 4 paredes do
+    perímetro (que são segmentos eixo-alinhados) — mesma álgebra, resolvida
+    para um segmento com direção arbitrária via sistema linear 2×2:
+        (ox + t*dx, oy + t*dy) = (x1 + s*(x2-x1), y1 + s*(y2-y1)),  s ∈ [0,1]
+    """
+    sx, sy = x2 - x1, y2 - y1
+    denom = dx * sy - dy * sx
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = ((x1 - ox) * sy - (y1 - oy) * sx) / denom
+        s = ((x1 - ox) * dy - (y1 - oy) * dx) / denom
+    hit = (np.abs(denom) > 1e-12) & (t > 1e-6) & (s >= 0.0) & (s <= 1.0)
+    return np.where(hit & (t < best), t, best)
 
 
 def _scan(ox: float, oy: float, yaw: float,
           obstacles: list, arena: float,
           n_rays: int = 360,
-          max_range: float = LIDAR_MAX_RANGE) -> np.ndarray:
+          max_range: float = LIDAR_MAX_RANGE,
+          walls: list = None) -> np.ndarray:
     """Scan LIDAR vetorizado — todos os raios em paralelo com NumPy.
 
     Evita loop Python por raio; opera sobre arrays (n_rays,) inteiros.
     ~100× mais rápido que a versão com _raycast() por raio.
+
+    `walls`: lista opcional de segmentos internos (x1,y1,x2,y2), além do
+    perímetro da arena — usado por mundos com corredores/cruzamentos
+    (ver WORLDS["urban_grid"]).
     """
     angles = yaw + np.linspace(0, 2 * np.pi, n_rays, endpoint=False)
     dx = np.cos(angles)   # (n_rays,)
@@ -88,24 +169,16 @@ def _scan(ox: float, oy: float, yaw: float,
     best = np.full(n_rays, max_range, dtype=np.float32)
     half = arena / 2.0
 
-    # ── Paredes ────────────────────────────────────────────────
-    # Parede x=+half
-    with np.errstate(divide="ignore", invalid="ignore"):
-        t = (half - ox) / dx
-        hit = (t > 1e-6) & (np.abs(oy + t * dy) <= half)
-        best = np.where(hit & (t < best), t, best)
-        # Parede x=-half
-        t = (-half - ox) / dx
-        hit = (t > 1e-6) & (np.abs(oy + t * dy) <= half)
-        best = np.where(hit & (t < best), t, best)
-        # Parede y=+half
-        t = (half - oy) / dy
-        hit = (t > 1e-6) & (np.abs(ox + t * dx) <= half)
-        best = np.where(hit & (t < best), t, best)
-        # Parede y=-half
-        t = (-half - oy) / dy
-        hit = (t > 1e-6) & (np.abs(ox + t * dx) <= half)
-        best = np.where(hit & (t < best), t, best)
+    # ── Perímetro da arena (4 segmentos eixo-alinhados) ─────────
+    best = _raycast_segment(ox, oy, dx, dy, best, half, -half, half, half)
+    best = _raycast_segment(ox, oy, dx, dy, best, -half, -half, -half, half)
+    best = _raycast_segment(ox, oy, dx, dy, best, -half, half, half, half)
+    best = _raycast_segment(ox, oy, dx, dy, best, -half, -half, half, -half)
+
+    # ── Paredes internas (corredores/cruzamentos) ───────────────
+    if walls:
+        for (x1, y1, x2, y2) in walls:
+            best = _raycast_segment(ox, oy, dx, dy, best, x1, y1, x2, y2)
 
     # ── Obstáculos circulares ──────────────────────────────────
     for (cx, cy, cr) in obstacles:
@@ -127,13 +200,26 @@ class Env2D(gym.Env):
     metadata = {"render_modes": []}
 
     def __init__(self, world: str = "sparse", seed: int = 42,
-                 curriculum_max_dist: float = 3.0):
+                 curriculum_max_dist: float = 3.0,
+                 dynamic_obstacles: list = None):
         super().__init__()
         assert world in WORLDS, f"world deve ser um de {list(WORLDS)}"
         cfg = WORLDS[world]
         self.obstacles  = cfg["obstacles"]
         self.arena      = cfg["size"]
+        self.walls      = cfg.get("walls", [])  # segmentos internos (x1,y1,x2,y2)
+        self.blocks     = cfg.get("blocks", [])  # retângulos sólidos (xmin,ymin,xmax,ymax)
         self.curr_dist  = curriculum_max_dist
+
+        # Obstáculos móveis programados (trajetória determinística, SEM
+        # política de decisão própria — diferente de train_2d_dynamic.py,
+        # que é outro robô-agente com A* analítico simplificado). Cada
+        # entrada: dict com cx,cy,cr,vx,vy (posição/raio/velocidade
+        # iniciais); a posição é atualizada em step() com bounce elástico
+        # nas bordas da arena. self.obstacles (estático) nunca é mutado —
+        # os móveis são mesclados a cada passo antes do scan/colisão.
+        self._dynamic_specs = dynamic_obstacles or []
+        self._dyn_state = [dict(o) for o in self._dynamic_specs]
 
         self.observation_space = spaces.Box(
             low=-1.0, high=1.0, shape=(OBS_DIM,), dtype=np.float32)
@@ -151,16 +237,46 @@ class Env2D(gym.Env):
         self._w_norm = 0.0
         self._prev_dist = 1.0
 
+    # ── Obstáculos móveis ────────────────────────────────────────
+    def _step_dynamic_obstacles(self):
+        """Avança a posição dos obstáculos móveis em DT, com bounce elástico
+        nas bordas da arena (reflete vx/vy ao atingir o perímetro)."""
+        half = self.arena / 2.0
+        for o in self._dyn_state:
+            nx = o["cx"] + o["vx"] * DT
+            ny = o["cy"] + o["vy"] * DT
+            if nx - o["cr"] < -half or nx + o["cr"] > half:
+                o["vx"] *= -1
+                nx = o["cx"] + o["vx"] * DT
+            if ny - o["cr"] < -half or ny + o["cr"] > half:
+                o["vy"] *= -1
+                ny = o["cy"] + o["vy"] * DT
+            o["cx"], o["cy"] = nx, ny
+
+    @property
+    def all_obstacles(self) -> list:
+        """Obstáculos estáticos + posição atual dos móveis, como tuplas
+        (cx,cy,cr) — usado por _scan, colisão e spawn."""
+        dyn = [(o["cx"], o["cy"], o["cr"]) for o in self._dyn_state]
+        return self.obstacles + dyn
+
     # ── Spawn ─────────────────────────────────────────────────
     def _sample_free(self) -> tuple:
-        """Amostra posição livre de obstáculos e paredes."""
+        """Amostra posição livre de obstáculos, paredes internas e perímetro."""
         half = self.arena / 2.0 - 0.3
         for _ in range(200):
             x = self._rng.uniform(-half, half)
             y = self._rng.uniform(-half, half)
-            if all(np.hypot(x - cx, y - cy) > cr + ROBOT_RADIUS + 0.1
-                   for cx, cy, cr in self.obstacles):
-                return float(x), float(y)
+            if not all(np.hypot(x - cx, y - cy) > cr + ROBOT_RADIUS + 0.1
+                       for cx, cy, cr in self.all_obstacles):
+                continue
+            if not all(_point_segment_dist(x, y, x1, y1, x2, y2) > ROBOT_RADIUS + 0.1
+                       for x1, y1, x2, y2 in self.walls):
+                continue
+            if any(_point_in_block(x, y, *b, margin=ROBOT_RADIUS + 0.1)
+                   for b in self.blocks):
+                continue
+            return float(x), float(y)
         return 0.0, 0.0   # fallback
 
     def _sample_goal(self, rx: float, ry: float) -> tuple:
@@ -179,6 +295,7 @@ class Env2D(gym.Env):
     def reset(self, *, seed=None, options=None):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
+        self._dyn_state = [dict(o) for o in self._dynamic_specs]
         self._x, self._y = self._sample_free()
         self._yaw = self._rng.uniform(-np.pi, np.pi)
         self._gx, self._gy = self._sample_goal(self._x, self._y)
@@ -190,6 +307,7 @@ class Env2D(gym.Env):
 
     def step(self, action: np.ndarray):
         self._step += 1
+        self._step_dynamic_obstacles()
         v_norm = float(np.clip(action[0], -1.0, 1.0))
         w_norm = float(np.clip(action[1], -1.0, 1.0))
         v  = v_norm  * LINEAR_VEL_MAX
@@ -205,13 +323,27 @@ class Env2D(gym.Env):
         half = self.arena / 2.0 - ROBOT_RADIUS
         wall_hit = not (-half <= nx <= half and -half <= ny <= half)
 
-        # Colisão com obstáculo
+        # Colisão com obstáculo (estático + móvel, posição já atualizada acima)
         obs_hit = any(
             np.hypot(nx - cx, ny - cy) < cr + ROBOT_RADIUS
-            for cx, cy, cr in self.obstacles
+            for cx, cy, cr in self.all_obstacles
         )
 
-        collision = wall_hit or obs_hit
+        # Colisão com parede interna (corredores/cruzamentos)
+        inner_wall_hit = any(
+            _point_segment_dist(nx, ny, x1, y1, x2, y2) < ROBOT_RADIUS
+            for x1, y1, x2, y2 in self.walls
+        )
+
+        # Colisão com o interior de um quarteirão sólido (não só a borda —
+        # necessário caso o robô já esteja dentro por algum motivo, ex.:
+        # canto onde dois segmentos de borda deixam uma folga diagonal)
+        block_hit = any(
+            _point_in_block(nx, ny, *b, margin=ROBOT_RADIUS)
+            for b in self.blocks
+        )
+
+        collision = wall_hit or obs_hit or inner_wall_hit or block_hit
         if not collision:
             self._x, self._y = nx, ny
 
@@ -245,7 +377,7 @@ class Env2D(gym.Env):
 
     def _obs(self) -> np.ndarray:
         ranges = _scan(self._x, self._y, self._yaw,
-                       self.obstacles, self.arena)
+                       self.all_obstacles, self.arena, walls=self.walls)
         return make_observation(
             ranges, self._x, self._y, self._yaw,
             self._gx, self._gy,

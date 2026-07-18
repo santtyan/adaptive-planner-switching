@@ -26,13 +26,13 @@ onde ρ é a fração de células ocupadas em uma janela 2×2 m ao redor da pose
 
 | Critério de seleção ρ | Decisão espacial do switcher |
 |:---:|:---:|
-| ![Switching](paper/figs/density_progression.png) | ![Heatmap](paper/figs/switching_heatmap.png) |
+| ![Switching](paper/figs/core/density_progression.png) | ![Heatmap](paper/figs/core/switching_heatmap.png) |
 
 | Benchmark clássicos (tempo) | Roadmap (agente único → MARL) |
 |:---:|:---:|
-| ![Benchmark](paper/figs/benchmark_time.png) | ![Roadmap](paper/figs/roadmap_marl_tj.png) |
+| ![Benchmark](paper/figs/benchmark/benchmark_time.png) | ![Roadmap](paper/figs/marl/roadmap_marl_tj.png) |
 
-> Catálogo completo das 51 figuras científicas (organizado por utilidade) em
+> Catálogo completo das figuras científicas (organizado por utilidade) em
 > [`paper/figs/CATALOG.md`](paper/figs/CATALOG.md).
 
 ---
@@ -86,7 +86,7 @@ ros2_ws/
 └── src/turtlebot3_gym_env/       # Ambiente Gymnasium sobre Gazebo
 
 eval/                             # Scripts de benchmark e figuras científicas
-paper/figs/                       # 51 figuras (.png + .pdf) — ver CATALOG.md
+paper/figs/                       # figuras científicas (.png + .pdf) — ver CATALOG.md
 models/                           # Modelos treinados (best_model.zip)
 results_abstract/                 # Dados Fase 1 (Monte Carlo calibrado)
 results_ros2/                     # Dados Fase 2 (benchmark real — preencher pós-convergência)

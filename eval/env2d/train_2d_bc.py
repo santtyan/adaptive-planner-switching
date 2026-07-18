@@ -21,7 +21,10 @@ import torch.optim as optim
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from eval.env2d.env_2d import Env2D, LINEAR_VEL_MAX, ANGULAR_VEL_MAX
+from eval.env2d.env_2d import (
+    Env2D, LINEAR_VEL_MAX, ANGULAR_VEL_MAX,
+    _point_segment_dist, _point_in_block,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -38,12 +41,38 @@ def expert_action(env: Env2D) -> np.ndarray:
     dist_goal = np.hypot(gx, gy)
     fx, fy = gx / max(dist_goal, 1e-6), gy / max(dist_goal, 1e-6)  # atrativa unitária
 
-    for cx, cy, cr in env.obstacles:
+    influence = 0.6  # m — raio de influência repulsiva
+
+    for cx, cy, cr in env.all_obstacles:
         ox, oy = env._x - cx, env._y - cy
         dist_obs = np.hypot(ox, oy) - cr
-        influence = 0.6  # m — raio de influência repulsiva
         if 0 < dist_obs < influence:
             strength = (1.0 / max(dist_obs, 0.05) - 1.0 / influence)
+            fx += strength * ox / max(np.hypot(ox, oy), 1e-6)
+            fy += strength * oy / max(np.hypot(ox, oy), 1e-6)
+
+    # Repulsão de paredes internas (corredores/cruzamentos do urban_grid)
+    for x1, y1, x2, y2 in env.walls:
+        d = _point_segment_dist(env._x, env._y, x1, y1, x2, y2)
+        if 0 < d < influence:
+            # direção aproximada: do ponto mais próximo do segmento até o robô
+            sx, sy = x2 - x1, y2 - y1
+            seg_len2 = sx * sx + sy * sy
+            t = np.clip(((env._x - x1) * sx + (env._y - y1) * sy) / max(seg_len2, 1e-9), 0.0, 1.0)
+            nearest_x, nearest_y = x1 + t * sx, y1 + t * sy
+            ox, oy = env._x - nearest_x, env._y - nearest_y
+            strength = (1.0 / max(d, 0.05) - 1.0 / influence)
+            fx += strength * ox / max(np.hypot(ox, oy), 1e-6)
+            fy += strength * oy / max(np.hypot(ox, oy), 1e-6)
+
+    # Repulsão do interior de quarteirões sólidos (se o robô estiver perto)
+    for xmin, ymin, xmax, ymax in env.blocks:
+        cx_blk = np.clip(env._x, xmin, xmax)
+        cy_blk = np.clip(env._y, ymin, ymax)
+        d = np.hypot(env._x - cx_blk, env._y - cy_blk)
+        if 0 < d < influence:
+            ox, oy = env._x - cx_blk, env._y - cy_blk
+            strength = (1.0 / max(d, 0.05) - 1.0 / influence)
             fx += strength * ox / max(np.hypot(ox, oy), 1e-6)
             fy += strength * oy / max(np.hypot(ox, oy), 1e-6)
 
@@ -147,7 +176,7 @@ def main():
 
     final_sr = evaluate_bc(policy, args.world, n_eval=50, seed=999)
     elapsed = time.time() - t0
-    save_path = os.path.join(MODS, "bc_2d_policy.pt")
+    save_path = os.path.join(MODS, f"bc_2d_policy_{args.world}.pt")
     torch.save(policy.state_dict(), save_path)
     print(f"\nBC finalizado em {elapsed/60:.1f} min — success final={final_sr:.0%}")
     print(f"Modelo salvo em {save_path}")

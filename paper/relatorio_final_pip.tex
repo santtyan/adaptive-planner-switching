@@ -16,7 +16,7 @@
 \renewcommand{\familydefault}{\sfdefault}
 
 % ── Margens e espaçamento ───────────────────────────────────
-\usepackage[top=3cm, bottom=2cm, left=3cm, right=2cm]{geometry}
+\usepackage[top=2.3cm, bottom=2cm, left=2.5cm, right=2cm]{geometry}
 \usepackage{setspace}
 \onehalfspacing
 
@@ -26,6 +26,15 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{subcaption}
+\captionsetup{font=small, labelfont=bf, skip=4pt, belowskip=2pt}
+\captionsetup[sub]{font=small, skip=2pt}
+\setlength{\abovecaptionskip}{4pt}
+\setlength{\belowcaptionskip}{2pt}
+\setlength{\intextsep}{6pt}
+\setlength{\textfloatsep}{8pt}
+\setlength{\floatsep}{6pt}
+\usepackage{array}
+\renewcommand{\arraystretch}{0.9}
 
 % ── Matemática ──────────────────────────────────────────────
 \usepackage{amsmath}
@@ -33,6 +42,7 @@
 
 % ── Links e metadados ───────────────────────────────────────
 \usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
 
 % ── Código ──────────────────────────────────────────────────
 \usepackage{listings}
@@ -57,6 +67,9 @@
 % ── Seções sem recuo ────────────────────────────────────────
 \setlength{\parindent}{1.25cm}
 \setlength{\parskip}{0pt}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+\titlespacing*{\subsection}{0pt}{6pt}{3pt}
 
 % ── Título do documento ─────────────────────────────────────
 \title{
@@ -77,7 +90,9 @@
 % ============================================================
 \begin{document}
 
+\vspace{-1.5cm}
 \maketitle
+\vspace{-1.2cm}
 \thispagestyle{fancy}
 
 % ── Resumo ──────────────────────────────────────────────────
@@ -119,7 +134,7 @@ de custo, não de taxa de acerto.
 % ============================================================
 \section{Apresentação}
 
-\subsection{Introdução e Justificativa}
+\subsection{Introdução, Justificativa e Trabalhos Relacionados}
 
 Robôs autônomos navegam em ambientes heterogêneos onde nenhum planejador único é
 universalmente ótimo. Em corredores abertos, o algoritmo A* encontra caminhos ótimos em
@@ -128,107 +143,69 @@ aprendidas por reforço (que reagem ao ambiente local sem precisar de um mapa co
 superam abordagens analíticas que pressupõem grafos esparsos e bem comportados. A
 densidade local de obstáculos ao redor do robô é o preditor natural dessa transição: ela
 determina se o ambiente é aberto o suficiente para o A* ou congestionado o suficiente para
-justificar uma política aprendida.
+justificar uma política aprendida. A ideia de \textit{seleção adaptiva} não é nova no grupo
+de pesquisa onde este trabalho foi desenvolvido: sistemas anteriores do PEQUI Mecânico
+(EMC/INF -- UFG), como o VSSS-EMC de futebol robótico, já alternavam em tempo real entre
+comportamentos com base no estado do ambiente --- o padrão de decidir \textit{qual}
+comportamento usar, não apenas \textit{como} executá-lo, é o núcleo do presente trabalho.
 
-A ideia de \textit{seleção adaptiva} não é nova no grupo de pesquisa onde este trabalho foi
-desenvolvido. Sistemas anteriores do PEQUI Mecânico (EMC/INF -- UFG) já adotavam comutação
-dinâmica de comportamento: no VSSS-INF (2016) e no VSSS-EMC (2018--2022), a estratégia de
-futebol robótico alternava em tempo real entre papéis de atacante, goleiro e defensor com
-base no estado global do campo. Esse padrão --- decidir \textit{qual} comportamento usar,
-não apenas \textit{como} executá-lo --- é o núcleo do presente trabalho, aqui formalizado
-como critério de seleção baseado em densidade local de obstáculos e validado com evidência
-empírica de ganho de performance.
-
-A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto.
-Trabalhos recentes como \cite{He2025} otimizam pesos de um único planejador; abordagens
-híbridas em \cite{Sensors2025} usam regras geográficas estáticas. Nenhum trata a seleção
-de planejador como variável de otimização contextual com evidência empírica de ganho
-mensurável em ambientes heterogêneos.
+A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto:
+\cite{He2025} otimizam pesos de um único planejador; \cite{Sensors2025} usam regras
+geográficas estáticas; \cite{Sharma2024} comutam entre DWA e SAC por heurística
+\textit{reativa} (detecção de obstáculo já no caminho); a linha APPL/APPLR \cite{Xiao2021}
+aprende por reforço os \textit{parâmetros} de um planejador clássico, não qual planejador
+usar; o método LiCS \cite{Damanik2024}, vencedor do BARN Challenge 2024, treina uma única
+política de imitação robusta, sem comutação nenhuma. Nenhum trata a seleção de planejador
+como variável de otimização contextual \textit{preditiva} --- a densidade local $\rho$, que
+antecipa a necessidade de comutação \textbf{antes} do bloqueio do planejador clássico, não
+depois de detectá-lo.
 
 Este trabalho aborda essa lacuna com a seguinte tese central: \textbf{a seleção adaptiva de
 planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes
-heterogêneos, com ganho mensurável}. Essa tese se desdobra em três hipóteses verificáveis.
-A primeira (H1) sustenta que o critério adaptivo alcança taxa de sucesso maior que a do melhor
-método fixo em ambientes de densidade variável. A segunda (H2) afirma que o limiar
-$\rho^*{=}0{,}30$ acerta o ponto de troca entre o planejador clássico e o de aprendizado por
-reforço, ficando perto de um seletor ideal: a diferença média de desempenho é de no máximo
-5\%, e de 10\% no pior caso.
-A terceira (H3) postula que o framework é realizável em um stack robótico padrão da indústria
-(ROS2/Nav2/Gazebo), sem modificar os planejadores subjacentes. A confirmação de H3 levanta
-uma questão para o caso com vários robôs: quando todos aplicam o critério ao mesmo tempo e de
-forma independente, o comportamento coletivo é coordenado? Essa pergunta fica como direção
-futura.
+heterogêneos, com ganho mensurável}. Essa tese se desdobra em três hipóteses verificáveis:
+(H1) o critério adaptivo alcança taxa de sucesso maior que a do melhor método fixo em
+ambientes de densidade variável; (H2) o limiar $\rho^*{=}0{,}30$ acerta o ponto de troca
+entre o planejador clássico e o de aprendizado por reforço, ficando perto de um seletor
+ideal (diferença média $\leq$5\%, $\leq$10\% no pior caso); (H3) o framework é realizável em
+um stack robótico padrão da indústria (ROS2/Nav2/Gazebo), sem modificar os planejadores
+subjacentes. A confirmação de H3 levanta uma questão natural para múltiplos robôs: quando
+todos aplicam o critério de forma independente, o comportamento coletivo é coordenado? Essa
+pergunta motiva a extensão multi-agente (Seção~\ref{sec:multiagente}).
 
 Este trabalho foi desenvolvido pelo autor na condição de discente do Programa de Iniciação à
 Pesquisa da UFG (PIP/UFG), modalidade Iniciação Científica (IC), no período
-01/09/2025--31/08/2026, vinculado ao projeto PI08078-2024 e
-alinhado com: (i) o Plano de Trabalho, que prevê comparação entre métodos clássicos e modernos
-com métricas de tempo e memória; (ii) o Parecer do Consultor SIGAA (13/06/2025), que exige
-implementações otimizadas; (iii) o Relatório Parcial aprovado em 01/04/2026.
-A comparação entre métodos prevista no plano evoluiu para a formulação do
-\textit{$\rho$-criterion} como critério de seleção adaptiva --- documentada no Relatório
-Parcial e alinhada com o Objetivo~4 (PI08078-2024). A extensão multi-agente
-(Seção~\ref{sec:multiagente}) é uma contribuição além do escopo original, motivada pelos
-resultados da Fase~1.
+01/09/2025--31/08/2026, vinculado ao projeto PI08078-2024 e alinhado com o Plano de Trabalho
+(comparação clássico/moderno com métricas de tempo e memória), o Parecer do Consultor SIGAA
+(13/06/2025, implementações otimizadas) e o Relatório Parcial aprovado em 01/04/2026, do
+qual a formulação do $\rho$-criterion é evolução direta (Objetivo~4, PI08078-2024).
 
-\subsection{Objetivos}
-
-\textbf{Objetivo geral:} Desenvolver um framework que trate a seleção de planejador de
+\textbf{Objetivo geral:} desenvolver um framework que trate a seleção de planejador de
 trajetória como variável de otimização contextual, não como escolha fixa de design.
-
-\textbf{Objetivos específicos:}
-\begin{enumerate}
-  \item Implementar e comparar algoritmicamente Dijkstra, A*, Floyd-Warshall e Johnson com
-        métricas de tempo e memória.
-  \item Formular o critério $\rho$ de seleção adaptiva e determinar o limiar ótimo $\rho^*$
-        experimentalmente.
-  \item Derivar garantias teóricas de performance (\textit{regret bounds}) em relação ao
-        seletor ideal.
-  \item Integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3 Waffle,
-        avaliando o desempenho em ambientes estáticos e de densidade variável. Testes com
-        obstáculos dinâmicos (pedestres, veículos) constituem trabalho futuro --- Gazebo
-        Classic não possui simulação de agentes dinâmicos nativamente.
-  \item Comparar o framework adaptivo contra métodos fixos da literatura.
-\end{enumerate}
-
-\subsection{Trabalhos Relacionados}
-
-A combinação de planejadores clássicos e de aprendizado por reforço é tema ativo de pesquisa.
-\cite{Sharma2024} propõem um planejador local híbrido que comuta entre DWA e um planejador
-SAC com base em heurística reativa. A linha APPL/APPLR \cite{Xiao2021} adota estratégia
-distinta: em vez de trocar de planejador, aprende por reforço os \textit{parâmetros} de um
-planejador clássico. O método LiCS \cite{Damanik2024}, vencedor do BARN Challenge 2024,
-treina uma política de imitação baseada em Transformer robusta para espaços altamente
-confinados.
-
-O presente trabalho difere dessas abordagens por adotar um critério \textit{preditivo}: a
-densidade local de obstáculos $\rho$, que antecipa a necessidade de comutação \textbf{antes}
-do bloqueio do planejador clássico.
+\textbf{Objetivos específicos:} (1) implementar e comparar Dijkstra, A*, Floyd-Warshall e
+Johnson com métricas de tempo e memória; (2) formular o critério $\rho$ e determinar
+$\rho^*$ experimentalmente; (3) derivar garantias teóricas de \textit{regret} em relação ao
+seletor ideal; (4) integrar o framework em ROS2 Humble com Gazebo Classic e TurtleBot3
+Waffle, avaliando o desempenho em ambientes estáticos e de densidade variável --- testes com
+obstáculos dinâmicos (pedestres, veículos) ficam como trabalho futuro, já que Gazebo Classic
+não simula agentes dinâmicos nativamente; (5) comparar o framework adaptivo contra métodos
+fixos da literatura.
 
 % ============================================================
 \section{Metodologia}
 
-\subsection{Algoritmos Clássicos Implementados}
-
-Os quatro algoritmos foram implementados em Python puro com \textbf{estruturas de dados
-otimizadas}, atendendo à observação do Consultor SIGAA (13/06/2025) de que a comparação
-deve envolver implementações otimizadas, não apenas didáticas. Dijkstra e A* utilizam
-\texttt{heapq} (heap binário mínimo), estrutura ótima para fila de prioridade em grafos
-esparsos, garantindo complexidade $O(V \log V + E)$ na prática. Floyd-Warshall usa matriz
-densa de adjacência (acesso $O(1)$ por par); Johnson usa lista de adjacências com
-rebalanceamento por Bellman-Ford. O componente A* em tempo de execução (framework real)
-utiliza Nav2/SmacPlanner2D, implementação C++ altamente otimizada e validada pela
-comunidade ROS2, reforçando o caráter de comparação com implementações de produção.
-
-Os algoritmos operam sobre listas de adjacências construídas por \texttt{grid\_to\_graph()}
-com conectividade 4-direcional. Dijkstra resolve o caminho mínimo de fonte única em
-$O(V \log V + E)$ e A* acrescenta a ele uma heurística euclidiana admissível; já
-Floyd-Warshall e Johnson resolvem todos os pares de origem-destino, o primeiro em $O(V^3)$ de
-tempo e $O(V^2)$ de memória, o segundo em $O(V \cdot E \cdot \log V)$ com rebalanceamento por
-Bellman-Ford.
-
-\subsection{Critério Adaptivo \texorpdfstring{$\rho$}{rho}}
+\subsection{Algoritmos Clássicos e Critério Adaptivo \texorpdfstring{$\rho$}{rho}}
 \label{sec:criterio_adaptivo}
+
+Os quatro algoritmos clássicos foram implementados em Python puro com \textbf{estruturas de
+dados otimizadas}, atendendo à observação do Consultor SIGAA (13/06/2025) de que a
+comparação deve envolver implementações otimizadas, não apenas didáticas. Dijkstra e A*
+utilizam \texttt{heapq} (heap binário mínimo), garantindo $O(V \log V + E)$ na prática;
+Floyd-Warshall usa matriz densa ($O(V^3)$ tempo, $O(V^2)$ memória); Johnson usa lista de
+adjacências com rebalanceamento por Bellman-Ford ($O(V \cdot E \cdot \log V)$), suportando
+pesos negativos. Os quatro operam sobre grafos construídos por \texttt{grid\_to\_graph()}
+com conectividade 4-direcional. O componente A* em tempo de execução (framework real) utiliza
+Nav2/SmacPlanner2D, implementação C++ otimizada e validada pela comunidade ROS2, reforçando o
+caráter de comparação com implementações de produção.
 
 \textbf{Por que densidade de obstáculos, e por que um limiar rígido:} a escolha da
 densidade local como variável de contexto não é arbitrária --- ela captura diretamente a
@@ -271,12 +248,11 @@ A política de seleção é:
 
 O limiar $\rho^* = 0{,}30$ foi determinado por validação experimental com 1.500 trials.
 
-\subsection{Análise Teórica de Regret}
+\subsection{Regret Teórico, Implementação ROS2 e Protocolo de Benchmark}
 \label{sec:regret}
 
-Para medir a qualidade do critério, comparamos seu desempenho ao de um \textit{seletor ideal}:
-um seletor hipotético que, conhecendo o ambiente de antemão, sempre escolhe o melhor planejador
-para cada situação. A diferença de desempenho entre os dois é o que chamamos de \textit{regret}:
+Para medir a qualidade do critério, comparamos seu desempenho ao de um \textit{seletor ideal}
+que, conhecendo o ambiente de antemão, sempre escolhe o melhor planejador para cada situação:
 
 \begin{equation}
   \mathrm{Regret}(\pi) = \mathbb{E}[R_{\mathrm{ideal}}] - \mathbb{E}[R_\pi]
@@ -286,23 +262,18 @@ Quanto menor o regret, mais perto o critério está do ideal. Nos experimentos c
 (Monte Carlo), o $\rho$-criterion fica, em média, a apenas $2{,}9\%$ desse seletor ideal, e a
 $6{,}7\%$ no pior caso.
 
-\subsection{Implementação ROS2}
+O sistema integra ROS2 Humble, Gazebo Classic (v11), TurtleBot3 Waffle, Nav2 SmacPlanner2D e
+Stable-Baselines3 SAC. O ambiente gym customizado recebe observações de 29 dimensões: 24
+raios LIDAR subamostrados de 360°, distância e ângulo ao goal em coordenadas polares, yaw
+relativo e a ação anterior (velocidade linear e angular normalizadas) --- a ação anterior
+remedia a parcial observabilidade (POMDP), dando ao agente memória de curto prazo do próprio
+movimento. Ações controlam velocidade linear e angular em $[-1, 1]^2$.
 
-O sistema integra ROS2 Humble, Gazebo Classic (v11), TurtleBot3 Waffle, Nav2
-SmacPlanner2D e Stable-Baselines3 SAC. O ambiente gym customizado recebe observações
-de 29 dimensões: 24 raios LIDAR subamostrados de 360°, distância e ângulo ao goal em
-coordenadas polares, yaw relativo e a ação anterior (velocidade linear e angular
-normalizadas). A ação anterior na observação remedia a parcial observabilidade (POMDP),
-dando ao agente memória de curto prazo do próprio movimento. Ações controlam velocidade
-linear e angular em $[-1, 1]^2$.
-
-\subsection{Protocolo de Benchmark dos Clássicos}
-
-Para cada algoritmo e tamanho de grid (de 10$\times$10 a 50$\times$50), com densidade de
-obstáculos de 25\% e 5 trials por configuração, mediram-se três grandezas: o tempo de execução
-em milissegundos (média dos trials via \texttt{timeit.perf\_counter()}), a memória de pico em
-KB (\texttt{tracemalloc.get\_traced\_memory()}) e a alcançabilidade, isto é, a fração de trials
-em que origem e destino estão conectados.
+Para o benchmark dos clássicos, cada algoritmo e tamanho de grid (10$\times$10 a
+50$\times$50, densidade 25\%, 5 trials/configuração) teve três grandezas medidas: tempo de
+execução (\texttt{timeit.perf\_counter()}), memória de pico
+(\texttt{tracemalloc.get\_traced\_memory()}) e alcançabilidade (fração de trials com
+origem-destino conectados).
 
 % ============================================================
 \section{Resultados e Discussão}
@@ -312,37 +283,22 @@ em que origem e destino estão conectados.
 
 \begin{table}[H]
   \centering
-  \caption{Tempo de execução médio (ms)}
-  \label{tab:tempo}
-  \begin{tabular}{lrrrr}
+  \caption{Tempo de execução (ms) e memória de pico (KB), média por algoritmo e grid}
+  \label{tab:tempo_memoria}
+  \begin{tabular}{lrrrrrrrr}
     \toprule
-    \textbf{Algoritmo} & \textbf{10$\times$10} & \textbf{20$\times$20} & \textbf{30$\times$30} & \textbf{50$\times$50} \\
+    & \multicolumn{4}{c}{\textbf{Tempo (ms)}} & \multicolumn{4}{c}{\textbf{Memória (KB)}} \\
+    \textbf{Algoritmo} & 10² & 20² & 30² & 50² & 10² & 20² & 30² & 50² \\
     \midrule
-    Dijkstra        & 0,071  & 0,335   & 0,878    & 2,46     \\
-    A*              & 0,072  & 0,345   & 0,975    & 3,09     \\
-    Floyd-Warshall  & 20,9   & 2.356   & 39.083   & inviável \\
-    Johnson         & 5,5    & 145     & 854      & inviável \\
+    Dijkstra        & 0,071 & 0,335 & 0,878 & 2,46     & 3,7 & 13,5 & 31,0 & 85,4 \\
+    A*              & 0,072 & 0,345 & 0,975 & 3,09     & 7,7 & 25,9 & 57,1 & 219,6 \\
+    Floyd-Warshall  & 20,9  & 2.356 & 39.083 & inviável & 271 & 4.347 & 22.981 & --- \\
+    Johnson         & 5,5   & 145   & 854   & inviável  & 603 & 10.820 & 58.518 & --- \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\begin{table}[H]
-  \centering
-  \caption{Memória de pico média (KB)}
-  \label{tab:memoria}
-  \begin{tabular}{lrrrr}
-    \toprule
-    \textbf{Algoritmo} & \textbf{10$\times$10} & \textbf{20$\times$20} & \textbf{30$\times$30} & \textbf{50$\times$50} \\
-    \midrule
-    Dijkstra        & 3,7   & 13,5    & 31,0    & 85,4   \\
-    A*              & 7,7   & 25,9    & 57,1    & 219,6  \\
-    Floyd-Warshall  & 271   & 4.347   & 22.981  & ---    \\
-    Johnson         & 603   & 10.820  & 58.518  & ---    \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\noindent\small\textit{Dados coletados em junho/2026; semente fixa 42; densidade 25\%; Python 3.10 em CPU.}
+\noindent\small\textit{Dados coletados em junho/2026; semente fixa 42; densidade 25\%; Python 3.10 em CPU. Grid $N{\times}N$.}
 
 Dijkstra e A* crescem linearmente em tempo e memória, confirmando complexidade $O(V \log V)$
 na prática. Floyd-Warshall exibe crescimento cúbico: ao passar de 10$\times$10 para
@@ -353,12 +309,24 @@ escolha como componente clássico do framework adaptivo.
 % ── Figuras do benchmark ─────────────────────────────────────
 \begin{figure}[htbp]
   \centering
-  % Substitua pelo caminho real após gerar as figuras definitivas
-  \includegraphics[width=0.72\textwidth]{figs/benchmark/benchmark_time.png}
-  \caption{Tempo de execução dos algoritmos clássicos em função do tamanho do grid.
-           Escala log-log. Dijkstra e A* crescem linearmente; Floyd-Warshall e Johnson
-           tornam-se inviáveis para $N > 900$ nós.}
-  \label{fig:benchmark_time}
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/benchmark/benchmark_time.png}
+    \caption{Tempo dos algoritmos clássicos (log-log). Dijkstra e A* crescem
+             linearmente; Floyd-Warshall e Johnson tornam-se inviáveis para
+             $N>900$ nós.}
+    \label{fig:benchmark_time}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
+    \caption{Limiar $\tau^*{=}0{,}30$: boxplots de sucesso e equações de retorno
+             marginal. $\tau{=}0{,}30$ maximiza a mediana e minimiza a variância
+             --- ROI de $0{,}11$~pp/pp em $\tau{=}0{,}25$.}
+    \label{fig:pareto_boxplot}
+  \end{subfigure}
+  \caption{Benchmark dos clássicos e justificativa formal do limiar adaptivo.}
 \end{figure}
 
 
@@ -383,22 +351,6 @@ já subiu de 16~ms para 115~ms, enquanto o SAC se mantém constante em $\approx$
 disso, usar o SAC em mais da metade dos passos quase não aumenta o sucesso
 (Fig.~\ref{fig:pareto_boxplot}). Por isso, $\rho^* = 0{,}30$ é o melhor equilíbrio entre
 desempenho e custo.
-
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
-  \caption{Análise comparativa do limiar $\tau^*{=}0{,}30$ com boxplots de distribuição de
-           taxa de sucesso e equações formais de retorno marginal.
-           \textbf{Equações:}
-           $\tau^* = \arg\min_\tau R(\tau)$,
-           $R(\tau) = \mathbb{E}_\rho[\pi^*(\rho) - \pi_\tau(\rho)]$,
-           $\text{ROI} = \Delta S / \Delta f_{\text{SAC}}$.
-           O boxplot confirma que $\tau{=}0{,}30$ maximiza a taxa de sucesso mediana e
-           minimiza a variância, enquanto $\tau{=}0{,}25$ (maior uso de SAC) não oferece
-           ganho estatisticamente significativo --- ROI de $0{,}11$~pp/pp.}
-  \label{fig:pareto_boxplot}
-\end{figure}
 
 \begin{table}[H]
   \centering
@@ -425,7 +377,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.72\textwidth]{figs/core/fig_statistical_test.png}
+  \includegraphics[width=0.42\textwidth]{figs/core/fig_statistical_test.png}
   \caption{Taxa de sucesso por método e densidade com IC~95\% (bootstrap binomial).
            O $\rho$-criterion supera o PPO fixo em todas as densidades acima de $\rho=0{,}25$,
            com vantagem máxima de 13,3~pp em $\rho=0{,}45$.
@@ -437,7 +389,7 @@ Limiar fixado em $\rho^* = 0{,}30$ em todo o experimento.
 
 
 
-\subsection{Integração ROS2/Gazebo --- Fase 2}
+\subsection{Integração ROS2/Gazebo (Fase 2) e Validação no Gêmeo 2D}
 \label{sec:integracao}
 
 A infraestrutura completa está operacional, validando a hipótese H3.
@@ -465,9 +417,8 @@ A infraestrutura completa está operacional, validando a hipótese H3.
 
 \noindent\small$^{a}$\textit{Entropia fixa em 0,1: com \texttt{ent\_coef=auto} combinado a
 gSDE, a exploração colapsava antes do agente acumular experiência. $^{b}$Episódio reduzido a
-200 passos para aumentar a frequência de resets (e de encontros com o goal) no mundo esparso.
-$^{c}$\texttt{gradient\_steps=1} (em vez de 4) evita divergência de Q-values com a recompensa
-de escala maior.}
+200 passos para aumentar a frequência de resets no mundo esparso. $^{c}$\texttt{gradient\_steps=1}
+(em vez de 4) evita divergência de Q-values com a recompensa de escala maior.}
 
 \normalsize
 
@@ -488,40 +439,32 @@ navegação DRL com LIDAR \cite{Cimurs2022, deJesus2021}:
 $R_{\mathrm{prox}}{=}1 - d/d_{\mathrm{inicial}}$ é crédito parcial por progresso
 \cite{Kolomeytsev2025}. A propriedade crítica de projeto é que \textbf{a recompensa por
 passo é garantidamente $\geq 0$}, enquanto a colisão impõe penalidade terminal de $-100$.
-Versões iniciais adotavam penalidade de obstáculo por passo (piso de $-1$ a $-5$). O
-problema é que a soma dessas penalidades ao longo de um episódio longo ($-600$ a $-3000$
-em 600 passos) superava a penalidade por colisão ($-100$), tornando racional para o agente
-colidir cedo e encerrar o episódio rapidamente. Esse comportamento, conhecido na literatura
-como \textit{suicidal agent} (agente suicida), ficou evidente na queda da duração média dos
-episódios, de cerca de 55 para apenas 8 passos ao ativar o SAC. A correção, seguindo Cimurs
-et al.\ (2022), elimina a penalidade por passo e mantém o bônus de sobrevivência: assim,
-chegar até o fim do episódio sempre vale mais do que colidir, o que remove o incentivo
-perverso.
-
-\subsection{Validação no Ambiente 2D Leve --- Env2D}
+Versões iniciais adotavam penalidade de obstáculo por passo, cuja soma ao longo de um
+episódio longo superava a penalidade terminal de colisão, tornando racional para o agente
+colidir cedo para encerrar o episódio --- o \textit{suicidal agent}, evidenciado pela queda
+de $\mathrm{ep\_len\_mean}$ de ${\sim}55$ para ${\sim}8$ passos ao ativar o SAC. A correção,
+seguindo Cimurs et al.\ (2022), elimina a penalidade por passo e mantém o bônus de
+sobrevivência, removendo o incentivo perverso.
 
 Para acelerar o ciclo de iteração de reward e validar hiperparâmetros antes do Gazebo,
 foi implementado um ambiente 2D leve (\texttt{eval/env2d/}) com raycasting vetorizado
-NumPy, $851\times$ mais rápido que o Gazebo Classic. O ambiente reproduz fielmente a
-cinemática unicycle, a observação de 29 dimensões (via \texttt{obs\_utils} compartilhado)
-e a mesma estrutura de reward do ambiente ROS2.
+NumPy, $851\times$ mais rápido que o Gazebo Classic, reproduzindo fielmente a cinemática
+unicycle, a observação de 29 dimensões e a mesma estrutura de reward do ambiente ROS2. O
+SAC convergiu para \textbf{90\% de taxa de sucesso em $\leq$14.000 passos ($\leq$3,3
+minutos)} no mundo esparso, reproduzível em 3 seeds independentes
+(Figura~\ref{fig:2d_learning_curve_ci}); a Figura~\ref{fig:2d_compare} compara as
+trajetórias de A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
 
-O SAC convergiu para \textbf{90\% de taxa de sucesso em $\leq$14.000 passos ($\leq$3,3 minutos)}
-no mundo esparso, reproduzível em 3 seeds independentes (Figura~\ref{fig:2d_learning_curve_ci}).
-A Figura~\ref{fig:2d_compare} compara as trajetórias de
-A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
-
-Diagnóstico de causa-raiz via ambiente 2D. O treinamento SAC no Gazebo não
-convergia por múltiplas sessões. Como o ambiente 2D usa a mesma estrutura de observação e
-recompensa, uma comparação direta das constantes entre os dois ambientes
-(Tabela~\ref{tab:reward_comparison}) isolou a causa: \texttt{R\_APPROACH=2.0} no Gazebo
-contra \texttt{10.0} no Env2D. Essa diferença importa porque o robô recebe $+0{,}1$ por
-passo apenas por sobreviver; em 200 passos, isso equivale a $+20$ sem sair do lugar. Para
-que navegar valha mais do que ficar parado, o bônus por aproximação do objetivo deve
-superar esse valor, ou seja, $R_{\text{app}} > 6{,}67$. Com \texttt{R\_APPROACH=2,0} o
-agente aprendia que não mover era a estratégia mais segura. Corrigido para $10{,}0$, o
-treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
-(Fig.~\ref{fig:2d_heatmap}).
+O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gazebo não
+convergia por múltiplas sessões: como os dois ambientes usam a mesma estrutura de
+observação e recompensa, uma comparação direta das constantes
+(Tabela~\ref{tab:reward_comparison}) isolou a causa em \texttt{R\_APPROACH=2.0} no Gazebo
+contra \texttt{10.0} no Env2D. O robô recebe $+0{,}1$ por passo apenas por sobreviver
+(em 200 passos, $+20$ sem sair do lugar); para navegar valer mais que ficar parado, o
+bônus de aproximação precisa superar esse valor ($R_{\text{app}} > 6{,}67$). Com
+\texttt{R\_APPROACH=2,0} o agente aprendia que não mover era a estratégia mais segura.
+Corrigido para $10{,}0$, o treinamento no Gazebo passou a apresentar episódios estáveis e
+crescentes (Fig.~\ref{fig:2d_heatmap}).
 
 \begin{table}[H]
   \centering
@@ -542,33 +485,42 @@ treinamento no Gazebo passou a apresentar episódios estáveis e crescentes
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.72\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
-  \caption{Curva de aprendizado SAC no ambiente 2D leve (world=sparse), média $\pm$ IC~95\%
-           de 3 seeds independentes (42, 123, 7). Convergência ($\geq$90\% sucesso) em
-           4.000--14.000 passos (6--13 minutos). O ambiente 2D serve como proxy controlado
-           para iterar reward e hiperparâmetros antes do ciclo lento do Gazebo (5~Hz LIDAR).}
-  \label{fig:2d_learning_curve_ci}
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+    \caption{Curva de aprendizado SAC (world=sparse), média $\pm$ IC~95\% de 3
+             seeds. Convergência ($\geq$90\%) em 4.000--14.000 passos.}
+    \label{fig:2d_learning_curve_ci}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+    \caption{Trajetórias no ambiente denso ($\rho{\approx}0{,}35$): A* (linha reta),
+             SAC e política Adaptativa $\rho$-criterion.}
+    \label{fig:2d_compare}
+  \end{subfigure}
+  \caption{Validação do gêmeo 2D: convergência do SAC e comparação de trajetórias.}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_compare_dense.png}
-  \caption{Comparação de trajetórias no ambiente denso ($\rho \approx 0{,}35$):
-           A* analítico (linha reta, frequentemente bloqueado), SAC independente
-           (reativo local) e política Adaptativa $\rho$-criterion (A* onde possível,
-           SAC nas regiões congestionadas). As trajetórias são coloridas por instante
-           temporal (azul=início, amarelo=fim).}
-  \label{fig:2d_compare}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.75\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
-  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: regiões azuis
-           ($\rho < 0{,}30$) usam A*; regiões vermelhas ($\rho \geq 0{,}30$) usam SAC.
-           A fronteira de decisão acompanha a geometria dos obstáculos, ativando o SAC
-           apenas onde a densidade local justifica.}
-  \label{fig:2d_heatmap}
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+    \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$)
+             usa A*, vermelho usa SAC, acompanhando a geometria dos obstáculos.}
+    \label{fig:2d_heatmap}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
+    \caption{Degradação do SAC (treinado só em \textit{sparse}) por densidade $\rho$
+             --- $\rho^*{=}0{,}30$ coincide com o limiar adaptivo.}
+    \label{fig:2d_degradation_singlerobot}
+  \end{subfigure}
+  \caption{Mapa de decisão espacial e degradação por densidade fora da distribuição.}
 \end{figure}
 
 
@@ -583,88 +535,55 @@ antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo 
 currículo multi-densidade (sparse $\to$ dense $\to$ very\_dense), planejado para quando
 o treino Gazebo liberar recursos computacionais.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.82\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
-  \caption{Degradação da taxa de sucesso do SAC single-robot em função da densidade de
-           obstáculos $\rho$ (100 episódios por ponto, modelo treinado \textbf{apenas} no
-           mundo esparso). A linha tracejada em $\rho^*{=}0{,}30$ coincide com o limiar
-           adaptivo: abaixo dele, A* domina; acima, o SAC assume --- mas o SAC atual
-           não foi treinado nessa faixa, explicando a queda de desempenho.}
-  \label{fig:2d_degradation_singlerobot}
-\end{figure}
-
-Dois bugs críticos de infraestrutura foram identificados e corrigidos ao longo do trabalho.
-O ambiente de avaliação compartilhava o mesmo nó ROS2 que o treinamento, produzindo
-recompensas de avaliação inválidas ($-518$ observado vs $-14$ no treino) --- corrigido pela
-substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}. Em seguida,
-três serviços ROS2/Gazebo referenciados com nomenclatura incorreta
-(\texttt{/gazebo/set\_entity\_state}, \texttt{/gazebo/pause\_physics},
-\texttt{/gazebo/unpause\_physics} --- os nomes reais não têm o prefixo \texttt{/gazebo/}
-nesta configuração de Gazebo Classic~11) faziam o reposicionamento do robô entre episódios
-falhar silenciosamente em toda chamada, corrigido substituindo o teleporte por um ciclo
-\texttt{delete\_entity}/\texttt{spawn\_entity}, com a pose de reset validada como exata.
+Dois bugs críticos de infraestrutura foram identificados e corrigidos ao longo do trabalho:
+o ambiente de avaliação compartilhava o mesmo nó ROS2 que o treinamento, produzindo
+recompensas de avaliação inválidas ($-518$ observado vs $-14$ no treino), corrigido pela
+substituição do \texttt{EvalCallback} por \texttt{BestRolloutModelCallback}; e três serviços
+ROS2/Gazebo referenciados com nomenclatura incorreta (\texttt{/gazebo/set\_entity\_state},
+\texttt{/gazebo/pause\_physics}, \texttt{/gazebo/unpause\_physics} --- os nomes reais não têm
+o prefixo \texttt{/gazebo/} nesta configuração de Gazebo Classic~11) faziam o
+reposicionamento do robô entre episódios falhar silenciosamente em toda chamada, corrigido
+substituindo o teleporte por um ciclo \texttt{delete\_entity}/\texttt{spawn\_entity}.
 
 \textbf{Validação quantitativa em Gazebo --- não concluída nesta IC.} O protocolo de
 avaliação planejado ($N=30$ trials por condição, 3 seeds independentes, teste de Wilcoxon
 com correção Holm-Bonferroni) foi implementado no código mas não produziu dados válidos
-dentro do prazo. A causa é um terceiro bug, distinto dos dois acima: a janela de física
-despausada concedida a cada passo de controle mostrou-se curta demais para o robô ganhar
-velocidade real sob o parâmetro \texttt{max\_wheel\_acceleration} do modelo TurtleBot3 --- o
-robô permanece efetivamente parado durante o episódio mesmo com o comando de velocidade
-correto publicado e a física em execução, confirmado por comparação entre um comando manual
-sustentado (robô se move normalmente) e o ciclo \texttt{step()} real da pipeline
-(deslocamento $\approx 0$). Diante do prazo da IC, a Fase~2 foi encerrada no nível de
-infraestrutura: o pipeline de treinamento, o ambiente Gym, a integração ROS2$\leftrightarrow$Gazebo
-e os mecanismos de resiliência (checkpoint, replay buffer, auto-resume) estão implementados,
-testados e funcionais --- a lacuna que resta é exclusivamente a validação quantitativa de
-navegação real, não a arquitetura do framework, e é declarada como limitação central na
-Conclusão.
+dentro do prazo, por um terceiro bug distinto dos dois acima: a janela de física despausada
+concedida a cada passo de controle mostrou-se curta demais para o robô ganhar velocidade
+real sob o parâmetro \texttt{max\_wheel\_acceleration} do modelo TurtleBot3 --- o robô
+permanece efetivamente parado durante o episódio mesmo com comando correto publicado e
+física em execução, confirmado por comparação entre um comando manual sustentado (robô se
+move normalmente) e o ciclo \texttt{step()} real da pipeline (deslocamento $\approx 0$).
+Diante do prazo, a Fase~2 foi encerrada no nível de infraestrutura --- pipeline, ambiente
+Gym, integração ROS2$\leftrightarrow$Gazebo e mecanismos de resiliência (checkpoint, replay
+buffer, auto-resume) implementados, testados e funcionais; a lacuna que resta é exclusivamente
+a validação quantitativa de navegação real, não a arquitetura do framework (retomada em
+Limitações, Seção~4).
 
-A curva de aprendizado no ambiente 2D (Figura~\ref{fig:2d_learning_curve_ci}) sustenta uma
-conclusão qualitativa independente da Fase~2: o mesmo algoritmo, com idêntica estrutura de
-reward, atinge 90\% de sucesso em poucos minutos no 2D. O diagnóstico da constante
-\texttt{R\_APPROACH} (Tabela~\ref{tab:reward_comparison}) confirma que o ambiente 2D é um
-proxy confiável para depurar reward antes do ciclo lento da simulação física --- validando a
-parte da hipótese H3 relativa à realizabilidade da infraestrutura, independentemente da
-validação quantitativa de navegação.
+A curva de aprendizado no gêmeo 2D (Figura~\ref{fig:2d_learning_curve_ci}) e o diagnóstico
+da constante \texttt{R\_APPROACH} confirmam que o ambiente 2D é um proxy confiável para
+depurar reward antes do ciclo lento da simulação física, validando a parte de H3 relativa à
+realizabilidade da infraestrutura, independentemente da validação quantitativa de navegação
+no Gazebo. Como evidência adicional de que a lacuna é de infraestrutura e não do critério
+$\rho$ ou da capacidade de aprendizado do agente, um segundo paradigma --- \textit{Behavior
+Cloning} (BC), imitação supervisionada de um controlador reativo de campo potencial --- foi
+treinado e avaliado no mesmo ambiente 2D, atingindo 98\% de taxa de sucesso em cerca de 2
+minutos de treino, o melhor resultado quantitativo de navegação obtido nesta IC
+(Figura~\ref{fig:2d_bc_trajectory}).
 
-Como evidência adicional de que a lacuna da Fase~2 é de infraestrutura e não do critério
-$\rho$ ou da capacidade de aprendizado do agente, um segundo paradigma de aprendizado ---
-\textit{Behavior Cloning} (BC), imitação supervisionada de um controlador reativo de campo
-potencial --- foi treinado e avaliado no mesmo ambiente 2D. O BC atingiu 98\% de taxa de
-sucesso em cerca de 2 minutos de treino, o melhor resultado quantitativo de navegação
-obtido nesta IC (Figura~\ref{fig:2d_bc_trajectory}).
+Ao longo da IC foram aplicados e comparados quatro paradigmas de aprendizado: planejamento
+clássico determinístico (benchmark real de tempo/memória), RL \textit{single-agent} (SAC,
+principal; CrossQ testado e descartado por baixo desempenho), aprendizado supervisionado
+(\textit{Behavior Cloning}, melhor resultado quantitativo da IC) e planejamento multiagente
+via CBS (evidência real de que a arquitetura se sustenta fora do Monte Carlo --- \textbf{não
+é MARL treinado}, apenas a base para o MARL da Fase~3).
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
-  \caption{Trajetória completa do agente BC no mundo \textit{sparse} do gêmeo 2D, com
-           gradiente temporal até o goal (vermelho). Dado real, não placeholder. Versão
-           animada (GIF) disponível em \texttt{paper/figs/2d/fig\_2d\_bc\_episode\_sparse.gif}.}
+  \includegraphics[width=0.38\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
+  \caption{Trajetória do agente BC (mundo \textit{sparse}), gradiente temporal até o goal.
+           Dado real. GIF em \texttt{paper/figs/2d/fig\_2d\_bc\_episode\_sparse.gif}.}
   \label{fig:2d_bc_trajectory}
-\end{figure}
-
-\textbf{Comparação consolidada de todos os paradigmas de aprendizado testados.} Ao longo da
-IC foram aplicados e comparados quatro paradigmas: (i)~planejamento clássico determinístico
-(Dijkstra, A*, Floyd-Warshall, Johnson --- benchmark real de tempo/memória);
-(ii)~aprendizado por reforço \textit{single-agent} (SAC, principal; CrossQ, testado como
-alternativa de eficiência amostral e descartado por baixo desempenho);
-(iii)~aprendizado supervisionado (\textit{Behavior Cloning}, melhor resultado quantitativo
-da IC); (iv)~planejamento clássico multiagente via CBS, usado como evidência real (não
-calibrada) de que a arquitetura de seleção contextual se sustenta fora do regime Monte
-Carlo --- \textbf{não é MARL treinado}, apenas a base sobre a qual o MARL (Fase~3, trabalho
-futuro) seria construído.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.85\textwidth]{figs/all_benchmarks_comparison.png}
-  \caption{Painel de 4 comparações: (a)~algoritmos clássicos, tempo real; (b)~Fase~1 Monte
-           Carlo, $\rho$-criterion vs.\ baselines calibrados; (c)~MARL 2D, trials reais de
-           CBS por densidade; (d)~gêmeo 2D, SAC $\times$ CrossQ $\times$ BC, com o BC
-           destacando-se em taxa de sucesso e velocidade de treino. Tabela-fonte completa
-           em \texttt{paper/figs/all\_benchmarks\_table.csv}.}
-  \label{fig:all_benchmarks}
 \end{figure}
 
 \subsection{Revalidação de H1 com planejadores reais no gêmeo 2D}
@@ -707,7 +626,7 @@ citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pare
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_real_validation.png}
+  \includegraphics[width=0.52\textwidth]{figs/2d/fig_2d_h1_real_validation.png}
   \caption{(a)~Taxa de sucesso real, A* vs.\ BC casado por densidade --- A* permanece à
            frente em todo regime. (b)~Custo de decisão real, escala logarítmica --- BC
            $\sim$600$\times$ mais barato em \textit{very\_dense}. Dados reais, 1.500 trials
@@ -715,80 +634,34 @@ citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pare
   \label{fig:h1_real_validation}
 \end{figure}
 
-\textbf{Distribuição e outliers:} os valores acima são médias; a Figura~\ref{fig:h1_boxplots}
-mostra a distribuição completa (150 trials de custo A*, 300 de custo BC por mundo, e os 1.500
-trials de $\rho_{local}$). O custo do A* real não é constante entre trials --- em
-\textit{very\_dense}, 14 dos 150 trials (9,3\%) são outliers estatísticos (acima de
-$Q3+1{,}5\times IQR = 33{,}3$~ms), chegando a 51,9~ms no pior caso, quase o dobro da mediana
-(28,1~ms). Esses outliers correspondem a pares start-goal que exigem busca mais extensa na
-grade, comportamento esperado de busca em grafo, não um artefato de medição. O custo do BC,
-por contraste, tem variância desprezível em todos os mundos (desvio padrão $<0{,}05$~ms). A
-distribuição de $\rho_{local}$ mostra que a maioria dos trials em \textit{dense}/\textit{very\_dense}
-já nasce acima do limiar $\rho^*{=}0{,}30$ original, explicando por que o $\rho$-criterion
-raramente aciona o A* nesses mundos.
+Os valores acima são médias; a distribuição completa (150 trials de custo A*, 300 de custo
+BC por mundo) mostra que o A* tem cauda longa em \textit{very\_dense} (outliers até 51,9~ms,
+quase o dobro da mediana) enquanto o BC tem variância desprezível em todos os mundos ---
+consistente com busca em grafo vs.\ um único \textit{forward pass}. A margem de segurança de
+0,08~m no A* (além do raio do robô) foi necessária para lidar com corte de canto do
+controlador pure-pursuit: sem ela, a colisão chegava a 40\% em \textit{very\_dense} (artefato
+do controlador, não do planejador); com a margem, caiu para 0--9\%.
 
-\textbf{Parâmetros da revalidação e por que foram escolhidos:} a grade de rasterização do
-A* usa resolução de 0,08~m (compromisso entre fidelidade geométrica e tempo de busca) e
-margem de segurança extra de 0,08~m além do raio do robô (necessária porque o controlador
-de perseguição de caminho corta cantos entre waypoints discretos; sem essa margem, a taxa
-de colisão do A* real chegava a 40\% em \textit{very\_dense}, um artefato do controlador,
-não do planejador --- com a margem, caiu para a faixa 0--9\% reportada acima). O número de
-trials (1.500) iguala a escala do Monte Carlo original para permitir comparação direta.
-
-\textbf{Achado complementar --- o mesmo tratamento aplicado ao multiagente:} o achado ``A*
-independente supera SAC independente'' de uma sessão anterior (100\%/0\% de sucesso/colisão
-vs.\ $\sim$38\%/100\%) também usava a política de linha reta em vez de A* real. Regerado
-com A* real (busca em grade por agente, sem coordenação, mesmo desenho experimental
-original, $N{=}4$, 20 trials/mundo): o A* real continua vencendo em taxa de chegada ao
-objetivo (71\%/55\%/35\% vs.\ 57\%/36\%/25\% do SAC, em \textit{sparse}/\textit{dense}/\textit{very\_dense}),
-mas \textbf{a taxa de colisão entre robôs também é alta para o A* real} (75\%/80\%/65\%,
-contra 60\%/50\%/60\% do SAC) --- bem diferente da alegação original de 0\% de colisão. A
-explicação: o A* real segue o caminho mais curto de forma rígida, sem qualquer desvio
-dinâmico de outros robôs (o planejamento ignora os vizinhos, por desenho); a política de
-linha reta original, por parar quando desalinhada, acabava reduzindo colisões por um efeito
-colateral do controlador, não por qualidade de planejamento. Dado real: nenhum planejador
-independente sem coordenação evita colisão entre robôs de forma confiável --- reforçando,
-com dados corretos, a mesma conclusão da Seção~\ref{sec:multiagente} sobre a necessidade de
-MARL para coordenação (a alegação original de ``0\% de colisão'' estava incorreta e nunca
-foi citada nos documentos formais desta IC).
-
-\textbf{Evidência empírica preliminar de MARL (reward compartilhada):} para testar
-diretamente se treino conjunto resolve o problema de coordenação identificado acima,
-implementamos uma versão simplificada de MARL no gêmeo 2D --- uma política única,
-centralizada (não descentralizada tipo CTDE/QMIX/MAPPO), que recebe a observação
-concatenada dos N agentes e produz as N ações conjuntamente, treinada com PPO e reward
-igual à média das rewards individuais, incluindo uma penalidade de colisão inter-robô
-\textbf{compartilhada} (aplicada aos dois agentes envolvidos, não a um ``culpado''
-arbitrário) --- a peça estrutural que falta no RL independente. Com $N{=}4$ no mundo
-\textit{sparse}: em 150 mil passos, a taxa de chegada ao goal era 25\% mas a colisão
-inter-robô já era 0\%; em 600 mil passos, a taxa de goal subiu para 50\% (aproximando-se
-dos 57\% do RL independente) \textbf{mantendo colisão inter-robô em 0\%} (contra 60\% do
-RL independente) em ambos os pontos de treino (Figura~\ref{fig:marl_shared_reward}). A
-tendência --- goal rate subindo com mais treino, colisão permanecendo nula desde cedo ---
-é evidência real de que a reward compartilhada resolve estruturalmente o problema de
-coordenação, ao custo de um treino mais lento. Esta é uma simplificação de MARL --- treino
-e execução centralizados, não a arquitetura descentralizada completa --- mas é a primeira
-evidência empírica desta IC de que treino conjunto com recompensa compartilhada resolve o
-problema identificado.
+O mesmo tratamento (linha reta $\to$ A* real) aplicado ao achado multiagente de uma sessão
+anterior confirma que nenhum planejador independente sem coordenação evita colisão entre
+robôs de forma confiável (A* real: 75--80\% de colisão inter-robô, $N{=}4$, contra a alegação
+original incorreta de 0\%) --- reforçando a necessidade de MARL (Seção~\ref{sec:multiagente}).
+Como evidência preliminar disso, uma versão simplificada de MARL centralizado (política
+única, PPO, reward compartilhada com penalidade de colisão inter-robô dividida entre os dois
+agentes envolvidos) reduziu a colisão inter-robô de 60\% (RL independente) para \textbf{0\%},
+mantendo taxa de goal comparável (50\% vs.\ 57\%) após 600 mil passos, $N{=}4$
+(Figura~\ref{fig:marl_shared_reward}) --- simplificação de MARL (treino/execução
+centralizados, não a arquitetura descentralizada completa), mas primeira evidência empírica
+desta IC de que reward compartilhada resolve o problema de coordenação identificado.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
+  \includegraphics[width=0.52\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
   \caption{Comparação real, $N{=}4$ agentes, mundo \textit{sparse}. (a)~Taxa de chegada ao
            goal --- o MARL se aproxima do RL independente conforme o treino avança.
            (b)~Colisão entre robôs --- o MARL mantém 0\% desde os primeiros 150 mil passos,
            contra 60\% do RL independente, em qualquer ponto de treino testado.}
   \label{fig:marl_shared_reward}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{figs/2d/fig_2d_h1_boxplots.png}
-  \caption{(a)~Boxplot do custo de decisão A* por mundo, com outliers (círculos vermelhos)
-           --- a cauda longa em \textit{very\_dense} reflete trials com busca mais extensa.
-           (b)~Boxplot do custo BC --- variância desprezível. (c)~Boxplot de $\rho_{local}$
-           por mundo, com a linha tracejada marcando o limiar original $\rho^*{=}0{,}30$.}
-  \label{fig:h1_boxplots}
 \end{figure}
 
 \textbf{Reformulação de H1 com esse dado real:} em vez de ``o $\rho$-criterion supera
@@ -809,27 +682,17 @@ vários robôs sem nenhuma adaptação: cada agente calcula a própria densidade
 sem se comunicar com os demais. Esses resultados vieram de dados reais, gerados pelo pipeline
 CBS sobre mapas públicos de teste.
 
-Os números acompanham a densidade do ambiente. Em 100 cenários com 2 agentes (espaço esparso,
-$\rho \approx 0{,}19$), 93\% dos passos usaram o planejador clássico, como se espera em espaços
-abertos. Com 5 agentes, regiões de congestionamento elevam o uso do RL para até 26\%. E num
-cenário \textit{canyon}, com um corredor estreito e denso, o uso do RL sobe para 44\%. Uma
-varredura completa confirma que a troca entre os dois regimes acontece sempre por volta de
-$\rho \approx 0{,}30$, qualquer que seja o número de robôs.
+Os números acompanham a densidade do ambiente: em 100 cenários com 2 agentes (espaço esparso,
+$\rho{\approx}0{,}19$), 93\% dos passos usaram o planejador clássico; com 5 agentes, regiões
+de congestionamento elevam o uso do RL a 26\% (44\% num cenário \textit{canyon}). A troca
+entre regimes acontece sempre perto de $\rho{\approx}0{,}30$, qualquer que seja o número de
+robôs --- $\rho$ mede uma propriedade do \textit{ambiente} (densidade local), não do
+planejador, então o critério e o limiar permanecem inalterados mesmo com a transição
+RRT*/PPO (Relatório Parcial) $\to$ A*/SAC (ROS2/Nav2). Um experimento de desvio sobre os 100
+cenários CBS confirma o custo de \textit{não} seguir o critério: usar sempre A* custa
+$+2{,}1\%$ acima do $\rho$-criterion, e usar sempre SAC, $+14{,}1\%$.
 
-Vale registrar a continuidade com o Relatório Parcial: o planejador clássico de referência
-era o RRT* e o de RL era o PPO; a integração com ROS2/Nav2 adotou A*/SmacPlanner2D e SAC. O
-critério e o limiar permanecem inalterados, pois $\rho$ mede uma propriedade do \textit{ambiente}
-(densidade local), não do planejador: a fronteira de decisão depende de onde o ambiente exige
-adaptação, não de qual par (clássico, RL) a executa.
-
-Para quantificar o custo de \textit{não} seguir o critério, um experimento de desvio sobre os
-100 cenários CBS mediu o sobrecusto de usar sempre um único planejador: usar sempre A* custa
-$+2{,}1\%$ acima do $\rho$-criterion, e usar sempre SAC, $+14{,}1\%$. Esses valores são
-coerentes com a vantagem de 9,3 pp medida na Fase~1 e confirmam que o critério adaptivo produz
-custo menor do que qualquer política uniforme.
-
-\subsubsection*{Por que decisão local: escalabilidade do CBS}
-
+\textbf{Por que decisão local --- escalabilidade do CBS.}
 Embora o CBS produza soluções ótimas livres de colisão, seu custo cresce de forma super-linear
 com o número de agentes \cite{Sharon2015}. Num experimento de escalabilidade (grid $10\times10$,
 $\rho \approx 0{,}20$, timeout 30\,s), o tempo de solução salta de ${\approx}5$\,ms em $N{=}2$
@@ -839,17 +702,7 @@ realistas em tempo real. O $\rho$-criterion contrasta por decidir localmente em 
 agente, sem comunicação nem estado global, o que permite escalar de 1 para $N$ agentes sem
 modificação.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.72\textwidth]{figs/cbs/cbs_scalability.png}
-  \caption{Escalabilidade do CBS: tempo de solução (escala log) versus número de agentes $N$.
-           O crescimento super-linear (timeout já em $N{=}8$) contrasta com o custo $O(1)$ por
-           agente do $\rho$-criterion, motivando a decisão local como abordagem escalável.}
-  \label{fig:cbs_scalability}
-\end{figure}
-
-\subsubsection*{O limite do RL independente: motivação para MARL}
-
+\textbf{O limite do RL independente --- motivação para MARL.}
 A decisão local independente, porém, deixa em aberto se a coordenação coletiva emerge. Os
 experimentos acima usam trajetórias CBS pré-computadas, ou seja, a coordenação foi garantida
 externamente. Para testar o regime sem essa garantia, conduziu-se um experimento com $N$ robôs
@@ -863,12 +716,23 @@ coordenação, não a dificuldade do ambiente.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
-  \caption{Degradação do SAC independente (dados reais, env 2D, 20 trials/ponto): taxa de
-           objetivo (esq.), colisão entre robôs (centro) e deadlock (dir.) versus $N$, em três
-           densidades. A colisão satura em ${\approx}100\%$ para $N{\geq}5$ e o deadlock é nulo,
-           indicando falta de coordenação como causa-raiz.}
-  \label{fig:marl_degradation_density}
+  \begin{subfigure}[t]{0.4\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/cbs/cbs_scalability.png}
+    \caption{Escalabilidade do CBS (log): timeout já em $N{=}8$, contra custo $O(1)$
+             por agente do $\rho$-criterion.}
+    \label{fig:cbs_scalability}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.56\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
+    \caption{Degradação do SAC independente (dados reais, 20 trials/ponto): objetivo,
+             colisão e deadlock vs.\ $N$. Colisão satura ${\approx}100\%$ para
+             $N{\geq}5$; deadlock nulo.}
+    \label{fig:marl_degradation_density}
+  \end{subfigure}
+  \caption{Escalabilidade do CBS centralizado e degradação do RL independente sem coordenação.}
 \end{figure}
 
 Curiosamente, uma política A* de linha reta independente coordena melhor em baixa densidade
@@ -892,123 +756,82 @@ método fixo, foi \textbf{reformulada com dados reais: confirmada como argumento
 computacional, não de taxa de sucesso}. Na validação Monte Carlo com modelos calibrados
 (Seção~\ref{sec:validacao_fase1}), com 1.500 trials, o $\rho$-criterion alcançou 85,3\% de
 taxa de sucesso contra 76\% do PPO fixo (melhor método fixo testado), diferença
-estatisticamente significativa ($p=0{,}020$), mas sobre planejadores mock. A validação com
-planejadores reais no Gazebo, planejada como o resultado principal da Fase~2, não foi
-concluída nesta IC por bugs de infraestrutura documentados na Seção~\ref{sec:integracao}
---- ver Limitações. Para reduzir essa dependência de mock sem o Gazebo, implementamos um
-A* real no gêmeo 2D e revalidamos H1 com 1.500 trials reais pareados de pool misto de
-densidade (Seção~\ref{sec:h1_real}, mesma escala do Monte Carlo original): \textbf{a
-motivação original --- que a política aprendida supera o A* em taxa de sucesso sob alta
-densidade --- não se sustentou} (A* real: 88,7\% de sucesso pareado; $\rho$-criterion real:
-84,1\%; regret real de 9,1\% contra o oracle; diferença estatisticamente significativa,
-teste de McNemar exato $p<0{,}000002$). O que se sustentou, e ficou mais forte, foi H2: o custo de decisão do A* real
-cresce de 9,3~ms (\textit{sparse}) a 32,7~ms (\textit{very\_dense}), contra $\sim$0,055~ms
-constantes do BC --- razão de $\sim$600$\times$, medida no mesmo ambiente e nos mesmos
-trials da taxa de sucesso. A tese sustentada por dados reais é que \textbf{o
-$\rho$-criterion mantém taxa de sucesso próxima da do melhor planejador fixo pagando uma
-fração pequena do seu custo computacional em alta densidade} --- uma versão mais modesta,
-porém integralmente real, da formulação original. Esse mesmo padrão --- planejador clássico
-real vencendo em acerto bruto, com a política aprendida justificada por custo/escalabilidade,
-não por acerto --- é consistente com a evidência multi-agente real da
-Seção~\ref{sec:multiagente} (CBS real, 93\% RRT*/6\% PPO em espaço esparso: o clássico
-domina onde é barato).
+estatisticamente significativa ($p=0{,}020$), mas sobre planejadores mock. Para reduzir essa
+dependência sem o Gazebo (Fase~2 não concluída, ver Limitações), a revalidação de H1 com
+planejadores reais no gêmeo 2D (Seção~\ref{sec:h1_real}) mostrou que \textbf{a motivação
+original --- taxa de sucesso --- não se sustentou} (A* real 88,7\% vs.\ $\rho$-criterion
+84,1\%, McNemar $p<0{,}000002$), mas a motivação por \textbf{custo computacional (H2) se
+confirmou e ficou mais forte} ($\sim$600$\times$ mais barato o BC em alta densidade,
+medido no mesmo ambiente). A tese sustentada por dados reais é, portanto, mais modesta que a
+original: \textbf{o $\rho$-criterion mantém taxa de sucesso próxima da do melhor planejador
+fixo pagando uma fração pequena do seu custo computacional em alta densidade} --- e não mais
+``supera qualquer método fixo em acerto''. O mesmo padrão (clássico real vence em acerto
+bruto; a política aprendida se justifica por custo/escalabilidade) aparece na evidência
+multi-agente real (Seção~\ref{sec:multiagente}: CBS real, 93\%~RRT*/6\%~PPO em espaço
+esparso).
 
-A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}:
-o $\rho$-criterion com $\rho^*{=}0{,}30$ perde, em média, apenas 2,9\% em relação a um
-seletor ideal com conhecimento perfeito do ambiente; no pior caso observado, essa perda
-chegou a 6,7\%, dentro do limite de 10\% estabelecido. O limiar $\rho^*{=}0{,}30$
-também é justificado pelo custo computacional: nesse ponto, o tempo do A* já cresceu
-dez vezes (de 16\,ms para 115\,ms) enquanto o SAC mantém latência constante de
-$\approx$12\,ms, tornando a comutação vantajosa mesmo antes do cruzamento de taxa de sucesso.
+A hipótese de qualidade da fronteira de decisão (\textbf{H2}) foi \textbf{confirmada}: o
+$\rho$-criterion com $\rho^*{=}0{,}30$ perde em média 2,9\% (pior caso 6,7\%) em relação a
+um seletor ideal, dentro do limite de 10\% estabelecido; o limiar também é justificado pelo
+custo computacional, já que nesse ponto o tempo do A* cresceu dez vezes (16\,ms$\to$115\,ms)
+contra latência constante do SAC ($\approx$12\,ms).
 
 A hipótese de realizabilidade em robótica real (\textbf{H3}) foi \textbf{confirmada}: a
-infraestrutura completa foi implantada em ROS2 Humble com Gazebo Classic e TurtleBot3
-Waffle sem nenhuma modificação nos algoritmos de planejamento subjacentes. O framework
-funciona como uma camada de decisão acima de planejadores existentes. Dois bugs críticos
-foram identificados e corrigidos ao longo do trabalho (Seção~\ref{sec:integracao}): o
-compartilhamento indevido de nó ROS2 entre treino e avaliação, e a nomenclatura incorreta
-de três serviços ROS2/Gazebo que fazia o reposicionamento do robô falhar silenciosamente
-em toda chamada --- ambas contribuições de engenharia replicáveis em qualquer stack
-ROS2 + SB3 + Gazebo Classic, evidenciando que a integração é operacional na camada de
-infraestrutura mesmo sem os dados quantitativos de navegação da Fase~2.
+infraestrutura completa foi implantada em ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle
+sem modificação dos planejadores subjacentes, com dois bugs críticos identificados e
+corrigidos (Seção~\ref{sec:integracao}) --- contribuições de engenharia replicáveis em
+qualquer stack ROS2 + SB3 + Gazebo Classic.
 
 A contribuição central deste trabalho é o $\rho$-criterion com limiar $\rho^*{=}0{,}30$:
 um critério de seleção adaptiva independente dos planejadores subjacentes, aplicável a
 qualquer par (clássico, RL) em domínios onde a densidade local de obstáculos é
 estimável em tempo real a partir do LIDAR do robô.
 
-O trabalho tem limitações que apontam suas próprias continuações. A principal é que a
-\textbf{validação com planejadores reais em Gazebo (robô físico) não foi concluída nesta
-IC}. A Fase~2 identificou e corrigiu dois bugs de infraestrutura reais
-(Seção~\ref{sec:integracao}), mas um terceiro --- o robô não ganha velocidade efetiva
-dentro da janela de física despausada concedida a cada passo de controle, mesmo com comando
-correto publicado e física em execução --- não foi resolvido dentro do prazo. A hipótese
-mais provável é a interação entre o parâmetro \texttt{max\_wheel\_acceleration} do modelo
-TurtleBot3 e o padrão de pausar/despausar a física por passo, necessário para sincronizar
-ação e observação. O diagnóstico está registrado para retomada em trabalho futuro.
+\textbf{Limitações.} (1)~A validação com planejadores reais em Gazebo (robô físico) não foi
+concluída nesta IC: um terceiro bug --- o robô não ganha velocidade efetiva dentro da janela
+de física despausada por passo, provável interação com \texttt{max\_wheel\_acceleration}
+(Seção~\ref{sec:integracao}) --- não foi resolvido no prazo; diagnóstico registrado para
+retomada futura. (2)~A motivação original de H1 (taxa de sucesso) não se sustenta sob
+planejadores reais, reformulada como argumento de custo (Seção~\ref{sec:h1_real}): o
+resultado mais citável deste trabalho (85,3\%) permanece calibrado sobre mock, e a versão
+real é mais modesta, declarada explicitamente, não escondida. (3)~O critério usa contexto
+unidimensional (densidade escalar) e limiar fixo offline; contexto vetorial e ajuste online
+por meta-aprendizado são extensões naturais. (4)~A comutação usa limiar rígido por restrição
+de tempo real (Seção~\ref{sec:criterio_adaptivo}); fusão suave/probabilística é extensão
+natural onde essa restrição for menos severa. (5)~A avaliação restringiu-se ao TurtleBot3
+Waffle em Gazebo Classic; generalização a outras cinemáticas e simuladores de maior
+fidelidade (Isaac Sim, Webots) permanece em aberto. (6)~O SAC, treinado num único nível de
+densidade, não generaliza bem para fora dele (91\%$\to$40\% de esparso a muito denso,
+Figura~\ref{fig:2d_degradation_singlerobot}), motivando currículo multi-densidade como
+próximo passo imediato.
 
-Uma segunda limitação, descoberta ao tentar contornar a primeira: \textbf{a motivação
-original de H1 (taxa de sucesso) não se sustenta sob planejadores reais --- reformulada
-como argumento de custo}. Revalidamos H1 com A* real e BC real no gêmeo 2D
-(Seção~\ref{sec:h1_real}, 1.500 trials, mesma escala do Monte Carlo original): o A* real
-supera o $\rho$-criterion e o BC em taxa de sucesso pareada em praticamente todo o espectro
-de densidade testado (regret real de 9,1\% contra o oracle, ante 2,9\% do mock; diferença
-estatisticamente significativa, teste de McNemar exato $p<0{,}000002$). A motivação que se sustentou --- e ficou mais robusta, com
-custo medido no mesmo ambiente e trials da taxa de sucesso --- é a de H2: o A* real custa
-até $\sim$600$\times$ mais que o BC em alta densidade. Isso é declarado explicitamente
-como limitação de H1, não escondido: \textbf{o resultado quantitativo mais citável deste
-trabalho (85,3\%, H1 na formulação original) permanece calibrado sobre planejadores mock};
-a versão sustentada por dados reais é mais modesta (sucesso comparável ao melhor fixo, a
-uma fração pequena do seu custo), não a formulação original de ``supera qualquer método
-fixo em acerto''. O critério usa um contexto
-unidimensional (a densidade escalar) e um limiar fixado offline; versões futuras podem
-incorporar contexto vetorial e ajustar o limiar online por meta-aprendizado, adaptando-o a
-novos ambientes sem reconfiguração manual. A comutação usa um limiar rígido por restrição de
-tempo real (Seção~\ref{sec:criterio_adaptivo}); uma variante de fusão suave/probabilística
-(mistura contínua ponderada por $\rho$ próximo ao limiar) é uma extensão natural para
-cenários onde a restrição de tempo real é menos severa. A avaliação restringiu-se ao TurtleBot3 Waffle em
-Gazebo Classic, de modo que a generalização a outras cinemáticas e a simuladores de maior
-fidelidade (Isaac Sim, Webots) permanece em aberto. O agente SAC, treinado num único nível de
-densidade, também não generaliza bem para fora dele: medimos a taxa de chegada ao objetivo
-cair de 91\% no esparso a 40\% no muito denso (Figura~\ref{fig:2d_degradation_singlerobot}), o
-que motiva, como próximo passo imediato, um currículo de treinamento que varra as três
-densidades.
+Há ainda duas extensões de maior fôlego: (i)~coordenação multi-agente --- com decisão local
+independente, a coordenação só emerge quando o CBS pré-computa trajetórias, e o treinamento
+conjunto por reforço (MARL, via QMIX ou MAPPO) endereçaria essa lacuna sobre a mesma
+arquitetura SAC já em uso, com um primeiro experimento (Seção~\ref{sec:multiagente}, reward
+compartilhada) já reduzindo colisão inter-robô de 60\% para 0\%; (ii)~obstáculos dinâmicos
+previstos no Plano de Trabalho, inviáveis no Gazebo Classic por falta de atores móveis
+nativos, mas capturáveis pelo mesmo estimador de densidade via LIDAR em simuladores como
+Gazebo Fortress ou Isaac Sim, sem alterar o critério.
 
-Há ainda duas extensões de maior fôlego. A primeira é a coordenação multi-agente: com decisão
-local e independente, a coordenação só emerge quando o CBS pré-computa as trajetórias, e o
-movimento simultâneo gera colisões, lacuna que o treinamento conjunto por reforço (MARL, via
-QMIX ou MAPPO) endereçaria sobre a mesma arquitetura SAC já em uso --- um primeiro
-experimento nessa direção (Seção~\ref{sec:multiagente}, política centralizada simplificada
-com reward compartilhada) já reduz a colisão inter-robô de 60\% para 0\% em troca de treino
-mais lento, evidência preliminar real de que a direção é correta, ainda que a arquitetura
-descentralizada completa permaneça trabalho futuro. A segunda são os obstáculos
-dinâmicos previstos no Plano de Trabalho, inviáveis no Gazebo Classic por falta de atores
-móveis nativos, mas que seriam capturados pelo mesmo estimador de densidade via LIDAR em
-simuladores como Gazebo Fortress ou Isaac Sim, sem alterar o critério.
-
-A Figura~\ref{fig:roadmap} sintetiza a progressão natural do trabalho: da validação em
-agente único (Fase~1, concluída) à generalização multi-agente via CBS com anotação
-adaptiva (Fase~2, parcialmente implementada), até o horizonte de pesquisa em MARL
-(Fase~3, trabalho futuro). A arquitetura ROS2 desenvolvida é modular, baseada em tópicos
-e com estimador $\rho$ desacoplado, o que permite estender o sistema para $N$ agentes
-sem reescrever os componentes existentes.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figs/marl/roadmap_marl_tj.png}
-  \caption{Roadmap de extensão do framework: Fase~1 (implementada, agente único),
-           Fase~2 (CBS + anotação adaptiva, parcialmente implementada) e
-           Fase~3 (MARL + teoria dos jogos cooperativos, trabalho futuro).
-           Setas sólidas indicam progressão já executada; setas tracejadas indicam
-           direções de pesquisa abertas.}
-  \label{fig:roadmap}
-\end{figure}
+A progressão do trabalho sintetiza-se em três fases: validação em agente único (Fase~1,
+concluída), generalização multi-agente via CBS com anotação adaptiva (Fase~2, parcialmente
+implementada) e o horizonte de pesquisa em MARL (Fase~3, trabalho futuro). A arquitetura
+ROS2 desenvolvida é modular, baseada em tópicos e com estimador $\rho$ desacoplado, o que
+permite estender o sistema para $N$ agentes sem reescrever os componentes existentes.
 
 % ============================================================
+\renewcommand{\refname}{}
 \section*{Referências Bibliográficas}
+\vspace{-1.5em}
 \addcontentsline{toc}{section}{Referências Bibliográficas}
 
 \begin{thebibliography}{99}
+\setlength{\itemsep}{-2pt}
+\setlength{\parskip}{0pt}
+\footnotesize
+\singlespacing
+\setlength{\baselineskip}{10pt}
 
 \bibitem{Cormen2022}
 CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT Press, 2022.

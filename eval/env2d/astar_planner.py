@@ -19,9 +19,30 @@ import heapq
 import numpy as np
 
 
+def _point_segment_dist(px, py, x1, y1, x2, y2) -> float:
+    """Distância mínima do ponto (px,py) ao segmento (x1,y1)-(x2,y2) —
+    mesma fórmula usada em env_2d.py::_point_segment_dist, duplicada aqui
+    para manter astar_planner.py sem depender de env_2d.py."""
+    sx, sy = x2 - x1, y2 - y1
+    seg_len2 = sx * sx + sy * sy
+    if seg_len2 < 1e-12:
+        return float(np.hypot(px - x1, py - y1))
+    t = np.clip(((px - x1) * sx + (py - y1) * sy) / seg_len2, 0.0, 1.0)
+    cx, cy = x1 + t * sx, y1 + t * sy
+    return float(np.hypot(px - cx, py - cy))
+
+
 def _rasterize(obstacles, arena_half: float, robot_radius: float,
-                resolution: float = 0.08):
-    """Marca células bloqueadas (True) numa grade quadrada [-half, half]^2."""
+                resolution: float = 0.08, walls=None, blocks=None):
+    """Marca células bloqueadas (True) numa grade quadrada [-half, half]^2.
+
+    `walls`: lista opcional de segmentos internos (x1,y1,x2,y2) — bloqueia
+    células a menos de `robot_radius` do segmento, mesmo critério usado
+    para os círculos de obstáculo.
+    `blocks`: lista opcional de retângulos sólidos (xmin,ymin,xmax,ymax) —
+    bloqueia o interior inteiro (não só a borda), necessário pra
+    quarteirões urbanos onde `walls` marca só o perímetro.
+    """
     n = int(2 * arena_half / resolution) + 1
     blocked = np.zeros((n, n), dtype=bool)
     xs = np.linspace(-arena_half, arena_half, n)
@@ -32,6 +53,21 @@ def _rasterize(obstacles, arena_half: float, robot_radius: float,
                 if np.hypot(gx - cx, gy - cy) < cr + robot_radius:
                     blocked[i, j] = True
                     break
+            else:
+                blocked_here = False
+                if walls:
+                    for x1, y1, x2, y2 in walls:
+                        if _point_segment_dist(gx, gy, x1, y1, x2, y2) < robot_radius:
+                            blocked_here = True
+                            break
+                if not blocked_here and blocks:
+                    for xmin, ymin, xmax, ymax in blocks:
+                        if (xmin - robot_radius <= gx <= xmax + robot_radius and
+                                ymin - robot_radius <= gy <= ymax + robot_radius):
+                            blocked_here = True
+                            break
+                if blocked_here:
+                    blocked[i, j] = True
     return blocked, xs, ys
 
 
@@ -87,10 +123,12 @@ def _astar_search(blocked, start_cell, goal_cell):
 
 
 def plan_astar(start_xy, goal_xy, obstacles, arena_half: float,
-                robot_radius: float, resolution: float = 0.08):
+                robot_radius: float, resolution: float = 0.08, walls=None, blocks=None):
     """Retorna lista de waypoints (x, y) do start ao goal, ou None se
-    inalcançável na grade rasterizada."""
-    blocked, xs, ys = _rasterize(obstacles, arena_half, robot_radius, resolution)
+    inalcançável na grade rasterizada. `walls`/`blocks`: paredes internas e
+    quarteirões sólidos opcionais, ver env_2d.py::WORLDS["urban_grid"]."""
+    blocked, xs, ys = _rasterize(obstacles, arena_half, robot_radius, resolution,
+                                  walls=walls, blocks=blocks)
     start_cell = _to_cell(start_xy[0], start_xy[1], xs, ys)
     goal_cell = _to_cell(goal_xy[0], goal_xy[1], xs, ys)
     if blocked[start_cell] or blocked[goal_cell]:
@@ -120,6 +158,8 @@ class AStarPolicy:
         self.path = plan_astar(
             (env._x, env._y), (env._gx, env._gy), env.obstacles,
             env.arena / 2.0, 0.17 + self.safety_margin,  # ROBOT_RADIUS + margem
+            walls=getattr(env, "walls", None),
+            blocks=getattr(env, "blocks", None),
         )
         self.idx = 0
         if self.path is None:
