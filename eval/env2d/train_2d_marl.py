@@ -104,7 +104,7 @@ def main():
 
     t0 = time.time()
     model = PPO("MlpPolicy", vec_env, verbose=0, seed=args.seed,
-                n_steps=1024, batch_size=256, gamma=0.99, ent_coef=0.01,
+                n_steps=1024, batch_size=256, gamma=0.99, ent_coef=0.05,
                 learning_rate=3e-4)
     print(f"Treinando MARL centralizado (reward compartilhada) — "
           f"N={args.n_agents} agentes, world={args.world}, {args.steps} passos...", flush=True)

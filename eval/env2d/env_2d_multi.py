@@ -70,6 +70,7 @@ class MultiAgentEnv2D:
         self.t_goal     = np.full(self.N, np.nan)
         self._step = 0
         self.inter_collision = False
+        self.last_reward = np.zeros(self.N, dtype=np.float32)
 
         placed = []
         for i in range(self.N):
@@ -108,7 +109,14 @@ class MultiAgentEnv2D:
         independentemente. Ver [[project-treino-sparse-08jul]] (09/07/2026)."""
         self._step += 1
         actions = np.asarray(actions).reshape(self.N, 2)
-        reward = np.zeros(self.N, dtype=np.float32)
+        # Robôs já terminados (goal ou colisão) não zeram a reward média do
+        # grupo enquanto os demais continuam ativos — mantêm a última reward
+        # terminal (0 se preferir neutralidade) até all_done. Sem isso, um
+        # robô que chega ao goal cedo é "punido" na média por dezenas de
+        # passos de reward=0 dos companheiros ainda ativos, afogando o sinal
+        # de sucesso (achado 26/07/2026, goal_rate=0% reprodutível em 3 seeds).
+        reward = np.array([self.last_reward[i] if self.done[i] else 0.0
+                            for i in range(self.N)], dtype=np.float32)
 
         for i in range(self.N):
             if self.done[i]:
