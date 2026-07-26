@@ -50,7 +50,7 @@ services:
       bash -c "
         source /opt/ros/humble/setup.bash &&
         source /workspace/ros2_ws/install/setup.bash &&
-        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
+        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:$${GAZEBO_PLUGIN_PATH} &&
         export GAZEBO_MODEL_DATABASE_URI="" &&
         gzserver /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so -slibgazebo_ros_state.so &
         GZPID=$! &&
@@ -61,7 +61,7 @@ services:
         until ros2 topic hz /scan --window 1 2>/dev/null | grep -q 'average rate'; do echo 'Aguardando LIDAR do waffle...'; sleep 2; done &&
         echo 'Robô spawnado. Iniciando treino SAC...' &&
         python3 /workspace/ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/train/train_sac.py --steps ${TRAIN_STEPS:-500000} --seed ${TRAIN_SEED:-42} --models-dir /workspace/models/ --logs-dir /workspace/logs/ --planb-enable --planb-step ${PLANB_STEP:-300000} --planb-threshold ${PLANB_THRESHOLD:-50.0} --ent-coef ${TRAIN_ENT_COEF:-auto} --target-entropy ${TRAIN_TARGET_ENTROPY:--1.0} --reset-log-std-on-resume
-        wait \$GZPID
+        wait $$GZPID
       "
 
   # ── Gazebo headless (serviço base compartilhado) ──────────────────────────
@@ -83,19 +83,19 @@ services:
       bash -c "
         source /opt/ros/humble/setup.bash &&
         source /workspace/ros2_ws/install/setup.bash &&
-        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
+        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:$${GAZEBO_PLUGIN_PATH} &&
         gzserver /workspace/ros2_ws/src/adaptive_planner_ros/worlds/sparse.world -slibgazebo_ros_init.so -slibgazebo_ros_factory.so -slibgazebo_ros_force_system.so -slibgazebo_ros_state.so &
-        GZPID=\$! &&
+        GZPID=$$! &&
         echo 'Waiting for Gazebo /spawn_entity service...' &&
         until ros2 service list 2>/dev/null | grep -q '/spawn_entity'; do sleep 3; done &&
         sleep 3 &&
         echo 'Spawning TurtleBot3 Waffle...' &&
         for i in 1 2 3; do
           ros2 run gazebo_ros spawn_entity.py -entity waffle -file /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf -x -2.0 -y -0.5 -z 0.01 && break
-          echo "Spawn tentativa \$i falhou, retentando..." && sleep 5
-        done
+          echo 'Spawn tentativa' $$i 'falhou, retentando...' && sleep 5
+        done &&
         echo 'Robot spawned. Environment ready.' &&
-        wait \$GZPID
+        wait $$GZPID
       "
 
   # ── Smoketest (5 episódios aleatórios, verifica env end-to-end) ──────────
@@ -193,8 +193,8 @@ services:
       bash -c "
         source /opt/ros/humble/setup.bash &&
         source /workspace/ros2_ws/install/setup.bash &&
-        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:\${GAZEBO_PLUGIN_PATH} &&
-        export GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models:/opt/ros/humble/share:/opt/ros/humble/share/turtlebot3_description:\${GAZEBO_MODEL_PATH} &&
+        export GAZEBO_PLUGIN_PATH=/opt/ros/humble/lib:$${GAZEBO_PLUGIN_PATH} &&
+        export GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models:/opt/ros/humble/share:/opt/ros/humble/share/turtlebot3_description:$${GAZEBO_MODEL_PATH} &&
         gzclient --verbose
       "
 
