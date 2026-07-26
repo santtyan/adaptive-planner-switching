@@ -48,6 +48,19 @@ rodou de verdade).
 | `marl/fig_marl_degradation_by_density_2d.png` | Relatório final 3.6 | Motivação MARL (degradação RL independente) |
 | `marl/roadmap_marl_tj.png` | Relatório final 4/Conclusão; README | Roadmap Fase 1/2/3 |
 
+## Atualização 25/07/2026 (auditoria de correção, `docs/PLANO_CORRECAO.md`)
+
+Duas figuras novas, criadas para fechar lacunas encontradas na auditoria de dados vs. documentos:
+
+| Figura | Onde é usada | Notas |
+|---|---|---|
+| `pareto/fig_pareto_success_vs_cost.png` | Relatório final 3.4 (proposta) | Sucesso × custo, A* vs BC reais. ρ-criterion **deliberadamente omitido** (custo do adaptativo só ganhou instrumentação nesta correção — ver `astar_search_ms`/`adaptive_total_ms` em `h1_hysteresis_2d.csv`) |
+| `core/fig_chattering_hysteresis.png` | Relatório final 3.4 (proposta) | ECDF/histograma de trocas por episódio, sem histerese vs. com histerese, n=1.500 cada |
+
+**⚠️ `pareto/fig_pareto_boxplot_main.png` está contraditória e não deve ser usada em slides sem correção.** O painel lateral afirma `τ*=argmin R(τ)` e conclui "τ*=0,30 é Pareto-ótimo", mas `results_abstract/threshold_sensitivity.csv` minimiza regret em τ=0,20 (0,60%, contra 2,92% em τ=0,30) — e a própria nota deste catálogo, linha acima ("`core/rho_sensitivity.png`: pico em ρ=0,20"), já registrava esse fato antes desta correção sem que a implicação fosse seguida. Ver achados B1/B3 em `docs/PLANO_CORRECAO.md`.
+
+`fig_2d_h1_real_validation.png` e `fig_2d_h1_boxplots.png` foram **regeneradas** com os dados de n=1.500 desta correção (antes rodavam sobre CSVs com 10-20 linhas); os valores de custo (8,00/20,90/29,21 ms) também foram corrigidos — antes tinham literais hardcoded divergentes do JSON fonte (9,3/26,4/32,7 ms).
+
 ## O que foi removido (17/07/2026)
 
 - **`training/` inteira** (~25 arquivos): diagnóstico de *suicidal agent*, colapso de entropia, race condition de reset, gargalo de LIDAR, iterações de reward, currículo — histórico de depuração de processo, não resultado científico. Preservado em `DEVELOPMENT_LOG.md` (texto) e recuperável via git se precisar regenerar alguma figura.

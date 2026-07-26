@@ -26,6 +26,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
 from eval.env2d.env_2d import Env2D
+from eval.env2d.save_utils import safe_backup
 
 HERE  = os.path.dirname(os.path.abspath(__file__))
 ROOT  = os.path.dirname(os.path.dirname(HERE))
@@ -117,6 +118,8 @@ def train(args):
     )
 
     best_path = os.path.join(MODS, "sac_2d_best")
+    safe_backup(best_path + ".zip")
+    safe_backup(os.path.join(MODS, "sac_2d_final.zip"))
     cb = SuccessCallback(save_path=best_path, eval_freq=1000,
                          n_eval=20, verbose=1)
 

@@ -25,6 +25,7 @@ from eval.env2d.env_2d import (
     Env2D, LINEAR_VEL_MAX, ANGULAR_VEL_MAX,
     _point_segment_dist, _point_in_block,
 )
+from eval.env2d.save_utils import safe_backup
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -177,6 +178,7 @@ def main():
     final_sr = evaluate_bc(policy, args.world, n_eval=50, seed=999)
     elapsed = time.time() - t0
     save_path = os.path.join(MODS, f"bc_2d_policy_{args.world}.pt")
+    safe_backup(save_path)
     torch.save(policy.state_dict(), save_path)
     print(f"\nBC finalizado em {elapsed/60:.1f} min — success final={final_sr:.0%}")
     print(f"Modelo salvo em {save_path}")

@@ -6,9 +6,15 @@ sucesso (não se sustenta com dados reais) pela motivação por custo
 computacional (confirmada com dados reais, mais forte que a versão mock).
 
 Fontes:
-    results_abstract/h1_real_2d_mixed_pool.csv  (sucesso, pool misto pareado)
-    Medição de custo inline (ver texto do relatório/LAFusion, 09/07/2026)
+    results_abstract/h1_real_2d_mixed_pool.csv       (sucesso, pool misto pareado)
+    results_abstract/h1_real_2d_cost_distribution.json  (custo, 150 amostras A*/300 BC por mundo)
+
+NOTA (correção B5, docs/PLANO_CORRECAO.md, 25/07/2026): esta figura tinha os valores de custo
+hardcoded (9,32/26,44/32,73 ms) que não batiam com o JSON de distribuição de custo (8,00/20,90/
+29,21 ms) -- provavelmente herdados de uma execução anterior ao arquivo atual. Corrigido para ler
+do JSON diretamente, eliminando a duplicação de fonte de verdade.
 """
+import json
 import os
 import numpy as np
 import pandas as pd
@@ -21,15 +27,16 @@ RES = os.path.join(ROOT, "results_abstract")
 FIGS = os.path.join(ROOT, "paper", "figs")
 
 df = pd.read_csv(os.path.join(RES, "h1_real_2d_mixed_pool.csv"))
+cost_dist = json.load(open(os.path.join(RES, "h1_real_2d_cost_distribution.json")))
 worlds = ["sparse", "dense", "very_dense"]
 labels = ["Sparse\n(ρ baixo)", "Dense\n(ρ médio)", "Very dense\n(ρ alto)"]
 
 astar_sr = [df[df.world == w].astar.mean() * 100 for w in worlds]
 bc_sr = [df[df.world == w].bc.mean() * 100 for w in worlds]
 
-# custo medido nesta sessão (ms) — busca A* completa vs 1 forward pass BC
-astar_cost_ms = [9.32, 26.44, 32.73]
-bc_cost_ms = [0.057, 0.053, 0.055]
+# custo lido de h1_real_2d_cost_distribution.json (150 amostras A* / 300 BC por mundo)
+astar_cost_ms = [float(np.mean(cost_dist[w]["astar_ms"])) for w in worlds]
+bc_cost_ms = [float(np.mean(cost_dist[w]["bc_ms"])) for w in worlds]
 
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
 
@@ -53,7 +60,8 @@ ax.plot(x, bc_cost_ms, "s-", color="#55A868", label="BC (1 forward pass)", lw=2)
 ax.set_yscale("log")
 ax.set_xticks(x); ax.set_xticklabels(labels)
 ax.set_ylabel("Custo de decisão (ms, log)")
-ax.set_title("(b) Custo — BC ~600× mais barato em very_dense")
+ratio_very_dense = astar_cost_ms[-1] / bc_cost_ms[-1]
+ax.set_title(f"(b) Custo — BC ~{ratio_very_dense:.0f}× mais barato em very_dense")
 ax.legend(fontsize=8)
 for i, (a, b) in enumerate(zip(astar_cost_ms, bc_cost_ms)):
     ax.annotate(f"{a:.1f}ms", (i, a), textcoords="offset points", xytext=(5, 5), fontsize=8)

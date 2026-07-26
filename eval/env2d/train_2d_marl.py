@@ -30,6 +30,7 @@ from gymnasium import spaces
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from eval.env2d.env_2d_multi import MultiAgentEnv2D
 from eval.env2d.env_2d import OBS_DIM
+from eval.env2d.save_utils import safe_backup_many
 
 MODS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "models")
 
@@ -130,8 +131,13 @@ def main():
           f"goal_rate={gr:.0%}  inter_collision={ic:.0%}", flush=True)
 
     save_path = os.path.join(MODS, f"marl_centralized_{args.world}_N{args.n_agents}.zip")
+    vecnorm_path = os.path.join(MODS, f"marl_centralized_{args.world}_N{args.n_agents}_vecnorm.pkl")
+    # Backup automático: um treino anterior salvo nesse mesmo caminho pode ter
+    # rodado com mais --steps e ser mais valioso que este -- nunca sobrescrever
+    # sem preservar (ver save_utils.py e o incidente de 26/07/2026).
+    safe_backup_many(save_path, vecnorm_path)
     model.save(save_path)
-    vec_env.save(os.path.join(MODS, f"marl_centralized_{args.world}_N{args.n_agents}_vecnorm.pkl"))
+    vec_env.save(vecnorm_path)
     print(f"Modelo salvo em {save_path}")
 
 

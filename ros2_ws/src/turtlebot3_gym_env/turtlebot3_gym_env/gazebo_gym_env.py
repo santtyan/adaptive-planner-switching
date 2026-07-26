@@ -174,6 +174,10 @@ class _GazeboEnvNode(Node):
         self._odom_ref: Optional[tuple] = None         # raw odom pose right after teleport
         self._world_ref: Optional[tuple] = None        # teleport target (ground truth then)
         self._awaiting_odom_ref: bool = False
+        self._odom_seq: int = -1               # incrementado a cada /odom recebido (qualquer robô)
+        self._odom_ref_target_seq: int = 0     # menor seq aceitável p/ ancorar _odom_ref (evita
+                                                # capturar mensagem residual do robô deletado —
+                                                # ver nota em _odom_cb, correção 25/07/2026)
 
         # Publishers
         self._cmd_pub = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
@@ -226,7 +230,22 @@ class _GazeboEnvNode(Node):
         yaw = _quat_to_yaw(p.orientation.x, p.orientation.y,
                            p.orientation.z, p.orientation.w)
         self._odom_pose = (p.position.x, p.position.y, yaw)
-        if self._awaiting_odom_ref:
+        self._odom_seq += 1
+        # BUG CORRIGIDO (25/07/2026, diagnose_physics_window.py): capturar a
+        # PRIMEIRA mensagem após _awaiting_odom_ref=True é uma race condition
+        # -- o subscriber de /odom usa QoS default (depth=10, sem KEEP_LAST=1
+        # explícito), então mensagens publicadas pelo waffle ANTERIOR (ainda
+        # em trânsito no buffer DDS quando teleport_robot() faz delete+spawn)
+        # ficam na fila e são processadas como se fossem do robô novo. Isso
+        # ancora _odom_ref numa pose arbitrária de um robô que nem existe
+        # mais, corrompendo toda transformação de get_robot_pose() dali em
+        # diante. Medido: odom_ref ficava fixo numa pose residual mesmo após
+        # 2s de espera ativa, enquanto o robô novo já tinha andado dezenas de
+        # metros -- get_robot_pose() reportava posições sem relação com a
+        # realidade. Fix: exigir que a referência seja capturada numa
+        # mensagem cujo seq seja >= o alvo marcado em teleport_robot() (após
+        # o spawn confirmado), não simplesmente "a próxima que chegar".
+        if self._awaiting_odom_ref and self._odom_seq >= self._odom_ref_target_seq:
             self._odom_ref = self._odom_pose
             self._awaiting_odom_ref = False
 
@@ -353,12 +372,25 @@ class _GazeboEnvNode(Node):
             self._cached_pose = (x, y, yaw)
             self._world_ref = (x, y, yaw)
             self._odom_ref = None
-            # NÃO espera aqui: a física está pausada durante o teleport (ver
-            # reset() em gazebo_gym_env — pause_physics() antes do teleport,
-            # unpause_physics() só depois), então nenhuma mensagem /odom nova
-            # é publicada ainda. A referência é capturada naturalmente pelo
-            # próximo spin (dentro de wait_for_scan, já chamado após o
-            # unpause) via _odom_cb.
+            # Drena a fila do subscriber ANTES de marcar o alvo: qualquer
+            # /odom já enfileirado (mesmo sem processar ainda) neste instante
+            # é do robô que acabou de ser deletado, ainda em trânsito no
+            # buffer DDS — spinar aqui (física pausada, então nenhuma
+            # mensagem NOVA chega nesta janela) garante que _odom_seq reflita
+            # tudo que já estava pendente, e só a mensagem seguinte, do robô
+            # novo, satisfaz o alvo. Sem isso, a referência podia ancorar
+            # numa pose de um robô que não existe mais, corrompendo toda
+            # transformação em get_robot_pose() dali em diante (correção
+            # 25/07/2026, ver diagnose_physics_window.py e nota em _odom_cb).
+            for _ in range(5):
+                rclpy.spin_once(self, timeout_sec=0.02)
+            # NÃO espera mais aqui: a física está pausada durante o teleport
+            # (ver reset() em gazebo_gym_env — pause_physics() antes do
+            # teleport, unpause_physics() só depois), então nenhuma mensagem
+            # /odom nova é publicada ainda. A referência é capturada
+            # naturalmente pelo próximo spin (dentro de wait_for_scan, já
+            # chamado após o unpause) via _odom_cb.
+            self._odom_ref_target_seq = self._odom_seq + 1
             self._awaiting_odom_ref = True
             return True
         return False

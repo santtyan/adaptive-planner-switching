@@ -5,11 +5,18 @@ oficial (PI08078-2024), usando a mesma infraestrutura A*/BC/ρ-criterion já
 validada em rerun_h1_mixed.py (reaproveita run_one, _run_episode,
 route_efficiency), sem depender do Gazebo.
 
-Compara três condições no mesmo protocolo pareado (mesmo start/goal via
+Compara quatro condições no mesmo protocolo pareado (mesmo start/goal via
 seed) usado em rerun_h1_mixed.py:
-  1. static   — world="urban_grid", sem obstáculos móveis (baseline)
-  2. dynamic  — world="urban_grid", com 1 obstáculo móvel programado
-               (trajetória linear com bounce elástico, ver env_2d.py)
+  1. static        — world="urban_grid", sem obstáculos móveis (baseline)
+  2. dynamic       — 1 obstáculo móvel no corredor horizontal (versão
+                     original, mantida para comparação histórica)
+  3. dynamic_multi — 3 obstáculos móveis simultâneos, cobrindo os dois
+                     corredores (horizontal e vertical do cruzamento em
+                     "+"), velocidades e trajetórias distintas — fecha a
+                     lacuna "múltiplos obstáculos dinâmicos" apontada na
+                     auditoria de 25/07/2026 (docs/PLANO_CORRECAO.md)
+  4. dynamic_fast  — mesmos 3 obstáculos de dynamic_multi, com o dobro da
+                     velocidade — estresse adicional sobre o mesmo layout
 
 Uso:
     python3 eval/env2d/rerun_urban.py --trials 500
@@ -24,10 +31,26 @@ from eval.env2d.astar_planner import AStarPolicy
 from eval.env2d.rerun_h1_real import load_bc
 from eval.env2d.rerun_h1_mixed import run_one
 
-# Obstáculo móvel: cruza o corredor horizontal (y perto de 0), trajetória
-# linear com bounce elástico nas bordas da arena — ver env_2d.py::Env2D.
+# Obstáculo móvel original: cruza o corredor horizontal (y perto de 0),
+# trajetória linear com bounce elástico nas bordas da arena.
 DYNAMIC_OBSTACLE_SPEC = [
     {"cx": -1.5, "cy": 0.3, "cr": 0.15, "vx": 0.7, "vy": -0.25},
+]
+
+# Três obstáculos simultâneos: um no corredor horizontal (como acima), um
+# no corredor vertical (x perto de 0), e um diagonal cruzando o cruzamento
+# central — cobre os dois eixos do "+" ao mesmo tempo, não só um.
+DYNAMIC_MULTI_SPEC = [
+    {"cx": -1.5, "cy": 0.3, "cr": 0.15, "vx": 0.7, "vy": -0.25},   # horizontal
+    {"cx": 0.3, "cy": -1.5, "cr": 0.15, "vx": -0.2, "vy": 0.6},    # vertical
+    {"cx": -1.2, "cy": -1.2, "cr": 0.12, "vx": 0.5, "vy": 0.45},   # diagonal
+]
+
+# Mesmo layout de DYNAMIC_MULTI_SPEC, velocidades dobradas — estresse
+# adicional sobre o mesmo cenário, mesma seed, para isolar o efeito de
+# velocidade do efeito de número de obstáculos.
+DYNAMIC_FAST_SPEC = [
+    {**o, "vx": o["vx"] * 2, "vy": o["vy"] * 2} for o in DYNAMIC_MULTI_SPEC
 ]
 
 
@@ -43,6 +66,8 @@ def main():
     conditions = {
         "static": None,
         "dynamic": DYNAMIC_OBSTACLE_SPEC,
+        "dynamic_multi": DYNAMIC_MULTI_SPEC,
+        "dynamic_fast": DYNAMIC_FAST_SPEC,
     }
 
     out_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),

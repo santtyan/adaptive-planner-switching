@@ -14,6 +14,17 @@ para eliminar oscilação perto do limiar de decisão.
 
 Uso:
     python3 eval/env2d/rerun_h1_hysteresis.py --trials 1500
+
+CUSTO (Etapa 1.4, docs/PLANO_CORRECAO.md, achado B8): o custo do adaptativo nunca havia sido
+medido -- só o de A* e BC isolados. O adaptativo paga um `astar_policy.reset()` completo (busca
+em grade) a cada switch para BC->A*, além do custo por passo (`.act()` para A* ou forward pass
+para BC). Este script agora cronometra com `time.perf_counter()`, separando:
+  - astar_search_ms_total: soma de todos os `astar_policy.reset()` no episódio (a busca em si)
+  - astar_track_ms_total:  soma de todos os `.act()` do A* (pure pursuit, O(1) por passo)
+  - bc_ms_total:           soma de todos os forward passes do BC
+  - adaptive_*_ms_total:   os mesmos três, dentro do episódio adaptativo (pode ter A* e BC
+                           misturados, e paga reset() extra por switch)
+`optimal_path_length()` é excluído da contagem (é métrica de avaliação, não custo do planejador).
 """
 import os, sys, argparse, time
 import numpy as np
@@ -37,8 +48,14 @@ def run_adaptive_hysteresis(env, seed, astar_policy, bc_policy):
     current = "astar" if rho0 < RHO_LOW else "bc"  # zona morta no primeiro passo: usa RHO_HIGH como desempate
     if RHO_LOW <= rho0 <= RHO_HIGH:
         current = "astar" if rho0 < 0.30 else "bc"  # fallback ao limiar original só no instante inicial
+
+    search_ms, track_ms, bc_ms = 0.0, 0.0, 0.0
+
     if current == "astar":
+        t0 = time.perf_counter()
         astar_policy.reset(env)
+        search_ms += (time.perf_counter() - t0) * 1000
+
     traj = [(env._x, env._y)]
     obs = env._obs()
     done, steps = False, 0
@@ -54,12 +71,18 @@ def run_adaptive_hysteresis(env, seed, astar_policy, bc_policy):
             switches += 1
             current = new_choice
             if current == "astar":
+                t0 = time.perf_counter()
                 astar_policy.reset(env)  # replaneja a partir da posição atual
+                search_ms += (time.perf_counter() - t0) * 1000
         if current == "astar":
+            t0 = time.perf_counter()
             a = astar_policy.act(env)
+            track_ms += (time.perf_counter() - t0) * 1000
         else:
+            t0 = time.perf_counter()
             with torch.no_grad():
                 a = bc_policy(torch.tensor(obs, dtype=torch.float32).unsqueeze(0)).squeeze(0).numpy()
+            bc_ms += (time.perf_counter() - t0) * 1000
         obs, r, term, trunc, info = env.step(a)
         traj.append((env._x, env._y))
         done = term or trunc
@@ -67,7 +90,8 @@ def run_adaptive_hysteresis(env, seed, astar_policy, bc_policy):
     traveled = _path_length(traj)
     optimal = optimal_path_length(env, start_xy, goal_xy)
     route_efficiency = (traveled / optimal) if (optimal and optimal > 1e-6) else None
-    return bool(info.get("goal_reached", False)), switches, route_efficiency
+    return (bool(info.get("goal_reached", False)), switches, route_efficiency,
+            search_ms, track_ms, bc_ms)
 
 
 def run_fixed(env, seed, policy_type, astar_policy, bc_policy):
@@ -75,17 +99,26 @@ def run_fixed(env, seed, policy_type, astar_policy, bc_policy):
     env.reset(seed=seed)
     start_xy = (env._x, env._y)
     goal_xy = (env._gx, env._gy)
+
+    search_ms, track_ms, bc_ms = 0.0, 0.0, 0.0
+
     if policy_type == "astar":
+        t0 = time.perf_counter()
         astar_policy.reset(env)
+        search_ms += (time.perf_counter() - t0) * 1000
     traj = [(env._x, env._y)]
     obs = env._obs()
     done, steps = False, 0
     while not done and steps < 200:
         if policy_type == "astar":
+            t0 = time.perf_counter()
             a = astar_policy.act(env)
+            track_ms += (time.perf_counter() - t0) * 1000
         else:
+            t0 = time.perf_counter()
             with torch.no_grad():
                 a = bc_policy(torch.tensor(obs, dtype=torch.float32).unsqueeze(0)).squeeze(0).numpy()
+            bc_ms += (time.perf_counter() - t0) * 1000
         obs, r, term, trunc, info = env.step(a)
         traj.append((env._x, env._y))
         done = term or trunc
@@ -93,7 +126,7 @@ def run_fixed(env, seed, policy_type, astar_policy, bc_policy):
     traveled = _path_length(traj)
     optimal = optimal_path_length(env, start_xy, goal_xy)
     route_efficiency = (traveled / optimal) if (optimal and optimal > 1e-6) else None
-    return bool(info.get("goal_reached", False)), route_efficiency
+    return bool(info.get("goal_reached", False)), route_efficiency, search_ms, track_ms, bc_ms
 
 
 def main():
@@ -114,14 +147,20 @@ def main():
         seed = args.seed0 + trial
         bc = bc_policies[world]
 
-        astar_ok, astar_eff = run_fixed(env, seed, "astar", astar_policy, bc)
-        bc_ok, bc_eff = run_fixed(env, seed, "bc", astar_policy, bc)
-        adaptive_ok, switches, adaptive_eff = run_adaptive_hysteresis(env, seed, astar_policy, bc)
+        astar_ok, astar_eff, a_search_ms, a_track_ms, _ = run_fixed(env, seed, "astar", astar_policy, bc)
+        bc_ok, bc_eff, _, _, b_bc_ms = run_fixed(env, seed, "bc", astar_policy, bc)
+        (adaptive_ok, switches, adaptive_eff,
+         ad_search_ms, ad_track_ms, ad_bc_ms) = run_adaptive_hysteresis(env, seed, astar_policy, bc)
 
         rows.append({"trial": trial, "world": world, "astar": int(astar_ok),
                       "bc": int(bc_ok), "adaptive": int(adaptive_ok), "switches": switches,
                       "astar_route_efficiency": astar_eff, "bc_route_efficiency": bc_eff,
-                      "adaptive_route_efficiency": adaptive_eff})
+                      "adaptive_route_efficiency": adaptive_eff,
+                      "astar_search_ms": a_search_ms, "astar_track_ms": a_track_ms,
+                      "bc_ms": b_bc_ms,
+                      "adaptive_search_ms": ad_search_ms, "adaptive_track_ms": ad_track_ms,
+                      "adaptive_bc_ms": ad_bc_ms,
+                      "adaptive_total_ms": ad_search_ms + ad_track_ms + ad_bc_ms})
         if (trial + 1) % 200 == 0:
             print(f"  {trial+1}/{args.trials} trials...", flush=True)
 
@@ -153,13 +192,36 @@ def main():
     print(f"    BC real:      {_mean_route_eff('bc_route_efficiency'):.3f}")
     print(f"    Adaptativo:   {_mean_route_eff('adaptive_route_efficiency'):.3f}")
 
+    # Custo (Etapa 1.4 / B8): custo do adaptativo medido pela primeira vez, incluindo
+    # replanejamento A* por switch -- não é mais inferido a partir dos custos isolados de A*/BC.
+    astar_search_total = np.array([r["astar_search_ms"] for r in rows])
+    astar_track_total = np.array([r["astar_track_ms"] for r in rows])
+    bc_ms_total = np.array([r["bc_ms"] for r in rows])
+    adaptive_total = np.array([r["adaptive_total_ms"] for r in rows])
+
+    print("\n  Custo de decisão por EPISÓDIO (ms totais, não por passo):")
+    print(f"    A* real  (busca+tracking): {(astar_search_total + astar_track_total).mean():.2f} ms "
+          f"(busca={astar_search_total.mean():.2f}, tracking={astar_track_total.mean():.3f})")
+    print(f"    BC real:                   {bc_ms_total.mean():.3f} ms")
+    print(f"    Adaptativo (total):        {adaptive_total.mean():.2f} ms  "
+          f"<- inclui replanejamento por switch (média {switches_arr.mean():.2f} switches/episódio)")
+    ratio_fixed = (astar_search_total + astar_track_total).mean() / bc_ms_total.mean()
+    ratio_adaptive = adaptive_total.mean() / bc_ms_total.mean()
+    print(f"    Razão A*/BC:       {ratio_fixed:.0f}×")
+    print(f"    Razão adaptativo/BC: {ratio_adaptive:.1f}×  "
+          f"(resolve B8 -- antes desconhecido; adaptativo custa mais que BC puro, como esperado,"
+          f" mas muito menos que A* sempre)")
+
     out_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                               "results_abstract", "h1_hysteresis_2d.csv")
     import csv
     with open(out_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["trial", "world", "astar", "bc", "adaptive", "switches",
                                                 "astar_route_efficiency", "bc_route_efficiency",
-                                                "adaptive_route_efficiency"])
+                                                "adaptive_route_efficiency",
+                                                "astar_search_ms", "astar_track_ms", "bc_ms",
+                                                "adaptive_search_ms", "adaptive_track_ms",
+                                                "adaptive_bc_ms", "adaptive_total_ms"])
         writer.writeheader()
         writer.writerows(rows)
     print(f"\nSalvo em {out_path}")

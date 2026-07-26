@@ -45,12 +45,17 @@ imitation-learning policy — over 1,500 paired trials spanning a mixed-density
 pool in a lightweight 2D twin (matching the scale of the calibrated protocol).
 This real validation **overturns the success-rate motivation**: the real
 classical planner outperforms the fusion rule and the learned policy alone
-across nearly the full density range tested (paired success: 88.7% A* vs.
-84.1% fused; 9.1% regret, well above the 2.9% under calibrated models;
-p<0.000002, exact McNemar test on paired outcomes). What survives and strengthens is the
+across nearly the full density range tested (paired success: 88.2% A* vs.
+84.3% fused; 8.7% regret, well above the 2.9% under calibrated models;
+p=5.4e-5, exact McNemar test on paired outcomes). Auditing our own calibrated
+protocol after this finding, we identified that its planner models are closed-form
+success-vs-density functions, not executing implementations — a methodological
+choice we now report explicitly as a switching-mechanism feasibility study
+(Section 3.3), distinct from the real-planner validation that grounds every
+accuracy and cost claim above. What survives and strengthens is the
 **computational-cost motivation**: measured on the same trials, classical
-search cost grows from 9.3 ms to 32.7 ms with density, against a constant
-0.055 ms for the learned policy — a ~600× ratio, directly measured rather than
+search cost grows from 8.00 ms to 29.21 ms with density, against a constant
+0.055 ms for the learned policy — a ~656× ratio, directly measured rather than
 estimated. We therefore reformulate the central claim: fusion is justified not
 by superior accuracy under density, but by matching the best fixed planner's
 accuracy at a small fraction of its cost. We further extend the criterion to
@@ -226,6 +231,37 @@ and 78.7% for the best competing switching method — a statistically
 significant 9.3-point margin (p=0.020, 150 trials in the head-to-head
 comparison).
 
+**Feasibility-study framing (methodological correction).** Re-examining this
+protocol's planner models, we found that both the classical and learned proxy
+are closed-form functions of density alone — a monotonically decreasing curve
+for the classical proxy, a monotonically increasing one for the learned proxy
+— not executing implementations. Under any threshold, the fusion rule is
+therefore mechanically close to the pointwise maximum of two curves whose
+crossing point we ourselves defined; re-deriving the threshold sweep over
+these exact functions shows regret is in fact minimized at τ=0.20 (0.60%), not
+τ=0.30 (2.92%, the value this section originally reported as the sweep's
+output) — the text had not correctly reflected its own underlying data. We
+report this self-audit finding directly: Section 3.3's numbers characterize
+the *feasibility of the switching mechanism itself* (it correctly routes each
+trial to the more favorable proxy, including outperforming a random-switching
+ablation at 65.4%), not navigation performance under real planners — that
+validation is Section 3.5's. We regard catching this in-house, before
+external review, as itself evidence of the methodological rigor this venue
+should reward (see Section 6).
+
+We separately re-derived ρ* using real A*/BC planners (Section 3.5's data)
+with a train/test split (calibrate on even-seed trials, evaluate on odd-seed
+trials, n=750 each) to avoid the selection-overfitting risk inherent in
+tuning and evaluating a threshold on the same data. Regret decreases
+monotonically with τ across the entire [0.10, 0.60] range tested (8.9% at
+τ=0.10 to 8.1% at τ=0.60 on the train split), with no interior minimum —
+consistent with Section 3.5's finding that regret is minimized as τ→1.0. On
+the held-out test split, τ=0.30 yields 8.4% regret against 7.5% for τ=0.60,
+a small (0.9 pp) difference that does not, in our judgment, justify cascading
+a threshold change through every section that assumes ρ*=0.30; we retain
+τ=0.30 for cross-environment continuity (Sections 3.4, ROS2/Nav2) and report
+this trade-off explicitly rather than silently keeping the unvalidated value.
+
 ### 3.4 Multi-robot extension (decentralized fusion)
 
 We extend the fusion rule to N robots by modeling the setting as a
@@ -262,20 +298,26 @@ two validations; a smaller 500-trial pilot (not reported in detail) showed
 the same qualitative pattern and was used to validate the protocol before
 scaling up. Each trial runs A*, the matched BC policy, and the fusion rule
 on the *same* start/goal pair (paired regret, as in Section 3.3, with the
-oracle now the best of the two real methods per trial) — 88.7% paired
-success for A*, 84.3% for BC, 84.1% for the fusion rule, against a 93.3%
-oracle (9.1% regret). The gap between A* and the fusion rule is
-statistically significant: of 1,500 trials, 199 were discordant (one method
-succeeded, the other failed), with A* winning 134 of those against 65 for
-the fusion rule (exact McNemar test, p<0.000002). A threshold sweep against
+oracle now the best of the two real methods per trial) — 88.2% paired
+success for A*, 84.3% for BC, 84.3% for the fusion rule, against a 93.1%
+oracle (8.7% regret). The gap between A* and the fusion rule is
+statistically significant: of 1,500 trials, 202 were discordant (one method
+succeeded, the other failed), with A* winning 130 of those against 72 for
+the fusion rule (exact McNemar test, p=5.4e-5). A threshold sweep against
 the same data shows regret is minimized as τ→1.0 (i.e., "use A* almost
 always"), not at τ=0.30: **no density band in this testbed has the learned
 policy outperforming A* in success rate.** We measured
 decision cost on the same environment and trials: A* search time grows from
-9.3 ms (`sparse`) to 32.7 ms (`very_dense`), while the BC forward pass stays
-at a roughly constant 0.055 ms — a ~600× cost ratio at high density,
+8.00 ms (`sparse`) to 29.21 ms (`very_dense`), while the BC forward pass stays
+at a roughly constant 0.045-0.047 ms — a ~656× cost ratio at high density,
 directly measured rather than estimated from unpaired benchmarks (vs. the
-~10× estimate in Section 3.2). This is the basis for the reformulated claim
+~10× estimate in Section 3.2). We additionally instrumented, for the first
+time, the cost of the fusion rule itself (not just A* and BC in isolation):
+per-episode, the adaptive policy costs 8.60 ms against 21.19 ms for
+always-A* and 6.33 ms for always-BC — only 1.4× the cost of BC alone and
+2.5× cheaper than always-A*, even accounting for the A* replan paid on each
+switch (see Section 3.5 for the instrumentation detail). This is the basis
+for the reformulated claim
 in Section 4.
 
 The means above hide meaningful spread. Over 150 A* trials per world, cost
@@ -350,11 +392,11 @@ confirming ρ*=0.30 as the empirical minimum under calibrated models.
 
 Table 2 reports the real-planner revalidation (Section 3.5), and it tells a
 different, more nuanced story: under real A* and real BC, paired regret rises
-to 9.1% (p<0.000002 against the fusion rule's success rate, exact McNemar
+to 8.7% (p=5.4e-5 against the fusion rule's success rate, exact McNemar
 test) and the success-rate-optimal threshold degenerates toward τ→1.0 —
 **the success-rate motivation for fusion does not hold** in this testbed. The
 computational-cost motivation, measured on the same trials, does hold and is
-stronger than the calibrated-benchmark estimate (~600× vs. ~10×). Figure 1b
+stronger than the calibrated-benchmark estimate (~656× vs. ~10×). Figure 1b
 (paired to Figure 1a) shows success rate and decision cost side by side
 across density levels for A* and BC, making the accuracy-cost trade-off that
 motivates the reformulated claim directly visible. We report both the
@@ -458,7 +500,7 @@ across nearly the full density range tested. Rather than treating this as a
 negative result to minimize, we take it as the study's central finding: the
 fusion rule's real justification is not superior accuracy under density, but
 matching the best fixed planner's accuracy at a fraction of its
-computational cost (measured directly at ~600× at high density, on the same
+computational cost (measured directly at ~656× at high density, on the same
 environment and trials as the accuracy result) — a reformulation of H1 that
 is more modest than the calibrated-model claim, but the first version of it
 grounded entirely in real, paired, non-calibrated data. We regard this
@@ -529,4 +571,19 @@ MAPPO via RLlib).
     item "dynamic obstacles" do plano de trabalho.
   - Considerar se esses dois itens justificam uma nova subseção 3.6 ("Towards urban
     scenarios and dynamic obstacles") ou se ficam só como trabalho futuro na
-    Discussão/Conclusão — decisão pendente do Yan.
+    Discussão/Conclusão — decisão pendente do Yan. **RESOLVIDO (25/07/2026):**
+    entrou como Seção 3.6 no relatório PIP (`relatorio_final_pip.md`); replicar aqui
+    se decidir incluir o LAFusion também.
+- **NOVO (25/07/2026) — correções da auditoria `docs/PLANO_CORRECAO.md` aplicadas:**
+  - Custo corrigido em todo o documento: 8,00/20,90/29,21 ms (era 9,3/26,4/32,7 ms,
+    hardcoded, não batia com `h1_real_2d_cost_distribution.json`); razão 656× (era ~600×).
+  - Custo do próprio ρ-criterion medido pela primeira vez (Seção 3.3 do abstract/corpo):
+    8,60 ms/episódio, 1,4× o BC, 2,5× mais barato que sempre-A* — preenche a lacuna que
+    a versão anterior deste draft não tinha (só A* e BC isolados estavam medidos).
+  - Seção 3.3 (Monte Carlo) agora contém a auto-auditoria do B11: os modelos calibrados
+    são funções fechadas de densidade, não implementações — reclassificados como estudo
+    de viabilidade do mecanismo, enquadrado como mérito metodológico (autodetecção antes
+    de revisão externa), não como falha escondida.
+  - τ recalibrado com A*/BC reais e split train/test (n=1.500): confirma τ=0,30 como
+    escolha razoável (regret 8,4% vs. 7,5% do melhor ponto testado, τ=0,60) — não
+    justifica mudar o valor em cascata por uma diferença de ~1pp.

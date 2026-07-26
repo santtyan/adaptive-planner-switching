@@ -28,6 +28,7 @@ from stable_baselines3.common.monitor import Monitor
 
 from eval.env2d.env_2d_multi import MultiAgentEnv2D
 from eval.env2d.env_2d import Env2D, WORLDS, ROBOT_RADIUS, GOAL_RADIUS
+from eval.env2d.save_utils import safe_backup
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -197,6 +198,10 @@ def train(args):
     # Warm-start: carrega sac_2d_best se existir
     best_existing = os.path.join(MODS, "sac_2d_best.zip")
     save_path     = os.path.join(MODS, "sac_2d_dynobs")
+    # Backup ANTES do treino começar: o callback vai sobrescrever save_path.zip
+    # a cada novo "best" -- se já existia um best de um treino anterior, preservar.
+    safe_backup(save_path + ".zip")
+    safe_backup(os.path.join(MODS, "sac_2d_dynobs_final.zip"))
 
     if os.path.exists(best_existing) and not args.from_scratch:
         print("  Warm-start: carregando sac_2d_best...")
