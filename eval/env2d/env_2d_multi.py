@@ -32,13 +32,14 @@ class MultiAgentEnv2D:
     """N robôs independentes em arena densa. Execução descentralizada."""
 
     def __init__(self, n_agents: int, world: str = "dense", seed: int = 42,
-                 max_steps: int = MAX_STEPS):
+                 max_steps: int = MAX_STEPS, terminate_on_any: bool = False):
         assert world in WORLDS
         self.N         = n_agents
         self.cfg       = WORLDS[world]
         self.obstacles = self.cfg["obstacles"]
         self.arena     = self.cfg["size"]
         self.max_steps = max_steps
+        self.terminate_on_any = terminate_on_any
         self._rng      = np.random.default_rng(seed)
 
     # ── Spawn ─────────────────────────────────────────────────
@@ -183,7 +184,17 @@ class MultiAgentEnv2D:
                             reward[k] = R_COLLISION
 
         timeout = self._step >= self.max_steps
-        all_done = bool(self.done.all() or timeout)
+        # `terminate_on_any=True` encerra o episódio assim que QUALQUER robô
+        # conclui (goal ou colisão), não só quando todos concluem. Achado
+        # 26/07/2026 (DEVELOPMENT_LOG.md Fase 11): manter o episódio vivo até
+        # o último agente terminar prolonga a "cauda" de passos de reward
+        # pequena somados/mediados depois que um agente já teve sucesso,
+        # diluindo o sinal de R_GOAL para a política MARL centralizada.
+        # Default False preserva o comportamento original (episódio completo)
+        # para avaliadores que medem o grupo inteiro, ex. inter_collision em
+        # eval_multi_2d.py.
+        stop_condition = self.done.any() if self.terminate_on_any else self.done.all()
+        all_done = bool(stop_condition or timeout)
         # Exposto como atributo (não no retorno) para não quebrar chamadores
         # existentes que esperam `obs, done = env.step(actions)`.
         self.last_reward = reward

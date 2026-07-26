@@ -53,14 +53,24 @@ class CentralizedMultiAgentWrapper(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         s = seed if seed is not None else self._seed
-        self._env = MultiAgentEnv2D(self.n_agents, world=self.world, seed=s)
+        self._env = MultiAgentEnv2D(self.n_agents, world=self.world, seed=s,
+                                     terminate_on_any=True)
         obs = self._env.reset()
         return obs.flatten().astype(np.float32), {}
 
     def step(self, action):
         actions = np.asarray(action, dtype=np.float32).reshape(self.n_agents, 2)
         obs, all_done = self._env.step(actions)
-        reward = float(np.mean(self._env.last_reward))
+        # SOMA em vez de MÉDIA, + terminate_on_any=True acima: tentativa de
+        # corrigir a diluição do sinal de R_GOAL entre os n_agents. Testada
+        # (200k passos) e NÃO resolveu goal_rate=0% sozinha — pesquisa de
+        # literatura (26/07/2026, ver DEVELOPMENT_LOG.md Fase 11) indica que a
+        # causa raiz é estrutural: uma única política PPO sobre ação/obs
+        # concatenada não tem credit assignment por agente, com ou sem soma.
+        # Mantido porque é estritamente melhor que np.mean (não piora), mas
+        # não é a correção definitiva — essa exige MAPPO real (advantage por
+        # agente), ainda não implementado.
+        reward = float(np.sum(self._env.last_reward))
         terminated = all_done
         truncated = False
         m = self._env.metrics()

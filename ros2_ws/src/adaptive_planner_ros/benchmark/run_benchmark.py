@@ -142,10 +142,23 @@ def _make_trial_node(ppo_model: str, sac_model: str, condition: str):
     from std_msgs.msg import String, Float32
     from sensor_msgs.msg import LaserScan
     from gazebo_msgs.msg import ModelStates
-    from gazebo_msgs.srv import SetEntityState
-    from geometry_msgs.msg import Point, Quaternion
+    from gazebo_msgs.srv import SpawnEntity, DeleteEntity
+    from geometry_msgs.msg import Point, Quaternion, Pose
     from nav2_msgs.srv import ClearEntireCostmap
     import psutil
+
+    # FIX (26/07/2026): /gazebo/set_entity_state nunca existiu nesta config de
+    # Gazebo Classic 11 (mesmo bug já diagnosticado em gazebo_gym_env.py,
+    # 09/07/2026 — ver DEVELOPMENT_LOG.md Fase 6 item 4 / Fase 11). O fix
+    # correto, já validado no pipeline de treino, é reimplementar teleport()
+    # como delete_entity + spawn_entity (os únicos serviços que de fato
+    # existem). Portado aqui.
+    ROBOT_MODEL_SDF_PATH = (
+        "/opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle/model.sdf"
+    )
+    # A entidade spawnada de fato se chama "waffle", não "turtlebot3_waffle"
+    # (mesmo mismatch corrigido em gazebo_gym_env.py — ver ROBOT_NAME lá).
+    ROBOT_NAME = "waffle"
 
     rho = _CONDITION_RHO[condition]
     algo = _CONDITION_ALGO[condition]
@@ -186,9 +199,13 @@ def _make_trial_node(ppo_model: str, sac_model: str, condition: str):
                                      self._mode_cb, 10)
 
             # service clients
-            self._set_entity_cli = self.create_client(
-                SetEntityState, "/gazebo/set_entity_state"
-            )
+            self._spawn_cli = self.create_client(SpawnEntity, "/spawn_entity")
+            self._delete_cli = self.create_client(DeleteEntity, "/delete_entity")
+            try:
+                with open(ROBOT_MODEL_SDF_PATH) as f:
+                    self._robot_sdf = f.read()
+            except OSError:
+                self._robot_sdf = None
             self._clear_costmap_cli = self.create_client(
                 ClearEntireCostmap, "/global_costmap/clear_entirely"
             )
@@ -227,7 +244,7 @@ def _make_trial_node(ppo_model: str, sac_model: str, condition: str):
             if self._model_states is None:
                 return 0.0, 0.0, 0.0
             try:
-                idx = self._model_states.name.index("turtlebot3_waffle")
+                idx = self._model_states.name.index(ROBOT_NAME)
             except ValueError:
                 return 0.0, 0.0, 0.0
             p = self._model_states.pose[idx]
@@ -238,18 +255,41 @@ def _make_trial_node(ppo_model: str, sac_model: str, condition: str):
             yaw = math.atan2(2*(ow*oz + ox*oy), 1 - 2*(oy*oy + oz*oz))
             return x, y, yaw
 
-        def teleport(self, x: float, y: float, yaw: float) -> None:
-            if not self._set_entity_cli.wait_for_service(timeout_sec=3.0):
-                self.get_logger().warning("set_entity_state not available")
-                return
-            req = SetEntityState.Request()
-            req.state.name = "turtlebot3_waffle"
-            req.state.pose.position = Point(x=x, y=y, z=0.0)
+        def teleport(self, x: float, y: float, yaw: float) -> bool:
+            """Move robot to (x, y, yaw) via delete_entity + spawn_entity.
+
+            /gazebo/set_entity_state does not exist in this setup (see
+            ROBOT_MODEL_SDF_PATH comment above) — reimplemented as
+            delete+respawn using the two services that actually exist,
+            mirroring the fix already validated in gazebo_gym_env.py.
+            Returns True on success.
+            """
+            if self._robot_sdf is None:
+                self.get_logger().warning("robot SDF not loaded, cannot teleport")
+                return False
+
+            del_req = DeleteEntity.Request()
+            del_req.name = ROBOT_NAME
+            del_future = self._delete_cli.call_async(del_req)
+            rclpy.spin_until_future_complete(self, del_future, timeout_sec=0.5)
+            # OK if delete fails (e.g. first call, entity not spawned yet).
+
+            spawn_req = SpawnEntity.Request()
+            spawn_req.name = ROBOT_NAME
+            spawn_req.xml = self._robot_sdf
             s, c = math.sin(yaw / 2), math.cos(yaw / 2)
-            req.state.pose.orientation = Quaternion(x=0.0, y=0.0, z=s, w=c)
-            req.state.reference_frame = "world"
-            fut = self._set_entity_cli.call_async(req)
+            spawn_req.initial_pose = Pose(
+                position=Point(x=x, y=y, z=0.01),
+                orientation=Quaternion(x=0.0, y=0.0, z=s, w=c),
+            )
+            spawn_req.reference_frame = "world"
+
+            fut = self._spawn_cli.call_async(spawn_req)
             rclpy.spin_until_future_complete(self, fut, timeout_sec=2.0)
+            if fut.done() and fut.result() is not None and fut.result().success:
+                return True
+            self.get_logger().warning("spawn_entity failed during teleport")
+            return False
 
         def clear_costmap(self) -> None:
             if not self._clear_costmap_cli.wait_for_service(timeout_sec=2.0):

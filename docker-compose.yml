@@ -31,11 +31,14 @@ services:
     build: .
     image: adaptive-planner:latest
     network_mode: host
-    # Sobrevive a crash/reboot do host sem intervenção manual. Combinado com o
-    # auto-resume de checkpoint em train_sac.py (--fresh desativa), o treino
-    # nunca mais precisa ser reiniciado manualmente. Respeita `docker compose
-    # stop`/`down` explícito (não força religar se você parar de propósito).
-    restart: unless-stopped
+    # DESATIVADO (26/07/2026): o checkpoint sac_42_ckpt_650000_steps.zip está
+    # permanentemente quebrado (PlanB aborta com ep_rew_mean=-99.0 de forma
+    # determinística a cada resume, ver DEVELOPMENT_LOG.md). Com
+    # unless-stopped, esse container entrava em crash-loop infinito a cada
+    # poucos segundos, consumindo CPU real por horas sem produzir nada.
+    # Reativar só depois de trocar o checkpoint base ou corrigir a causa do
+    # colapso em 650k.
+    restart: "no"
     environment:
       - TURTLEBOT3_MODEL=waffle
       - ROS_DOMAIN_ID=0
