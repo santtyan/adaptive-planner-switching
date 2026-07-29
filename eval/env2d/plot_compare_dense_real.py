@@ -67,9 +67,18 @@ def env_uses_astar(method, env):
     return method == "astar" or (method == "adaptive" and local_rho(env) < RHO_STAR)
 
 
-def plot_compare(world="dense", n_eps=3, seed0=0):
+def plot_compare(world="dense", n_eps=3, seed0=0, seeds=None):
     astar_policy = AStarPolicy()
     bc_policy = load_bc(world)
+
+    # seeds explícitas têm prioridade sobre seed0+i sequencial; escolhidas
+    # por dispersão espacial dos pares início/goal (greedy sobre distância
+    # euclidiana mínima), em vez de sequenciais, porque seed0=0 dava pontos
+    # aglomerados no centro da arena, difíceis de distinguir visualmente
+    if seeds is not None:
+        n_eps = len(seeds)
+    else:
+        seeds = [seed0 + i for i in range(n_eps)]
 
     titles = ["A* (planejador clássico)", "BC (política aprendida)", "Adaptativo ($\\rho$-criterion)"]
     methods = ["astar", "bc", "adaptive"]
@@ -80,8 +89,8 @@ def plot_compare(world="dense", n_eps=3, seed0=0):
     # a média em vez de uma amostra isolada, já que varia por seed conforme
     # onde o robô nasce dentro do mundo "dense"
     rho_samples = []
-    for i in range(n_eps):
-        env = Env2D(world=world, seed=seed0 + i)
+    for seed in seeds:
+        env = Env2D(world=world, seed=seed)
         env.reset()
         rho_samples.append(local_rho(env))
     rho_mean = np.mean(rho_samples)
@@ -98,8 +107,8 @@ def plot_compare(world="dense", n_eps=3, seed0=0):
             _draw_arena(ax, world)
 
         successes = []
-        for i in range(n_eps):
-            env = Env2D(world=world, seed=seed0 + i)
+        for i, seed in enumerate(seeds):
+            env = Env2D(world=world, seed=seed)
             env.reset()
             traj, goal, gx, gy = _rollout(env, method, astar_policy, bc_policy)
             xs = [p[0] for p in traj]
@@ -164,5 +173,7 @@ if __name__ == "__main__":
     p.add_argument("--world", default="dense", choices=["sparse", "dense", "very_dense"])
     p.add_argument("--n_eps", type=int, default=3)
     p.add_argument("--seed0", type=int, default=0)
+    p.add_argument("--seeds", type=int, nargs="+", default=None,
+                    help="lista explícita de seeds (sobrepõe --seed0/--n_eps)")
     args = p.parse_args()
-    plot_compare(args.world, args.n_eps, args.seed0)
+    plot_compare(args.world, args.n_eps, args.seed0, args.seeds)
