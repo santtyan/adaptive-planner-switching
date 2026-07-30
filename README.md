@@ -1,150 +1,203 @@
 # Adaptive Planner Switching — IC PIBIC/FAPEG UFG
 
-Framework adaptivo para seleção dinâmica de planejador de trajetória baseado em densidade local de obstáculos (ρ-criterion). Projeto de Iniciação Científica — EMC/UFG, bolsa FAPEG PI08078-2024.
+Framework adaptativo para seleção dinâmica de planejador de trajetória com base na densidade local de obstáculos (**ρ-criterion**). Projeto de Iniciação Científica — EMC/UFG, bolsa FAPEG PI08078-2024.
 
 **Estudante:** Yan Santos Leite | **Orientador:** Prof. Dr. Aldo André Diaz Salazar (INF/UFG)
 **Período:** Set/2025 – Ago/2026 | **Stack:** ROS2 Humble · Gazebo Classic · TurtleBot3 Waffle · Stable-Baselines3
 
+> **Como usar este README:** ele é o mapa do repositório, não o documento científico completo.
+> Se você (ou o orientador) está procurando "onde está o script que gera X", comece pela
+> [Tabela de algoritmos e onde encontrá-los](#algoritmos-implementados-e-onde-encontrá-los) ou pelo
+> [mapa de pastas](#mapa-do-repositório). O relatório final (`paper/relatorio_final_pip.md`) é a
+> fonte da verdade sobre método e resultados; este arquivo só organiza a navegação.
+
 ---
 
-## Tese Central
+## Tese central (versão atual, corrigida)
 
-> A seleção adaptiva de planejador baseada na densidade local de obstáculos supera qualquer método fixo em ambientes heterogêneos, com ganho mensurável e garantias formais de performance.
+> Um critério de densidade local de obstáculos (ρ) decide, em tempo real, entre um planejador
+> clássico (A\*) e uma política aprendida (Behavior Cloning), alcançando o desempenho do melhor
+> planejador fixo **a uma fração do seu custo computacional**.
 
-**Política de seleção:**
+**Isso substitui uma formulação anterior** ("o critério supera qualquer método fixo em taxa de
+acerto"), que não se sustentou quando os planejadores mock foram trocados por implementações
+reais (ver [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md), Fase 6). Com dados reais, o A\* vence o
+critério adaptativo em acerto puro (88,2% vs. 84,3%, n=1.500), mas paga ~2,5× mais em custo de
+decisão por episódio (21,19 ms vs. 8,60 ms). A tese hoje é sobre **custo**, não sobre superar em
+acerto — todo texto e slide atual reflete essa correção.
 
 ```
-π(ρ) = { A* (Nav2 SmacPlanner2D)  se ρ < 0,30  — ambientes abertos
-        { SAC (Stable-Baselines3)  se ρ ≥ 0,30  — ambientes densos
+π(ρ₀) = { A*  (clássico, Nav2 SmacPlanner2D / grid A*)   se ρ₀ < 0,30
+        { BC  (aprendido, behavior cloning supervisionado) se ρ₀ ≥ 0,30
 ```
 
-onde ρ é a fração de células ocupadas em uma janela 2×2 m ao redor da pose do robô.
+onde `ρ₀` é a densidade local de obstáculos (fração de raios de LIDAR abaixo de 1,0 m), medida
+**uma vez, no início do episódio** — não recalculada a cada passo.
 
 ---
 
-## Visão Geral Visual
+## Conceitos-chave (glossário rápido)
 
-| Critério de seleção ρ | Decisão espacial do switcher |
-|:---:|:---:|
-| ![Switching](paper/figs/core/density_progression.png) | ![Heatmap](paper/figs/core/switching_heatmap.png) |
-
-| Benchmark clássicos (tempo) | Roadmap (agente único → MARL) |
-|:---:|:---:|
-| ![Benchmark](paper/figs/benchmark/benchmark_time.png) | ![Roadmap](paper/figs/marl/roadmap_marl_tj.png) |
-
-> Catálogo completo das figuras científicas (organizado por utilidade) em
-> [`paper/figs/CATALOG.md`](paper/figs/CATALOG.md).
-
----
-
-## Resultados
-
-### Fase 1 — Validação Monte Carlo (concluída)
-
-Benchmark com 1.500 trials e modelos de planejamento calibrados estatisticamente:
-
-| Método | Taxa de Sucesso |
-|---|---|
-| **ρ-criterion adaptivo (este trabalho)** | **85,3%** |
-| Neural Switching | 78,7% |
-| PPO fixo | 76,0% |
-| Hybrid DRL | 66,0% |
-| RRT* fixo | 48,0% |
-
-- **Regret médio vs oracle ideal:** 2,2% (pior caso: 6,7%)
-- **Limiar otimizado:** ρ* = 0,30 — motivado pelo custo computacional (A* cresce 10× frente ao SAC em ρ=0,30, Fig. benchmark_time)
-- **Generalização multi-agente:** CBS centralizado cresce super-linearmente com N agentes (timeout em N=8); o ρ-criterion decide em O(1) por agente, escalando naturalmente → MARL como Fase 3
-- Benchmark clássico: A* escala linearmente (0,07 ms / 3,7 KB para 100 nós); Floyd-Warshall inviável para tempo real (39 s / 22 MB para grid 30×30)
-
-### Fase 2 — Integração ROS2/Gazebo (em andamento)
-
-Validação com planejadores reais em simulação física:
-
-- **Ambiente:** Gazebo Classic, TurtleBot3 Waffle, arena 4×4 m. Currículo por densidade de mundo: treino em `sparse.world` (ρ≈0,05) → fine-tune em `dense_custom.world` (ρ≈0,38), padrão de transfer learning (Cimurs 2022, HMP-DRL 2025)
-- **Agente RL:** SAC com obs 29-dim (24 LIDAR + 2 goal-polar + yaw + ação anterior), `ent_coef=0.1` fixo, gSDE, curriculum de distância 1→3 m
-- **Reward:** sobrevivência (+0,1/passo) + progresso clipado (≥0) + terminais ±100, estilo Cimurs/de Jesus — formulação minimalista que elimina o *suicidal agent* (penalidade por passo nunca supera a colisão terminal)
-- **Treinamento:** em andamento (~500k steps teto)
-- **Resultados quantitativos:** previstos para Agosto/2026 (30 trials × 3 worlds)
-
----
-
-## Hipóteses
-
-| ID | Enunciado | Status |
+| Conceito | O que é | Por que importa aqui |
 |---|---|---|
-| **H1** | ρ-criterion supera melhor método fixo em ambientes heterogêneos | ✅ Confirmada (Fase 1) |
-| **H2** | ρ*=0,30 captura fronteira ótima com regret ≤ 5% | ✅ Confirmada (Fase 1, regret=2,2%) |
-| **H3** | Framework realizável em ROS2/Nav2/Gazebo sem modificar planejadores | 🔄 Em validação (Fase 2) |
+| **ρ (rho), densidade local** | Fração das leituras de LIDAR do robô que retornaram menos de 1,0 m. Mede "quão apertado" está o ambiente ao redor do robô agora. | É a única variável que decide qual planejador usar — não distância ao alvo, não velocidade. |
+| **ρ\* (rho-star), limiar** | Valor de corte fixo, `0,30`, calibrado por varredura empírica (n=1.500). | Abaixo dele usa A\*, acima usa BC. Não é reajustado durante a execução (é *offline*). |
+| **A\*** | Busca em grafo clássica, informada por heurística. Sempre acha o caminho ótimo no grid, mas expande mais nós (custo cresce) quanto mais obstáculos existem. | Planejador clássico do critério; representa o lado "preciso e caro". |
+| **BC (Behavior Cloning)** | Aprendizado **supervisionado** por imitação de um especialista (aqui, um campo potencial). **Não é RL** — importante: a tese central não usa nenhum RL, apesar do objetivo 3 do plano de trabalho pedir RL profundo (esse objetivo é cumprido separadamente pelo SAC, isolado do critério). | Representa o lado "barato e quase tão preciso" do trade-off. |
+| **SAC (Soft Actor-Critic)** | Algoritmo de RL profundo (Stable-Baselines3). Cumpre o objetivo 3 do plano de trabalho oficial, mas **não compõe o critério adaptativo** — SAC perde para A\*/BC em todo regime de densidade testado. | Existe no repositório como evidência de RL testado, não como parte da solução final. |
+| ***Regret*** | Perda de desempenho do critério adaptativo em relação ao melhor planejador fixo possível naquele episódio. | Métrica usada para calibrar ρ\* (varredura em `threshold_sweep_real.csv`). |
+| **MARL (Multi-Agent RL)** | Tentativa de estender o critério para múltiplos robôs coordenados. | Resultado preliminar e não reproduzido (ver tabela de algoritmos); causa raiz é arquitetural (falta credit assignment por agente — precisaria de MAPPO real). |
+| **Fase 1 vs. Fase 2** | Fase 1 = validação com planejadores **mock** (estatisticamente calibrados, não reais). Fase 2 = validação com planejadores **reais** (A\*/BC/SAC de verdade), incluindo cenário urbano dinâmico. | Fase 1 é histórica/exploratória; **todo número citado em slide ou relatório atual vem da Fase 2 com planejadores reais**, nunca dos mocks. |
 
 ---
 
-## Estrutura do Projeto
+## Algoritmos implementados e onde encontrá-los
+
+Esta é a tabela para responder "onde está o script de X" na hora, sem precisar procurar.
+
+| Algoritmo / componente | Arquivo principal | Tipo | Usado na tese final? |
+|---|---|---|---|
+| **A\* (grid, 2D)** | [`eval/env2d/astar_planner.py`](eval/env2d/astar_planner.py) | Clássico, busca em grafo com `heapq` | ✅ Sim — lado clássico do critério |
+| **A\* / Dijkstra / Floyd-Warshall / Johnson (benchmark)** | [`validation_abstract/algorithms/classical.py`](validation_abstract/algorithms/classical.py), [`validation_abstract/benchmark_classical.py`](validation_abstract/benchmark_classical.py) | Clássicos, implementações otimizadas (`heapq`, matriz densa, Bellman-Ford) | ✅ Sim — responde ao Parecer do Consultor SIGAA (implementações otimizadas, não didáticas) |
+| **Behavior Cloning (BC)** | [`eval/env2d/train_2d_bc.py`](eval/env2d/train_2d_bc.py) (treino) | Supervisionado, imitação de especialista (campo potencial) | ✅ Sim — lado "moderno" do critério |
+| **ρ-criterion (o switcher em si)** | [`eval/env2d/rerun_h1_real.py`](eval/env2d/rerun_h1_real.py) (`RHO_STAR`, `local_rho`) — mesma lógica reusada em `rerun_h1_mixed.py` e `rerun_h1_hysteresis.py` | Regra de decisão, offline por episódio | ✅ Sim — é a contribuição central |
+| **ρ-criterion (nó ROS2 real)** | [`ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/adaptive_switcher_node.py`](ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/adaptive_switcher_node.py), [`density_estimator.py`](ros2_ws/src/adaptive_planner_ros/adaptive_planner_ros/density_estimator.py) | Nó ROS2, mesmo critério em produção | ✅ Sim — Fase 2 (Gazebo) |
+| **SAC (Soft Actor-Critic)** | [`eval/env2d/train_2d.py`](eval/env2d/train_2d.py) | RL profundo (Stable-Baselines3) | ⚠️ Cumpre objetivo 3 do plano, mas **isolado** — não entra no critério final (perde para A\*/BC) |
+| **CrossQ** | [`eval/env2d/train_2d_crossq.py`](eval/env2d/train_2d_crossq.py) | RL profundo, alternativa ao SAC | ❌ Testado e descartado — não convergiu melhor que SAC |
+| **MARL (recompensa compartilhada)** | [`eval/env2d/train_2d_marl.py`](eval/env2d/train_2d_marl.py) | RL multiagente, política única sobre observação concatenada | ⚠️ Resultado preliminar não reproduzido — ver limitações |
+| **RRT\* (mock)** | [`validation_abstract/planners/rrt_star.py`](validation_abstract/planners/rrt_star.py) | **Mock estatístico** (gera linha reta interpolada, não busca real) | ❌ Não — só Fase 1 histórica, não usar como evidência de método real |
+| **PPO (mock)** | [`validation_abstract/planners/ppo_planner.py`](validation_abstract/planners/ppo_planner.py) | **Mock estatístico** (sorteia sucesso por probabilidade calibrada) | ❌ Não — idem acima |
+| **CBS (Conflict-Based Search)** | dados reais em [`results_abstract/cbs_scalability_20trials.csv`](results_abstract/cbs_scalability_20trials.csv) (via `atb033/multi_agent_path_planning`, externo) | Coordenação multiagente, clássico | ⚠️ Só benchmark de escalabilidade (Relatório Parcial); substituído por A\*/SAC na narrativa atual |
+| **DDPG** | — não implementado | RL profundo | ❌ Previsto no Relatório Parcial, nunca testado nem descartado com nota formal — pendência aberta |
+
+---
+
+## Mapa do repositório
 
 ```
-ros2_ws/
-├── src/adaptive_planner_ros/     # Switcher ROS2, nó RL, critério ρ
-└── src/turtlebot3_gym_env/       # Ambiente Gymnasium sobre Gazebo
-
-eval/                             # Scripts de benchmark e figuras científicas
-paper/figs/                       # figuras científicas (.png + .pdf) — ver CATALOG.md
-models/                           # Modelos treinados (best_model.zip)
-results_abstract/                 # Dados Fase 1 (Monte Carlo calibrado)
-results_ros2/                     # Dados Fase 2 (benchmark real — preencher pós-convergência)
+.
+├── README.md                    # este arquivo — mapa de navegação
+├── DEVELOPMENT_LOG.md           # histórico cronológico do processo de pesquisa (bugs, decisões, viradas)
+├── docker-compose.yml           # serviços: train-all, gazebo, benchmark, train-sac, train-ppo, smoketest
+│
+├── eval/env2d/                  # ★ gêmeo 2D leve — onde quase todo dado real da tese atual é gerado
+│   ├── astar_planner.py         # A* real (grid)
+│   ├── env_2d.py                # ambiente Gymnasium 2D (single-agent)
+│   ├── env_2d_multi.py          # ambiente 2D multi-agente
+│   ├── train_2d*.py             # treino: SAC, BC, CrossQ, MARL
+│   ├── rerun_h1_*.py            # validações do critério ρ (H1) — fonte dos números citados em slide/relatório
+│   ├── sweep_threshold_real.py  # varredura de ρ* (gera threshold_sweep_real.csv)
+│   ├── rerun_urban.py           # cenário urbano dinâmico (2.000 trials, 4 condições)
+│   └── plot_*.py / visualize_*.py  # geram as figuras de paper/figs/
+│
+├── validation_abstract/         # Fase 1 histórica — validação Monte Carlo com planejadores calibrados/mock
+│   ├── algorithms/classical.py  # Dijkstra/A*/Floyd-Warshall/Johnson otimizados (resposta ao parecer SIGAA)
+│   ├── benchmark_classical.py   # benchmark de tempo/memória dos clássicos
+│   └── planners/                # ⚠️ rrt_star.py e ppo_planner.py são MOCKS, não reais
+│
+├── ros2_ws/src/
+│   ├── adaptive_planner_ros/    # nó ROS2 do critério ρ (Fase 2, Gazebo)
+│   └── turtlebot3_gym_env/      # ambiente Gymnasium sobre Gazebo
+│
+├── results_abstract/            # CSVs de dados — ver tabela abaixo para os mais citados
+├── paper/
+│   ├── figs/CATALOG.md          # catálogo de TODAS as figuras científicas geradas
+│   ├── relatorio_final_pip.md   # relatório final institucional (SIGAA) — fonte da verdade
+│   ├── relatorio_final_pip.tex  # mesmo conteúdo, formato PDF
+│   └── lafusion_2026_draft.md   # rascunho do artigo para submissão LAFusion 2026
+│
+├── overleaf2/apresentacao/      # slide de reunião com o orientador (.tex, Beamer/metropolis)
+├── docs/
+│   ├── relatorio_parcial.md     # relatório parcial já aprovado (01/04/2026) — narrativa anterior (RRT*/PPO)
+│   └── PLANO_CORRECAO.md        # auditoria que motivou a correção da tese (de "supera" para "empata a custo menor")
+│
+└── models/                      # modelos treinados (.zip) — SAC, BC
 ```
+
+### CSVs de dados mais citados
+
+| Arquivo | Conteúdo | Onde é usado |
+|---|---|---|
+| [`results_abstract/h1_real_2d_mixed_pool.csv`](results_abstract/h1_real_2d_mixed_pool.csv) | 1.500 trials pareados, mundo sorteado por trial (A\*/BC/critério) | Números 88,2%/84,3% do slide e relatório |
+| [`results_abstract/h1_real_2d_validation.csv`](results_abstract/h1_real_2d_validation.csv) | 100 trials/mundo × método × regime de densidade (sparse/dense/very_dense) | Comparação A\*/BC/SAC por regime |
+| [`results_abstract/threshold_sweep_real.csv`](results_abstract/threshold_sweep_real.csv) | Varredura de ρ\* de 0,10 a 0,60 | Justificativa de por que ρ\*=0,30 foi mantido |
+| [`results_abstract/urban_grid_results.csv`](results_abstract/urban_grid_results.csv) | Cenário urbano dinâmico, 2.000 execuções, 4 condições | Fecha itens "ambientes urbanos"/"obstáculos dinâmicos" do plano |
+| [`results_abstract/cbs_scalability_20trials.csv`](results_abstract/cbs_scalability_20trials.csv) | Escalabilidade CBS multiagente | Relatório Parcial (narrativa anterior) |
+
+---
+
+## Documentos institucionais e sua relação
+
+| Documento | O que é | Onde está |
+|---|---|---|
+| **Plano de Trabalho oficial** | Contrato original aprovado pela FAPEG (PI08078-2024): objetivos, metodologia, cronograma | SIGAA/UFG (fora do repositório) — checklist de cobertura no relatório final, Seção 2 |
+| **Parecer do Consultor SIGAA** (13/06/2025) | Exige comparação com implementações **otimizadas** dos clássicos, não didáticas | Respondido em `paper/relatorio_final_pip.md`, Seção 2.1 |
+| **Relatório Parcial** | Já aprovado (01/04/2026). Narrativa anterior: RRT\*/PPO, validado com CBS real | `docs/relatorio_parcial.md` |
+| **Relatório Final** | Documento formal para o SIGAA, prazo 31/08/2026. Narrativa atual: A\*/BC/SAC, tese reformulada para custo | `paper/relatorio_final_pip.md` / `.tex` |
+| **Slide de reunião com o orientador** | Deck de trabalho (não defesa), usado para prestar contas e levantar decisões pendentes | `overleaf2/apresentacao/apresentacao_prof_aldo.tex` (⚠️ fora do git, ver nota abaixo) |
+| **Artigo LAFusion 2026** | Submissão para revisão por pares (Springer CCIS), prazo 16/08/2026 | `paper/lafusion_2026_draft.md` |
+
+> **Nota:** `overleaf2/` está no `.gitignore` — mudanças no slide **nunca aparecem em `git status`**.
+> Se o orientador perguntar sobre uma versão do slide, confirme a data/conteúdo diretamente no
+> arquivo, não pelo histórico do git.
 
 ---
 
 ## Reprodução
 
-### Treino SAC (Fase 2)
+### Fase 2 real (gêmeo 2D — a maioria dos números da tese atual vem daqui)
 
 ```bash
-# Requer Docker com imagem adaptive-planner:latest
-docker compose run --rm train-all
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-# Monitorar
-docker compose logs -f train-all
+# Validação do critério ρ com planejadores reais (gera os números 88,2%/84,3%)
+python eval/env2d/rerun_h1_mixed.py
+
+# Varredura de ρ* (gera threshold_sweep_real.csv)
+python eval/env2d/sweep_threshold_real.py
+
+# Cenário urbano dinâmico (2.000 trials)
+python eval/env2d/rerun_urban.py
 ```
 
-### Benchmark (após convergência)
+### Treino (SAC / BC / Gazebo)
 
 ```bash
-docker compose run --rm benchmark
+# Treino SAC no Gazebo (requer Docker)
+docker compose run --rm train-all
+
+# Treino BC (gêmeo 2D, sem Docker)
+python eval/env2d/train_2d_bc.py
+```
+
+### Benchmark clássico (resposta ao Parecer do Consultor)
+
+```bash
+python validation_abstract/benchmark_classical.py
 ```
 
 ### Figuras científicas
 
-```bash
-python3 eval/plot_sac_architecture_figures.py --out paper/figs/
-python3 eval/plot_training_optimization_figures.py --out paper/figs/
-python3 eval/plot_planner_time_vs_density.py
-python3 eval/cbs_tpg_visualization.py
-```
-
-### Fase 1 (Monte Carlo)
-
-```bash
-# Requer venv Python (sem ROS2)
-python -m venv venv_ic && source venv_ic/bin/activate
-pip install -r requirements.txt
-python experiments/comprehensive_experiments.py  # 1.500 trials
-```
+Ver comandos completos por figura em [`paper/figs/CATALOG.md`](paper/figs/CATALOG.md).
 
 ---
 
-## Limitações Declaradas
+## Limitações declaradas
 
-1. Fase 1 usa modelos calibrados (mocks), não planejadores reais
-2. Fase 2 limitada a ambiente simulado (Gazebo Classic) — sem testes em robô físico
-3. Contexto unidimensional (densidade ρ) — sem curvatura, velocidade de obstáculos, etc.
-4. Treinamento SAC em CPU (i5-1235U) — sem GPU
-5. Single-agente — decisão local independente não garante coordenação em tempo real; extensão MARL identificada como próximo passo natural (Seção 4 do relatório final)
+1. **Fase 1** (`validation_abstract/`) usa planejadores **mock** (RRT\*/PPO estatisticamente calibrados), não reais — histórica, não usar como evidência atual.
+2. **Fase 2 Gazebo**: robô navega corretamente quando testado dentro do próprio container do simulador, mas a bateria estatística completa (30 execuções) está bloqueada por um bug de infraestrutura (timeout de descoberta de serviço DDS entre containers Docker separados `benchmark`↔`gazebo`) — não é bug de planejamento.
+3. **MARL**: resultado preliminar (recompensa compartilhada zera colisão entre robôs no primeiro treino) não se reproduziu em retreinos idênticos. Causa raiz identificada como arquitetural (política única sem *credit assignment* por agente); correção real exigiria reescrever o loop de treino para MAPPO.
+4. **DDPG**: previsto no Relatório Parcial, substituído por SAC, nunca testado isoladamente nem descartado com nota formal — pendência aberta para o relatório final.
+5. **Single-agente**: o critério ρ decide bem qual planejador usar, mas não resolve coordenação entre múltiplos robôs (ver MARL acima).
+6. **Contexto unidimensional**: a decisão usa só densidade local — não incorpora curvatura do ambiente, velocidade de obstáculos, etc.
 
 ---
 
 ## Publicações / Apresentações
 
-- **CONPEEX 2026** — Seminário de Iniciação à Pesquisa PIP (26/06/2026)
+- **CONPEEX 2026** — Seminário de Iniciação à Pesquisa PIP
+- **LAFusion 2026** — submissão em revisão por pares, prazo 16/08/2026 (Springer CCIS)
 - **Relatório Final SIGAA** — prazo 31/08/2026
 
 ---
@@ -153,7 +206,7 @@ python experiments/comprehensive_experiments.py  # 1.500 trials
 
 ```bibtex
 @misc{santos2026adaptive,
-  title={Framework Adaptivo para Seleção de Algoritmos de Planejamento de Trajetória em Navegação Autônoma},
+  title={Seleção Adaptativa de Planejador de Trajetória baseada em Densidade Local de Obstáculos},
   author={Santos Leite, Yan and Diaz Salazar, Aldo André},
   year={2026},
   institution={Universidade Federal de Goiás},
