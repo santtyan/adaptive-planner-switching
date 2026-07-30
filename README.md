@@ -34,6 +34,40 @@ acerto — todo texto e slide atual reflete essa correção.
 onde `ρ₀` é a densidade local de obstáculos (fração de raios de LIDAR abaixo de 1,0 m), medida
 **uma vez, no início do episódio** — não recalculada a cada passo.
 
+### O critério, em código
+
+**Script de referência:** [`eval/env2d/rerun_h1_real.py`](eval/env2d/rerun_h1_real.py) — mesma
+implementação usada em todas as validações reais deste trabalho (`rerun_h1_mixed.py` e
+`rerun_h1_hysteresis.py` reusam a mesma `local_rho`).
+
+```python
+RHO_STAR = 0.30
+
+def local_rho(env: Env2D) -> float:
+    ranges = _scan(env._x, env._y, env._yaw, env.obstacles, env.arena)
+    return float(np.mean(ranges < 1.0))
+
+# no reset do episódio:
+rho0 = local_rho(env)
+use_astar = rho0 < RHO_STAR
+```
+
+Linha a linha:
+
+- **`RHO_STAR = 0,30`**: o limiar único do critério, calibrado por varredura empírica (ver
+  `results_abstract/threshold_sweep_real.csv`), não reajustado durante a execução.
+- **`local_rho(env)`**: lê os raios do LIDAR e calcula a fração deles que retornou menos de
+  1,0 m. Quanto maior essa fração, mais obstáculos perto do robô *agora* — a mesma métrica do
+  heatmap de comutação (*switching*).
+- **Quando roda:** só uma vez, no início do episódio (`reset`), não a cada passo — o que
+  explica o custo baixo do critério (8,60 ms/episódio).
+- **A decisão em si:** `rho0 < RHO_STAR` decide entre dois planejadores já prontos (A\*, BC);
+  não treina nada novo, só escolhe qual dos dois usar naquele episódio.
+
+Em uma frase: mede quão apertado está o ambiente antes de andar, e usa essa medida — não a
+distância ao alvo nem a velocidade — para decidir se vale pagar o custo do A\* ou se o BC já
+resolve.
+
 ---
 
 ## Conceitos-chave (glossário rápido)
