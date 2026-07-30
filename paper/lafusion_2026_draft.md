@@ -38,7 +38,7 @@ fusion**: given a real-time density estimate ρ, which of two heterogeneous
 estimators should be trusted at each instant? We propose the ρ-criterion, a
 fusion rule π(ρ) = {classical if ρ<ρ*; learned if ρ≥ρ*}, with ρ*=0.30
 determined via 1,500 calibrated Monte Carlo trials (85.3% success vs. 76% best
-fixed planner, 78.7% best competing switcher, 2.9% regret against an oracle).
+fixed planner, 2.9% regret against an oracle).
 To reduce dependence on calibrated models, we further validate the criterion
 with **real, non-mock planners** — a genuine grid-search A* and a trained
 imitation-learning policy — over 1,500 paired trials spanning a mixed-density
@@ -95,10 +95,11 @@ this way opens the door to the tools and guarantees of the fusion literature
 trust) that a "planner switching" framing does not naturally invite.
 
 Prior work that touches this trade-off stops short of a fusion formulation.
-He et al. (2025) optimize the internal weights of a single hybrid planner
-rather than arbitrating between two independently-optimal estimators; a
-2025 Sensors study proposes a static, geography-fixed switching rule that
-does not adapt to local context at inference time. To our knowledge, no
+Xu et al. (2020) optimize the internal parameters of a single classical
+planner rather than arbitrating between two independently-optimal estimators;
+Sharma et al. (2024) do switch between a classical planner and an RL policy,
+but the trigger is reactive — it fires once an obstacle is already detected on
+the path — rather than anticipating the need from context. To our knowledge, no
 prior work (i) formalizes planner selection as a contextual fusion problem
 with an oracle-relative regret guarantee, (ii) determines the fusion
 threshold empirically against that regret bound rather than by heuristic
@@ -152,12 +153,36 @@ magnitude than the accumulated per-step cost of surviving — a failure mode
 we encountered and diagnosed independently during this study, consistent
 with the minimalist reward formulations recommended in the literature.
 
-**Hybrid and switching approaches.** The closest prior work optimizes the
-internal parameters of a single hybrid planner [He et al., 2025] or applies
-a static, pre-computed switching rule keyed to geographic zones (Sensors,
-2025) rather than to a real-time context signal. Neither formulates the
+**Hybrid and switching approaches.** Closely related work falls into three
+groups, none of which formulates selection as a contextual fusion problem
+with a regret guarantee. First, parameter-adaptation methods keep a single
+classical planner and learn its internal parameters by RL [Xu et al., 2020,
+APPLR], never arbitrating between two independently-optimal estimators;
+notably, APPLR's own results show its advantage over the fixed-parameter
+baseline shrinks as environment difficulty increases (57% of easy
+environments won vs. 28% of difficult ones), a ceiling effect consistent
+with what we observe for planner selection itself in Section 4. Second,
+single-policy imitation methods train one policy to imitate the best
+available classical expert, with no runtime switching at all [Damanik et
+al., 2024, LiCS — winner of the BARN Challenge at ICRA 2024]; and hybrid
+architectures keep a global classical planner permanently active as a
+feature/reward signal for a local learned policy, rather than switching
+which one controls the robot [Kolomeytsev and Golembiovsky, 2025, HMP-DRL].
+Third, and closest to our setting, Sharma et al. (2024) do switch between a
+classical planner (DWA) and an RL policy (SACPlanner), but the trigger is
+reactive — it fires once an obstacle is already detected on the path —
+rather than anticipating the need from context; critically, their hybrid
+runs both planners in parallel at all times and only gates which output is
+published, so the computational-cost saving we report in Section 4 (the
+adaptive criterion is cheaper than always running the classical planner)
+has no counterpart in their design. Their reported 26% reduction in
+navigation time and 18% shorter paths relative to the RL policy alone,
+with 0% collisions against 50-100% for DWA alone, is independent evidence
+that switching outperforms either constituent method in isolation — the
+same qualitative pattern we report under a different (predictive rather
+than reactive) trigger. Across all four works, none formulates the
 selection decision as a fusion problem with a regret guarantee against an
-oracle, and neither is shown to hold under a decentralized multi-agent
+oracle, and none is shown to hold under a decentralized multi-agent
 extension.
 
 **Positioning against decision fusion.** Classical decision-fusion
@@ -214,21 +239,18 @@ threshold result in Section 3.3.
 ### 3.3 Fusion threshold determination (Monte Carlo)
 
 We determine ρ* through 1,500 Monte Carlo trials spanning obstacle densities
-from 0.05 to 0.60, using statistically calibrated planner models — proxies
-tuned to reproduce the published success rates of He et al. (2025) and the
-2025 Sensors method under matched density conditions, rather than
-reimplementations of those methods. We state this modeling choice explicitly
-as a methodological decision, not a limitation hidden from reviewers: it
-isolates the fusion criterion itself from simulator- and implementation-
-specific noise, at the cost of not yet validating the criterion against
-those methods' own code. We define regret as Regret(π) = E[R_oracle] −
-E[R_π], where the oracle selects the best available planner on each
-individual trial with perfect foresight — an upper bound no causal policy
-can exceed. Under this protocol, ρ*=0.30 minimizes regret at 2.9% on
-average (6.7% worst case), comfortably inside a 5% target bound, and the
-fused policy reaches 85.3% success against 76% for the best fixed planner
-and 78.7% for the best competing switching method — a statistically
-significant 9.3-point margin (p=0.020, 150 trials in the head-to-head
+from 0.05 to 0.60, using statistically calibrated planner models — closed-form
+success-vs-density proxies rather than executing implementations. We state this
+modeling choice explicitly as a methodological decision, not a limitation
+hidden from reviewers: it isolates the fusion criterion itself from simulator-
+and implementation-specific noise, at the cost of not validating the criterion
+against real planner code — a gap closed in Section 3.4. We define regret as
+Regret(π) = E[R_oracle] − E[R_π], where the oracle selects the best available
+planner on each individual trial with perfect foresight — an upper bound no
+causal policy can exceed. Under this protocol, ρ*=0.30 minimizes regret at 2.9%
+on average (6.7% worst case), comfortably inside a 5% target bound, and the
+fused policy reaches 85.3% success against 76% for the best fixed planner — a
+statistically significant margin (p=0.020, 150 trials in the head-to-head
 comparison).
 
 **Feasibility-study framing (methodological correction).** Re-examining this
@@ -383,10 +405,10 @@ not only the theoretical formulation, resolves the identified problem.
 
 ## 4. Results
 
-Table 1 summarizes the fusion rule's performance against the two strongest
-baselines under the calibrated Monte Carlo protocol (Section 3.3): the fused
-policy's 85.3% success rate exceeds the best fixed planner (76%) and the best
-competing switching method (78.7%), at 2.9% average regret relative to the
+Table 1 summarizes the fusion rule's performance against the strongest
+baseline under the calibrated Monte Carlo protocol (Section 3.3): the fused
+policy's 85.3% success rate exceeds the best fixed planner (76%), at 2.9%
+average regret relative to the
 oracle. Figure 1 shows the regret curve across candidate thresholds,
 confirming ρ*=0.30 as the empirical minimum under calibrated models.
 
@@ -534,9 +556,19 @@ MAPPO via RLlib).
 - [ ] Explicitly cite the fusion-theory framing in intro AND conclusion (novelty
       angle for a fusion-themed venue — this is the differentiator vs. a
       generic robotics paper).
-- [ ] Add a comparison table against He et al. 2025 / Sensors 2025 method
-      characteristics (not just numbers) — reviewers reward explicit
-      positioning against related work.
+- [ ] Add a comparison table against Sharma et al. 2024 (closest work: also
+      switches classical/RL, but on a reactive trigger), Xu et al. 2020
+      (APPLR), Damanik et al. 2024 (LiCS), and Kolomeytsev and Golembiovsky
+      2025 (HMP-DRL) — characteristics, not just numbers. Reviewers reward
+      explicit positioning against related work. Full verified references
+      (title, authors, arXiv ID, key numbers) saved 27/07/2026 in agent
+      memory files reference_artigo_*.md — pull from there, do not
+      re-search from scratch.
+- [ ] **Bibliography audit (27/07/2026):** two references previously cited
+      here — "He et al. 2025" (IEEE T-ITS) and "Sha et al., Sensors 2024,
+      DOI 10.3390/s24072024" — could not be verified and were removed. The DOI
+      resolves to an unrelated LoRaWAN paper. Verify every remaining citation
+      against its DOI before submission.
 - [ ] All figures must be regenerated at print resolution (300dpi) for the
       Springer template — check `paper/figs/CATALOG.md` for existing assets.
 - [ ] Have Prof. Aldo review before submission (co-author, INF/UFG).

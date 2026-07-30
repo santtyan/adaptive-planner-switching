@@ -143,7 +143,7 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args()
 
-    ckpt_path = os.path.join(MODS, "bc_2d_policy.pt")
+    ckpt_path = os.path.join(MODS, f"bc_2d_policy_{args.world}.pt")
     state = torch.load(ckpt_path, map_location="cpu")
     obs_dim = state["net.0.weight"].shape[1]
     act_dim = state["net.4.weight"].shape[0]

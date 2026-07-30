@@ -32,10 +32,23 @@ from eval.env2d.rerun_urban import DYNAMIC_MULTI_SPEC, DYNAMIC_FAST_SPEC, DYNAMI
 FIGS2D = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                        "paper", "figs", "2d")
 
+# Variante SÓ PARA ILUSTRAÇÃO (não usada nos 2.000 trials estatísticos da
+# Seção 3.6, que continuam rodando com DYNAMIC_MULTI_SPEC original). Aqui os
+# 3 obstáculos nascem afastados, em ângulos diferentes, e convergem para o
+# cruzamento central do urban_grid (onde o corredor em "+" força a passagem
+# do robô), tornando mais provável e mais visível que os três apareçam perto
+# do robô no mesmo episódio -- sem alterar a dinâmica real do experimento.
+DYNAMIC_MULTI_CONVERGING_SPEC = [
+    {"cx": -1.6, "cy": 0.3, "cr": 0.15, "vx": 0.55, "vy": -0.12},   # oeste -> centro
+    {"cx": 0.3, "cy": -1.6, "cr": 0.15, "vx": -0.12, "vy": 0.55},   # sul -> centro
+    {"cx": 1.5, "cy": 1.0, "cr": 0.12, "vx": -0.55, "vy": -0.42},   # nordeste -> centro
+]
+
 CONDITIONS = {
     "dynamic": DYNAMIC_OBSTACLE_SPEC,
     "dynamic_multi": DYNAMIC_MULTI_SPEC,
     "dynamic_fast": DYNAMIC_FAST_SPEC,
+    "dynamic_multi_converging": DYNAMIC_MULTI_CONVERGING_SPEC,
 }
 
 
@@ -90,27 +103,79 @@ def _rollout_adaptive(dyn_spec, seed):
     return frames, outcome, use_astar
 
 
-def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=150, min_frames=25):
+def _min_robot_obstacle_dist(frames):
+    """Menor distância robô-obstáculo ao longo do episódio."""
+    best = float("inf")
+    for x, y, yaw, gx, gy, goal, coll, dyn_positions in frames:
+        for ox, oy, orr in dyn_positions:
+            d = np.hypot(x - ox, y - oy) - orr
+            best = min(best, d)
+    return best
+
+
+def _deviation_score(frames, close_thresh=0.6, window=4):
+    """Mede se o robô de fato DESVIOU por causa de um obstáculo, não só
+    passou perto por coincidência de geometria. Para cada frame em que
+    algum obstáculo está a menos de close_thresh do robô, compara a
+    direção de deslocamento `window` passos antes com `window` passos
+    depois e soma a variação angular -- desvio real produz uma curva
+    visível nesse intervalo; passar reto perto do obstáculo (sem reagir)
+    não. Retorna (score, dist_min): quanto maior o score, mais visível o
+    desvio; usado para não escolher episódios "mansos" onde o obstáculo
+    fica perto mas o robô não muda de rumo por causa dele."""
+    xs = np.array([f[0] for f in frames])
+    ys = np.array([f[1] for f in frames])
+    n = len(frames)
+
+    dist_min = float("inf")
+    close_idxs = []
+    for i, (x, y, yaw, gx, gy, goal, coll, dyn_positions) in enumerate(frames):
+        for ox, oy, orr in dyn_positions:
+            d = np.hypot(x - ox, y - oy) - orr
+            dist_min = min(dist_min, d)
+            if d < close_thresh:
+                close_idxs.append(i)
+
+    if not close_idxs:
+        return 0.0, dist_min
+
+    best_score = 0.0
+    for i in close_idxs:
+        i0, i1 = max(0, i - window), min(n - 1, i + window)
+        if i1 - i <= 1 or i - i0 <= 1:
+            continue
+        dir_before = np.arctan2(ys[i] - ys[i0], xs[i] - xs[i0])
+        dir_after = np.arctan2(ys[i1] - ys[i], xs[i1] - xs[i])
+        turn = abs((dir_after - dir_before + np.pi) % (2 * np.pi) - np.pi)
+        best_score = max(best_score, turn)
+    return best_score, dist_min
+
+
+def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=300, min_frames=25,
+             n_candidates=40):
     dyn_spec = CONDITIONS[condition]
-    frames_data, outcome, used_astar = None, "timeout", None
-    best_fallback = None
+    candidates = []  # (frames, outcome, used_astar, seed, score, min_dist)
     for try_seed in range(seed, seed + max_tries):
         cand, oc, ua = _rollout_adaptive(dyn_spec, try_seed)
         if oc == "goal" and len(cand) >= min_frames:
-            frames_data, outcome, used_astar = cand, oc, ua
-            print(f"  Episódio vencedor: seed={try_seed} ({len(cand)} frames, "
-                  f"planejador={'A*' if ua else 'BC'})")
-            break
-        if oc == "goal" and (best_fallback is None or len(cand) > len(best_fallback[0])):
-            best_fallback = (cand, oc, ua, try_seed)
-    if frames_data is None:
-        if best_fallback is not None:
-            frames_data, outcome, used_astar, fseed = best_fallback
-            print(f"  Nenhum episódio com >= {min_frames} frames; usando o mais longo "
-                  f"encontrado: seed={fseed} ({len(frames_data)} frames)")
-        else:
-            print(f"  Aviso: nenhum vencedor em {max_tries} seeds, usando seed={seed}")
-            frames_data, outcome, used_astar = _rollout_adaptive(dyn_spec, seed)
+            score, min_dist = _deviation_score(cand)
+            candidates.append((cand, oc, ua, try_seed, score, min_dist))
+            if len(candidates) >= n_candidates:
+                break
+
+    if candidates:
+        # escolhe o episódio com o desvio mais visível (maior mudança de
+        # rumo do robô perto de um obstáculo), não só o de menor distância
+        # -- um robô que passa perto sem reagir (linha reta) não ilustra
+        # o mecanismo de desvio, mesmo estando fisicamente próximo
+        frames_data, outcome, used_astar, best_seed, score, min_dist = max(candidates, key=lambda c: c[4])
+        print(f"  Episódio vencedor: seed={best_seed} ({len(frames_data)} frames, "
+              f"planejador={'A*' if used_astar else 'BC'}, "
+              f"desvio={np.degrees(score):.0f}°, dist. mín.={min_dist:.2f}m, "
+              f"de {len(candidates)} candidatos)")
+    else:
+        print(f"  Aviso: nenhum vencedor em {max_tries} seeds, usando seed={seed}")
+        frames_data, outcome, used_astar = _rollout_adaptive(dyn_spec, seed)
 
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
     cmap_trail = plt.cm.plasma
@@ -163,26 +228,47 @@ def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=150, min_frame
 def make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_colors):
     """Versão estática (PNG/PDF) do mesmo episódio -- necessária porque o
     relatório final vira PDF na submissão SIGAA, e GIFs não renderizam em
-    PDF. Mostra a trajetória completa do robô e a trajetória de cada
-    obstáculo dinâmico (marcadores translúcidos ao longo do tempo)."""
+    PDF. Mostra a trajetória completa do robô (linha grossa e escura, sem
+    concorrência visual) e, para cada obstáculo dinâmico, só a posição
+    inicial (contorno tracejado) e final (cor sólida) ligadas por uma seta
+    de sentido -- em vez do rastro de ~8 círculos translúcidos sobrepostos
+    da versão anterior, que ficava ilegível com 3 obstáculos."""
     fig, ax = plt.subplots(figsize=(7, 7))
     _draw_urban_arena(ax)
     xs = [f[0] for f in frames_data]
     ys = [f[1] for f in frames_data]
     n = len(xs)
-    cmap = plt.cm.plasma
-    for i in range(n - 1):
-        ax.plot(xs[i:i+2], ys[i:i+2], color=cmap(i / max(n-1, 1)), lw=2.2, zorder=5)
+    ax.plot(xs, ys, "-", color="#1A237E", lw=3.2, alpha=0.95, zorder=5,
+            solid_capstyle="round", label="Trajetória do robô")
+    # marca alguns pontos ao longo do caminho para dar noção de progressão
+    # temporal sem competir visualmente com a linha
+    for i in range(0, n, max(1, n // 6)):
+        ax.plot(xs[i], ys[i], "o", color="#1A237E", ms=4, zorder=5, alpha=0.6)
 
-    step_show = max(1, n // 8)
-    for i in range(0, n, step_show):
-        for j, (ox, oy, orr) in enumerate(frames_data[i][7]):
-            alpha = 0.15 + 0.55 * (i / max(n - 1, 1))
-            ax.add_patch(Circle((ox, oy), orr, color=obs_colors[j % len(obs_colors)],
-                                 alpha=alpha, zorder=3))
+    for j in range(n_obstacles):
+        ox0, oy0, orr = frames_data[0][7][j]
+        oxf, oyf, _ = frames_data[-1][7][j]
+        color = obs_colors[j % len(obs_colors)]
+        # rótulo só no primeiro obstáculo, para a legenda não repetir
+        # "Trajetória de obstáculo móvel" 3x (uma por obstáculo)
+        lbl = "Trajetória de obstáculo móvel" if j == 0 else None
+        ax.add_patch(Circle((ox0, oy0), orr, facecolor="none", edgecolor=color,
+                             linestyle="--", lw=1.8, zorder=4))
+        ax.add_patch(Circle((oxf, oyf), orr, facecolor=color, edgecolor="white",
+                             alpha=0.9, lw=1, zorder=4))
+        ax.plot([], [], "-", color="#9E9E9E", lw=1.8, label=lbl)
+        ax.annotate("", xy=(oxf, oyf), xytext=(ox0, oy0),
+                    arrowprops=dict(arrowstyle="->", color=color, lw=1.8,
+                                    alpha=0.85, shrinkA=8, shrinkB=8),
+                    zorder=4)
+        # numera cada obstáculo diretamente no início da seta, para não
+        # depender só de cor para diferenciar qual é qual
+        ax.annotate(f"obs.{j+1}", (ox0, oy0), textcoords="offset points",
+                    xytext=(8, 8), fontsize=8, color=color, fontweight="bold",
+                    zorder=7)
 
     ax.plot(xs[0], ys[0], "o", color="#4CAF50", ms=12, zorder=6,
-            label="Início", markeredgecolor="white", markeredgewidth=1.5)
+            label="Início do robô", markeredgecolor="white", markeredgewidth=1.5)
     gx, gy = frames_data[-1][3], frames_data[-1][4]
     ax.plot(gx, gy, "*", color="#F44336", ms=16, zorder=6,
             label="Goal", markeredgecolor="white", markeredgewidth=1)
@@ -191,8 +277,10 @@ def make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_co
     status = "✓ Goal" if outcome == "goal" else "✗ Colisão" if outcome == "collision" else "Timeout"
     planner_used = "A*" if used_astar else "BC"
     ax.set_title(f"Trajetória ρ-criterion ({planner_used}) -- urban_grid, "
-                 f"{n_obstacles} obstáculo(s) dinâmico(s)\n{n} passos | {status}", fontsize=12)
-    ax.legend(loc="upper right", fontsize=9)
+                 f"{n_obstacles} obstáculo(s) dinâmico(s)\n{n} passos | {status} | "
+                 "tracejado = início do obstáculo, cheio = fim, seta = sentido do obstáculo",
+                 fontsize=10)
+    ax.legend(loc="upper right", fontsize=8)
     ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
     for ext in ["png", "pdf"]:
         path = os.path.join(FIGS2D, f"fig_2d_urban_{condition}_trajectory.{ext}")

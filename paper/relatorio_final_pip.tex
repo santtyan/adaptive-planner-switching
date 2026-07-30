@@ -150,12 +150,14 @@ comportamentos com base no estado do ambiente --- o padrão de decidir \textit{q
 comportamento usar, não apenas \textit{como} executá-lo, é o núcleo do presente trabalho.
 
 A literatura trata, em sua maioria, a seleção de planejador como decisão fixa de projeto:
-\cite{He2025} otimizam pesos de um único planejador; \cite{Sensors2025} usam regras
-geográficas estáticas; \cite{Sharma2024} comutam entre DWA e SAC por heurística
-\textit{reativa} (detecção de obstáculo já no caminho); a linha APPL/APPLR \cite{Xiao2021}
+a linha APPL/APPLR \cite{Xu2020}
 aprende por reforço os \textit{parâmetros} de um planejador clássico, não qual planejador
 usar; o método LiCS \cite{Damanik2024}, vencedor do BARN Challenge 2024, treina uma única
-política de imitação robusta, sem comutação nenhuma. Nenhum trata a seleção de planejador
+política de imitação robusta, sem comutação nenhuma. O trabalho mais próximo é
+\cite{Sharma2024}, que também comuta entre um planejador clássico (DWA) e uma política de
+RL por meio de \textit{meta-reasoning}; a diferença está no gatilho, pois a comutação é
+\textit{reativa} (dispara quando o obstáculo já foi detectado no caminho), enquanto o
+critério proposto aqui é preditivo. Nenhum trata a seleção de planejador
 como variável de otimização contextual \textit{preditiva} --- a densidade local $\rho$, que
 antecipa a necessidade de comutação \textbf{antes} do bloqueio do planejador clássico, não
 depois de detectá-lo.
@@ -361,9 +363,7 @@ desempenho e custo.
     \textbf{Método} & \textbf{Tipo} & \textbf{Taxa de sucesso} \\
     \midrule
     Framework adaptivo $\rho$-criterion & Mock calibrado (este trabalho) & \textbf{85,3\%} \\
-    Neural Switching                    & Mock calibrado (ref. He et al., 2025) & 78,7\% \\
     PPO fixo \cite{Schulman2017}        & Mock calibrado (este trabalho) & 76,0\% \\
-    Hybrid DRL                          & Mock calibrado (ref. Sensors, 2025) & 66,0\% \\
     RRT* fixo                           & Mock calibrado (este trabalho) & 48,0\% \\
     \bottomrule
   \end{tabular}
@@ -651,8 +651,21 @@ Como evidência preliminar disso, uma versão simplificada de MARL centralizado 
 agentes envolvidos) reduziu a colisão inter-robô de 60\% (RL independente) para \textbf{0\%},
 mantendo taxa de goal comparável (50\% vs.\ 57\%) após 600 mil passos, $N{=}4$
 (Figura~\ref{fig:marl_shared_reward}) --- simplificação de MARL (treino/execução
-centralizados, não a arquitetura descentralizada completa), mas primeira evidência empírica
-desta IC de que reward compartilhada resolve o problema de coordenação identificado.
+centralizados, não a arquitetura descentralizada completa), evidência empírica inicial de
+que reward compartilhada resolve o problema de coordenação identificado.
+\textbf{Achado não reproduzido em tentativas posteriores:} sete retreinos subsequentes com a
+mesma configuração (cinco com os hiperparâmetros originais, dois testando correções de
+agregação de reward e de \textit{reward shaping}) convergiram todos para 0\% de taxa de
+chegada ao goal, não os 50\% reportados acima. Revisão de literatura conduzida após esse
+padrão indica causa provável estrutural, não de hiperparâmetro: uma política única treinada
+com PPO padrão sobre observação/ação concatenadas de $N$ agentes não realiza atribuição de
+crédito por agente (nenhum mecanismo separa qual sub-vetor de ação de qual agente causou qual
+parte da recompensa agregada) --- o padrão-ouro da literatura (MAPPO, Yu et al., 2021) mantém
+pesos compartilhados mas calcula vantagem por agente, não uma recompensa reduzida a escalar
+antes do treino, como feito aqui. O resultado de 0\% de colisão citado acima é tratado nesta
+versão do relatório como preliminar e não confirmado; a reformulação de H1 abaixo depende
+apenas do resultado de custo computacional (A* real vs.\ $\rho$-criterion), não deste achado
+de MARL, e permanece válida independentemente desta ressalva.
 
 \begin{figure}[H]
   \centering
@@ -672,7 +685,72 @@ uma fração pequena do seu custo computacional em alta densidade''} --- uma ver
 modesta, porém integralmente real e internamente consistente (sucesso e custo medidos no
 mesmo ambiente, mesmos trials), do argumento original de H1+H2.
 
-% ── Espaço reservado para imagens de trajetória ──────────────
+\subsection{Cenário urbano e obstáculo dinâmico}
+\label{sec:urbano}
+
+As seções anteriores validam o critério em arenas circulares abertas. O item ``ambientes
+urbanos'' do Plano de Trabalho (PI08078-2024) e a extensão a obstáculos dinâmicos, prevista
+mas não coberta pelo Gazebo Classic (Seção~\ref{sec:integracao}), motivaram um terceiro
+testbed no gêmeo 2D: \texttt{urban\_grid}, um layout com quatro quarteirões sólidos e
+corredores de 1,4~m formando um cruzamento em ``+'', com semântica de rua em vez da arena
+circular aberta usada até aqui. É o experimento com maior volume de dados reais desta IC:
+\textbf{2.000 trials} (500 por condição, quatro condições), A* real e BC real casado por
+densidade.
+
+\textbf{Resultado --- condição estática:} sucesso pareado de 98,8\% (A*), 100\% (BC) e 99,6\%
+($\rho$-criterion), com eficiência de rota (percorrido/ótimo) de 0,811, 0,886 e 0,859
+respectivamente --- o mesmo padrão de leve vantagem do BC em ambiente estruturado já visto
+nas Seções~\ref{sec:h1_real}--\ref{sec:multiagente}.
+
+\textbf{Resultado --- condição dinâmica (1 obstáculo):} o obstáculo móvel derruba o sucesso
+dos três métodos de forma quase idêntica --- 67,0\% (A*), 64,6\% (BC), 66,0\%
+($\rho$-criterion) --- e a eficiência de rota cai de $\sim$0,85 para $\sim$0,61--0,69.
+\textbf{O padrão central deste testbed é o empate:} nenhum dos três métodos se distingue
+estatisticamente do outro sob perturbação dinâmica, ao contrário da Seção~\ref{sec:h1_real}
+(onde A* vencia com folga em arenas abertas).
+
+\textbf{Extensão --- múltiplos obstáculos dinâmicos:} para fechar de forma mais completa o
+item ``obstáculos dinâmicos'' do Plano de Trabalho, estendemos o testbed com duas condições
+adicionais, mantendo o mesmo protocolo pareado: (i)~\textbf{3 obstáculos simultâneos},
+cobrindo os dois eixos do cruzamento em ``+'' (corredor horizontal, vertical e uma trajetória
+diagonal), e (ii)~o mesmo layout com \textbf{o dobro da velocidade}, para isolar o efeito do
+número de obstáculos do efeito da velocidade. O sucesso degrada progressivamente e de forma
+quase idêntica nos três métodos em cada etapa: de 98,8--100\% (estático) para 64,6--67,0\%
+(1 obstáculo), 32,4--34,2\% (3 obstáculos) e 18,2--22,6\% (3 obstáculos, 2$\times$
+velocidade). A degradação monotônica e paralela entre A*, BC e $\rho$-criterion reforça o
+achado do empate sob perturbação dinâmica: nenhum dos três absorve a complexidade crescente
+melhor que os outros, e a escolha entre eles permanece justificada pelo critério de custo
+(Seção~\ref{sec:h1_real}), não por vantagem de robustez de um método específico.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_comparison.png}
+  \caption{(a)~Sucesso nos três métodos, condição estática vs.\ dinâmica ($N{=}500$/condição).
+           (b)~Eficiência de rota nas mesmas condições --- a queda sob obstáculo dinâmico é
+           proporcionalmente semelhante nos três métodos.}
+  \label{fig:urban_dynamic_comparison}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_multi.png}
+  \caption{Sucesso dos três métodos em quatro condições de complexidade crescente
+           ($N{=}500$/condição, dados reais): estático, 1 obstáculo, 3 obstáculos em
+           múltiplos eixos, e os mesmos 3 obstáculos a 2$\times$ velocidade. A degradação é
+           paralela entre os três métodos em toda a faixa.}
+  \label{fig:urban_dynamic_multi}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_multi_trajectory.png}
+  \caption{Episódio real do $\rho$-criterion (política BC, $\rho_0$ acima do limiar)
+           navegando o cruzamento urbano com 3 obstáculos dinâmicos simultâneos. Marcadores
+           translúcidos mostram a posição de cada obstáculo ao longo do tempo (mais opaco =
+           mais recente). Versão animada em
+           \texttt{paper/figs/2d/fig\_2d\_urban\_dynamic\_multi\_episode.gif}.}
+  \label{fig:urban_dynamic_trajectory}
+\end{figure}
 
 \subsection{Extensão Multi-Agente}
 \label{sec:multiagente}
@@ -871,10 +949,6 @@ n.~2, p.~100--107, 1968.
 HAARNOJA, T. et al. Soft actor-critic: off-policy maximum entropy deep reinforcement learning
 with a stochastic actor. In: \textbf{International Conference on Machine Learning (ICML)}, 2018.
 
-\bibitem{He2025}
-HE, X. et al. Multi-objective trajectory optimization for autonomous vehicles.
-\textbf{IEEE Transactions on Intelligent Transportation Systems}, 2025.
-
 \bibitem{Macenski2022}
 MACENSKI, S. et al. Robot operating system 2: design, architecture, and uses in the wild.
 \textbf{Science Robotics}, v.~7, n.~66, 2022.
@@ -887,18 +961,13 @@ RAFFIN, A. et al. Stable-baselines3: reliable reinforcement learning implementat
 SCHULMAN, J. et al. Proximal policy optimization algorithms. \textbf{arXiv:1707.06347}, 2017.
 % PPO citado na Tabela~\ref{tab:fase1} como baseline de comparação na Fase 1.
 
-\bibitem{Sensors2025}
-SHA, Z. et al. Hybrid deep reinforcement learning planner for autonomous navigation in
-dynamic environments. \textbf{Sensors}, v.~24, n.~7, 2024. DOI: 10.3390/s24072024.
-
 \bibitem{Sharma2024}
 SHARMA, V. D. et al. Hybrid classical/RL local planner for ground robot navigation.
 \textbf{arXiv:2410.03066}, 2024.
 
-\bibitem{Xiao2021}
-XIAO, X. et al. APPLR: adaptive planner parameter learning from reinforcement.
-In: \textbf{IEEE International Conference on Robotics and Automation (ICRA)}, 2021.
-arXiv:2011.00397.
+\bibitem{Xu2020}
+XU, Z. et al. APPLR: adaptive planner parameter learning from reinforcement.
+\textbf{arXiv:2011.00397}, 2020.
 
 \bibitem{Xiao2024}
 XIAO, X. et al. Autonomous ground navigation in highly constrained spaces: lessons learned
