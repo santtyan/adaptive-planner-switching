@@ -39,9 +39,11 @@ FIGS2D = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.ab
 # do robô), tornando mais provável e mais visível que os três apareçam perto
 # do robô no mesmo episódio -- sem alterar a dinâmica real do experimento.
 DYNAMIC_MULTI_CONVERGING_SPEC = [
-    {"cx": -1.6, "cy": 0.3, "cr": 0.15, "vx": 0.55, "vy": -0.12},   # oeste -> centro
-    {"cx": 0.3, "cy": -1.6, "cr": 0.15, "vx": -0.12, "vy": 0.55},   # sul -> centro
-    {"cx": 1.5, "cy": 1.0, "cr": 0.12, "vx": -0.55, "vy": -0.42},   # nordeste -> centro
+    {"cx": -1.6, "cy": 0.3, "cr": 0.16, "vx": 0.55, "vy": -0.12},   # oeste -> centro
+    {"cx": 0.3, "cy": -1.6, "cr": 0.16, "vx": -0.12, "vy": 0.55},   # sul -> centro
+    {"cx": 1.95, "cy": 0.0, "cr": 0.14, "vx": -0.55, "vy": 0.30},   # leste-externo -> centro
+    {"cx": -0.3, "cy": 1.6, "cr": 0.14, "vx": 0.15, "vy": -0.50},   # norte -> centro
+    {"cx": 1.6, "cy": -0.4, "cr": 0.14, "vx": -0.52, "vy": 0.18},   # leste -> centro
 ]
 
 CONDITIONS = {
@@ -68,23 +70,35 @@ def _draw_urban_arena(ax, world="urban_grid"):
     ax.grid(True, alpha=0.15)
 
 
-def _rollout_adaptive(dyn_spec, seed):
+def _rollout_adaptive(dyn_spec, seed, force_planner=None):
     """Roda o ρ-criterion (decisão per-episódio no reset, igual a
     rerun_h1_mixed.py::run_one) e retorna trajetória do robô + trajetória
-    de cada obstáculo dinâmico, quadro a quadro."""
+    de cada obstáculo dinâmico, quadro a quadro.
+
+    force_planner: None (usa o critério ρ normalmente), "astar" ou "bc"
+    para forçar um planejador fixo, ignorando ρ0 (usado para gerar
+    figuras comparativas isoladas de cada método no mesmo cenário)."""
     env = Env2D(world="urban_grid", seed=seed, dynamic_obstacles=dyn_spec)
     astar_policy = AStarPolicy()
     bc_policy = load_bc("urban_grid")
 
     obs, _ = env.reset()
-    rho0 = local_rho(env)
-    use_astar = rho0 < RHO_STAR
+    if force_planner == "astar":
+        use_astar = True
+    elif force_planner == "bc":
+        use_astar = False
+    else:
+        rho0 = local_rho(env)
+        use_astar = rho0 < RHO_STAR
     if use_astar:
         astar_policy.reset(env)
 
     frames = []
     done = goal = coll = False
-    while not done:
+    safety_cap = 500  # teto defensivo; MAX_STEPS do env já é 200
+    n_steps = 0
+    while not done and n_steps < safety_cap:
+        n_steps += 1
         dyn_positions = [(o["cx"], o["cy"], o["cr"]) for o in env._dyn_state]
         frames.append((env._x, env._y, env._yaw, env._gx, env._gy, goal, coll, dyn_positions))
         if use_astar:
@@ -152,11 +166,11 @@ def _deviation_score(frames, close_thresh=0.6, window=4):
 
 
 def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=300, min_frames=25,
-             n_candidates=40):
+             n_candidates=40, force_planner=None):
     dyn_spec = CONDITIONS[condition]
     candidates = []  # (frames, outcome, used_astar, seed, score, min_dist)
     for try_seed in range(seed, seed + max_tries):
-        cand, oc, ua = _rollout_adaptive(dyn_spec, try_seed)
+        cand, oc, ua = _rollout_adaptive(dyn_spec, try_seed, force_planner=force_planner)
         if oc == "goal" and len(cand) >= min_frames:
             score, min_dist = _deviation_score(cand)
             candidates.append((cand, oc, ua, try_seed, score, min_dist))
@@ -175,7 +189,7 @@ def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=300, min_frame
               f"de {len(candidates)} candidatos)")
     else:
         print(f"  Aviso: nenhum vencedor em {max_tries} seeds, usando seed={seed}")
-        frames_data, outcome, used_astar = _rollout_adaptive(dyn_spec, seed)
+        frames_data, outcome, used_astar = _rollout_adaptive(dyn_spec, seed, force_planner=force_planner)
 
     fig, ax = plt.subplots(figsize=(6.5, 6.5))
     cmap_trail = plt.cm.plasma
@@ -216,16 +230,17 @@ def make_gif(condition="dynamic_multi", seed=0, fps=10, max_tries=300, min_frame
                      f"dinâmico(s)\n{status}", fontsize=11, fontweight="bold")
         ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
 
+    suffix = f"_{force_planner}" if force_planner else ""
     ani = animation.FuncAnimation(fig, draw_frame, frames=total, interval=1000 // fps)
-    gif_path = os.path.join(FIGS2D, f"fig_2d_urban_{condition}_episode.gif")
+    gif_path = os.path.join(FIGS2D, f"fig_2d_urban_{condition}{suffix}_episode.gif")
     ani.save(gif_path, writer="pillow", fps=fps)
     plt.close()
-    print(f"  ✓ 2d/fig_2d_urban_{condition}_episode.gif [{outcome}] ({len(frames_data)} frames)")
-    make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_colors)
+    print(f"  ✓ 2d/fig_2d_urban_{condition}{suffix}_episode.gif [{outcome}] ({len(frames_data)} frames)")
+    make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_colors, suffix=suffix)
     return gif_path
 
 
-def make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_colors):
+def make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_colors, suffix=""):
     """Versão estática (PNG/PDF) do mesmo episódio -- necessária porque o
     relatório final vira PDF na submissão SIGAA, e GIFs não renderizam em
     PDF. Mostra a trajetória completa do robô (linha grossa e escura, sem
@@ -283,15 +298,21 @@ def make_static(frames_data, condition, outcome, used_astar, n_obstacles, obs_co
     ax.legend(loc="upper right", fontsize=8)
     ax.set_xlabel("x (m)"); ax.set_ylabel("y (m)")
     for ext in ["png", "pdf"]:
-        path = os.path.join(FIGS2D, f"fig_2d_urban_{condition}_trajectory.{ext}")
+        path = os.path.join(FIGS2D, f"fig_2d_urban_{condition}{suffix}_trajectory.{ext}")
         plt.savefig(path, dpi=150 if ext == "png" else None, bbox_inches="tight")
     plt.close()
-    print(f"  ✓ 2d/fig_2d_urban_{condition}_trajectory.png/pdf")
+    print(f"  ✓ 2d/fig_2d_urban_{condition}{suffix}_trajectory.png/pdf")
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--condition", default="dynamic_multi", choices=list(CONDITIONS))
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--force-planner", choices=["astar", "bc"], default=None,
+                    help="Força um planejador fixo (ignora o critério ρ), "
+                         "para gerar figuras comparativas isoladas.")
+    p.add_argument("--max-tries", type=int, default=300)
+    p.add_argument("--n-candidates", type=int, default=40)
     args = p.parse_args()
-    make_gif(args.condition, args.seed)
+    make_gif(args.condition, args.seed, max_tries=args.max_tries,
+              n_candidates=args.n_candidates, force_planner=args.force_planner)
