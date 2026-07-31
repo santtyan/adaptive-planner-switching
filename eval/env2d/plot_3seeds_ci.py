@@ -17,8 +17,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 FIGS = os.path.join(ROOT, "paper", "figs")
 LOGS = os.path.join(ROOT, "ros2_ws", "logs")
 
-SEEDS = [42, 123, 7]
-SEED_COLORS = ["#2196F3", "#FF9800", "#4CAF50"]
+SEEDS = [42, 123, 7, 1, 99]
+SEED_COLORS = ["#2196F3", "#FF9800", "#4CAF50", "#E91E63", "#9C27B0"]
 
 
 def load_seed(seed: int) -> pd.DataFrame | None:
@@ -83,7 +83,7 @@ def plot_ci(data: dict, out: str):
                 label=f"seed={seed}")
 
     # Média + IC 95%
-    ax.plot(grid, mean, color="#1A237E", lw=2.5, label="Média (3 seeds)")
+    ax.plot(grid, mean, color="#1A237E", lw=2.5, label=f"Média ({len(SEEDS)} seeds)")
     ax.fill_between(grid, mean - ci95, mean + ci95,
                     color="#1A237E", alpha=0.18, label="IC 95%")
 
@@ -92,7 +92,7 @@ def plot_ci(data: dict, out: str):
     ax.set_ylabel("Taxa de sucesso", fontsize=11)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0%}"))
     ax.set_ylim(0, 1.05)
-    ax.set_title("Curva de Aprendizado SAC — Env 2D (3 seeds independentes)\n"
+    ax.set_title(f"Curva de Aprendizado SAC — Env 2D ({len(SEEDS)} seeds independentes)\n"
                  "world=sparse, MAX_STEPS=200, R_APPROACH=10",
                  fontsize=10, fontweight="bold")
     ax.legend(fontsize=9, loc="lower right")
