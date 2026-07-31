@@ -87,17 +87,28 @@ def _run_episode(env: Env2D, seed: int, act_fn, astar_policy=None) -> dict:
         "traveled": traveled,
         "optimal": optimal,
         "route_efficiency": route_efficiency,
+        "traveled_steps": steps,
     }
 
 
-def run_one(env: Env2D, seed: int, astar_policy: AStarPolicy, bc_policy) -> dict:
-    """Roda astar, bc e adaptive no MESMO trial (start/goal pareados via seed)."""
+def run_one(env: Env2D, seed: int, astar_policy: AStarPolicy, bc_policy,
+            measure_time: bool = False) -> dict:
+    """Roda astar, bc e adaptive no MESMO trial (start/goal pareados via seed).
+
+    measure_time: se True, mede o tempo de decisão (perf_counter) de cada
+    método com time.perf_counter, salvando em out["{method}_decision_ms"]
+    (tempo médio por passo do episódio, em ms) -- usado para reproduzir a
+    métrica de custo (ver "A tese de custo") em cenários específicos, como
+    o urbano (rerun_urban.py), sem alterar o comportamento default."""
     out = {}
 
     # astar
     def astar_act(env, obs):
         return astar_policy.act(env)
+    t0 = time.perf_counter() if measure_time else None
     res = _run_episode(env, seed, astar_act, astar_policy=astar_policy)
+    if measure_time:
+        out["astar_decision_ms"] = (time.perf_counter() - t0) * 1000 / max(res["traveled_steps"], 1)
     out["astar"] = res["goal_reached"]
     out["astar_traveled"] = res["traveled"]
     out["astar_optimal"] = res["optimal"]
@@ -107,7 +118,10 @@ def run_one(env: Env2D, seed: int, astar_policy: AStarPolicy, bc_policy) -> dict
     def bc_act(env, obs):
         with torch.no_grad():
             return bc_policy(torch.tensor(obs, dtype=torch.float32).unsqueeze(0)).squeeze(0).numpy()
+    t0 = time.perf_counter() if measure_time else None
     res = _run_episode(env, seed, bc_act)
+    if measure_time:
+        out["bc_decision_ms"] = (time.perf_counter() - t0) * 1000 / max(res["traveled_steps"], 1)
     out["bc"] = res["goal_reached"]
     out["bc_traveled"] = res["traveled"]
     out["bc_optimal"] = res["optimal"]
@@ -123,7 +137,10 @@ def run_one(env: Env2D, seed: int, astar_policy: AStarPolicy, bc_policy) -> dict
             return astar_policy.act(env)
         with torch.no_grad():
             return bc_policy(torch.tensor(obs, dtype=torch.float32).unsqueeze(0)).squeeze(0).numpy()
+    t0 = time.perf_counter() if measure_time else None
     res = _run_episode(env, seed, adaptive_act, astar_policy=(astar_policy if use_astar else None))
+    if measure_time:
+        out["adaptive_decision_ms"] = (time.perf_counter() - t0) * 1000 / max(res["traveled_steps"], 1)
     out["adaptive"] = res["goal_reached"]
     out["adaptive_traveled"] = res["traveled"]
     out["adaptive_optimal"] = res["optimal"]

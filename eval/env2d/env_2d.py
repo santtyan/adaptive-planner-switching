@@ -240,7 +240,9 @@ class Env2D(gym.Env):
     # ── Obstáculos móveis ────────────────────────────────────────
     def _step_dynamic_obstacles(self):
         """Avança a posição dos obstáculos móveis em DT, com bounce elástico
-        nas bordas da arena (reflete vx/vy ao atingir o perímetro)."""
+        nas bordas da arena (reflete vx/vy ao atingir o perímetro) e nos
+        quarteirões sólidos (blocks), para obstáculos não atravessarem
+        prédios no urban_grid."""
         half = self.arena / 2.0
         for o in self._dyn_state:
             nx = o["cx"] + o["vx"] * DT
@@ -250,6 +252,11 @@ class Env2D(gym.Env):
                 nx = o["cx"] + o["vx"] * DT
             if ny - o["cr"] < -half or ny + o["cr"] > half:
                 o["vy"] *= -1
+                ny = o["cy"] + o["vy"] * DT
+            if any(_point_in_block(nx, ny, *b, margin=o["cr"]) for b in self.blocks):
+                o["vx"] *= -1
+                o["vy"] *= -1
+                nx = o["cx"] + o["vx"] * DT
                 ny = o["cy"] + o["vy"] * DT
             o["cx"], o["cy"] = nx, ny
 

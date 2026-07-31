@@ -84,7 +84,7 @@ def main():
         for trial in range(args.trials):
             seed = args.seed0 + trial
             env = Env2D(world="urban_grid", seed=seed, dynamic_obstacles=dyn_spec)
-            res = run_one(env, seed, astar_policy, bc_policy)
+            res = run_one(env, seed, astar_policy, bc_policy, measure_time=True)
             res["condition"] = cond_name
             res["trial"] = trial
             rows.append(res)
@@ -103,9 +103,13 @@ def main():
             vals = [r[key] for r in rows if r[key] is not None]
             return np.mean(vals) if vals else float("nan")
 
-        print(f"  A* real:      {astar_sr:.1%}  (route_efficiency={_mean_eff('astar_route_efficiency'):.3f})")
-        print(f"  BC real:      {bc_sr:.1%}  (route_efficiency={_mean_eff('bc_route_efficiency'):.3f})")
-        print(f"  Adaptativo:   {adaptive_sr:.1%}  (route_efficiency={_mean_eff('adaptive_route_efficiency'):.3f})")
+        astar_ms = np.mean([r["astar_decision_ms"] for r in rows])
+        bc_ms = np.mean([r["bc_decision_ms"] for r in rows])
+        adaptive_ms = np.mean([r["adaptive_decision_ms"] for r in rows])
+
+        print(f"  A* real:      {astar_sr:.1%}  (route_efficiency={_mean_eff('astar_route_efficiency'):.3f})  {astar_ms:.2f} ms/passo")
+        print(f"  BC real:      {bc_sr:.1%}  (route_efficiency={_mean_eff('bc_route_efficiency'):.3f})  {bc_ms:.2f} ms/passo")
+        print(f"  Adaptativo:   {adaptive_sr:.1%}  (route_efficiency={_mean_eff('adaptive_route_efficiency'):.3f})  {adaptive_ms:.2f} ms/passo")
         print(f"  Oracle:       {oracle_sr:.1%}")
         print(f"  Regret:       {regret:.1%}")
 
@@ -113,13 +117,15 @@ def main():
 
     with open(out_path, "w") as f:
         f.write("condition,trial,rho0,used_astar,astar,bc,adaptive,"
-                "astar_route_efficiency,bc_route_efficiency,adaptive_route_efficiency\n")
+                "astar_route_efficiency,bc_route_efficiency,adaptive_route_efficiency,"
+                "astar_decision_ms,bc_decision_ms,adaptive_decision_ms\n")
         for r in all_rows:
             f.write(f"{r['condition']},{r['trial']},{r['rho0']:.4f},{r['used_astar']},"
                     f"{int(r['astar'])},{int(r['bc'])},{int(r['adaptive'])},"
                     f"{_fmt_eff(r['astar_route_efficiency'])},"
                     f"{_fmt_eff(r['bc_route_efficiency'])},"
-                    f"{_fmt_eff(r['adaptive_route_efficiency'])}\n")
+                    f"{_fmt_eff(r['adaptive_route_efficiency'])},"
+                    f"{r['astar_decision_ms']:.4f},{r['bc_decision_ms']:.4f},{r['adaptive_decision_ms']:.4f}\n")
     print(f"\nSalvo em {out_path}")
 
 
