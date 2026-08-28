@@ -622,18 +622,19 @@ não existe, neste testbed, uma faixa de densidade onde o BC supera o A* em taxa
 
 \textbf{A motivação que permanece válida --- e agora mais forte --- é a de custo
 computacional (H2).} Medimos o custo de decisão de A* e BC no mesmo ambiente e nos mesmos
-trials: o tempo de busca do A* cresce de 9,3~ms (\textit{sparse}) para 26,4~ms
-(\textit{dense}) e 32,7~ms (\textit{very\_dense}), enquanto o BC mantém custo
-$\sim$constante de 0,055~ms (1 \textit{forward pass}) --- uma razão de $\sim$\textbf{600$\times$}
-em \textit{very\_dense}, medida diretamente, mais forte que a estimativa de $\sim$10$\times$
-citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de benchmarks não pareados).
+trials: o tempo de busca do A* cresce de 8,00~ms (\textit{sparse}) para 20,90~ms
+(\textit{dense}) e 29,21~ms (\textit{very\_dense}), enquanto o BC mantém custo
+$\sim$constante de 0,045--0,047~ms (1 \textit{forward pass}) --- uma razão de
+$\sim$\textbf{656$\times$} em \textit{very\_dense}, medida diretamente, mais forte que a
+estimativa de $\sim$10$\times$ citada na Seção~\ref{sec:criterio_adaptivo} (que vinha de
+benchmarks não pareados).
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.52\textwidth]{figs/2d/fig_2d_h1_real_validation.png}
   \caption{(a)~Taxa de sucesso real, A* vs.\ BC casado por densidade --- A* permanece à
            frente em todo regime. (b)~Custo de decisão real, escala logarítmica --- BC
-           $\sim$600$\times$ mais barato em \textit{very\_dense}. Dados reais, 1.500 trials
+           $\sim$656$\times$ mais barato em \textit{very\_dense}. Dados reais, 1.500 trials
            pareados, \texttt{results\_abstract/h1\_real\_2d\_mixed\_pool.csv}.}
   \label{fig:h1_real_validation}
 \end{figure}
