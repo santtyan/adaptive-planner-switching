@@ -351,7 +351,7 @@ SCHULMAN, J. et al. Proximal policy optimization algorithms. **arXiv:1707.06347*
 
 SHARMA, V. D. et al. Hybrid classical/RL local planner for ground robot navigation. **arXiv:2410.03066**, 2024.
 
-XIAO, X. et al. APPLR: adaptive planner parameter learning from reinforcement. In: **IEEE International Conference on Robotics and Automation (ICRA)**, 2021. arXiv:2011.00397.
+XU, Z. et al. APPLR: adaptive planner parameter learning from reinforcement. **arXiv:2011.00397**, 2020.
 
 XIAO, X. et al. Autonomous ground navigation in highly constrained spaces: lessons learned from the third BARN Challenge at ICRA 2024. **IEEE Robotics & Automation Magazine**, 2024. arXiv:2407.01862.
 
