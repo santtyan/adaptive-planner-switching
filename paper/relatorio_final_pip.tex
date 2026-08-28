@@ -707,8 +707,8 @@ respectivamente --- o mesmo padrão de leve vantagem do BC em ambiente estrutura
 nas Seções~\ref{sec:h1_real}--\ref{sec:multiagente}.
 
 \textbf{Resultado --- condição dinâmica (1 obstáculo):} o obstáculo móvel derruba o sucesso
-dos três métodos de forma quase idêntica --- 67,0\% (A*), 64,6\% (BC), 66,0\%
-($\rho$-criterion) --- e a eficiência de rota cai de $\sim$0,85 para $\sim$0,61--0,69.
+dos três métodos de forma quase idêntica --- 49,2\% (A*), 48,8\% (BC), 48,6\%
+($\rho$-criterion) --- e a eficiência de rota cai de $\sim$0,85 para $\sim$0,55--0,64.
 \textbf{O padrão central deste testbed é o empate:} nenhum dos três métodos se distingue
 estatisticamente do outro sob perturbação dinâmica, ao contrário da Seção~\ref{sec:h1_real}
 (onde A* vencia com folga em arenas abertas).
@@ -719,21 +719,12 @@ adicionais, mantendo o mesmo protocolo pareado: (i)~\textbf{3 obstáculos simult
 cobrindo os dois eixos do cruzamento em ``+'' (corredor horizontal, vertical e uma trajetória
 diagonal), e (ii)~o mesmo layout com \textbf{o dobro da velocidade}, para isolar o efeito do
 número de obstáculos do efeito da velocidade. O sucesso degrada progressivamente e de forma
-quase idêntica nos três métodos em cada etapa: de 98,8--100\% (estático) para 64,6--67,0\%
-(1 obstáculo), 32,4--34,2\% (3 obstáculos) e 18,2--22,6\% (3 obstáculos, 2$\times$
+quase idêntica nos três métodos em cada etapa: de 98,8--100\% (estático) para 48,6--49,2\%
+(1 obstáculo), 35,8--39,0\% (3 obstáculos) e 28,8--31,8\% (3 obstáculos, 2$\times$
 velocidade). A degradação monotônica e paralela entre A*, BC e $\rho$-criterion reforça o
 achado do empate sob perturbação dinâmica: nenhum dos três absorve a complexidade crescente
 melhor que os outros, e a escolha entre eles permanece justificada pelo critério de custo
 (Seção~\ref{sec:h1_real}), não por vantagem de robustez de um método específico.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_comparison.png}
-  \caption{(a)~Sucesso nos três métodos, condição estática vs.\ dinâmica ($N{=}500$/condição).
-           (b)~Eficiência de rota nas mesmas condições --- a queda sob obstáculo dinâmico é
-           proporcionalmente semelhante nos três métodos.}
-  \label{fig:urban_dynamic_comparison}
-\end{figure}
 
 \begin{figure}[H]
   \centering
