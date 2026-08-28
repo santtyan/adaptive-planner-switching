@@ -247,7 +247,7 @@ A política de seleção é:
   \pi(\rho) =
   \begin{cases}
     \text{A*} \; (\text{Nav2 SmacPlanner2D}) & \text{se } \rho < 0{,}30 \\
-    \text{SAC} \; (\text{Stable-Baselines3}) & \text{se } \rho \geq 0{,}30
+    \text{BC} \; (\text{Behavior Cloning}) & \text{se } \rho \geq 0{,}30
   \end{cases}
 \end{equation}
 
@@ -456,7 +456,7 @@ unicycle, a observação de 29 dimensões e a mesma estrutura de reward do ambie
 SAC convergiu para \textbf{90\% de taxa de sucesso em $\leq$14.000 passos ($\leq$3,3
 minutos)} no mundo esparso, reproduzível em 3 seeds independentes
 (Figura~\ref{fig:2d_learning_curve_ci}); a Figura~\ref{fig:2d_compare} compara as
-trajetórias de A* (linha reta analítica), SAC e política Adaptativa nos três ambientes.
+trajetórias de A* (linha reta analítica), BC e política Adaptativa nos três ambientes.
 
 O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gazebo não
 convergia por múltiplas sessões: como os dois ambientes usam a mesma estrutura de
@@ -500,7 +500,7 @@ crescentes (Fig.~\ref{fig:2d_heatmap}).
     \centering
     \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
     \caption{Trajetórias no ambiente denso ($\rho{\approx}0{,}35$): A* (linha reta),
-             SAC e política Adaptativa $\rho$-criterion.}
+             BC (política aprendida) e política Adaptativa $\rho$-criterion.}
     \label{fig:2d_compare}
   \end{subfigure}
   \caption{Validação do gêmeo 2D: convergência do SAC e comparação de trajetórias.}
@@ -512,7 +512,7 @@ crescentes (Fig.~\ref{fig:2d_heatmap}).
     \centering
     \includegraphics[width=\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
     \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$)
-             usa A*, vermelho usa SAC, acompanhando a geometria dos obstáculos.}
+             usa A*, vermelho usa BC, acompanhando a geometria dos obstáculos.}
     \label{fig:2d_heatmap}
   \end{subfigure}
   \hfill

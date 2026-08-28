@@ -68,8 +68,8 @@ onde `w = 2,0 m` (janela quadrada centrada no robô) e o limiar de ocupação 65
 
 A política de seleção é:
 ```
-π(ρ) = { A* (Nav2 SmacPlanner2D)   se ρ < 0,30
-        { SAC (Stable-Baselines3)   se ρ ≥ 0,30
+π(ρ) = { A* (Nav2 SmacPlanner2D)     se ρ < 0,30
+        { BC (Behavior Cloning)      se ρ ≥ 0,30
 ```
 
 O limiar ρ* = 0,30 foi determinado por validação experimental com 1.500 trials.
@@ -171,7 +171,7 @@ r(s,a) = +100                                    se goal atingido
 
 onde R_surv=0,1 é um bônus de sobrevivência por passo e R_prox=1 − d/d_inicial é crédito parcial por progresso (Kolomeytsev & Golembiovsky, 2025). A propriedade crítica de projeto é que **a recompensa por passo é garantidamente ≥ 0**, enquanto a colisão impõe penalidade terminal de −100. Versões iniciais adotavam penalidade de obstáculo por passo, cuja soma ao longo de um episódio longo superava a penalidade terminal de colisão, tornando racional para o agente colidir cedo para encerrar o episódio — o *suicidal agent*, evidenciado pela queda de `ep_len_mean` de ~55 para ~8 passos ao ativar o SAC. A correção, seguindo Cimurs et al. (2022), elimina a penalidade por passo e mantém o bônus de sobrevivência, removendo o incentivo perverso.
 
-Para acelerar o ciclo de iteração de reward e validar hiperparâmetros antes do Gazebo, foi implementado um ambiente 2D leve (`eval/env2d/`) com raycasting vetorizado NumPy, 851× mais rápido que o Gazebo Classic, reproduzindo fielmente a cinemática unicycle, a observação de 29 dimensões e a mesma estrutura de reward do ambiente ROS2. O SAC convergiu para **90% de taxa de sucesso em ≤14.000 passos (≤3,3 minutos)** no mundo esparso, reproduzível em 3 seeds independentes; trajetórias de A* (linha reta analítica), SAC e política Adaptativa foram comparadas nos três ambientes.
+Para acelerar o ciclo de iteração de reward e validar hiperparâmetros antes do Gazebo, foi implementado um ambiente 2D leve (`eval/env2d/`) com raycasting vetorizado NumPy, 851× mais rápido que o Gazebo Classic, reproduzindo fielmente a cinemática unicycle, a observação de 29 dimensões e a mesma estrutura de reward do ambiente ROS2. O SAC convergiu para **90% de taxa de sucesso em ≤14.000 passos (≤3,3 minutos)** no mundo esparso, reproduzível em 3 seeds independentes; trajetórias de A* (linha reta analítica), BC e política Adaptativa foram comparadas nos três ambientes.
 
 O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gazebo não convergia por múltiplas sessões: como os dois ambientes usam a mesma estrutura de observação e recompensa, uma comparação direta das constantes (Tabela 4) isolou a causa em `R_APPROACH=2.0` no Gazebo contra `10.0` no Env2D. O robô recebe +0,1 por passo apenas por sobreviver (em 200 passos, +20 sem sair do lugar); para navegar valer mais que ficar parado, o bônus de aproximação precisa superar esse valor (R_app > 6,67). Com `R_APPROACH=2,0` o agente aprendia que não mover era a estratégia mais segura. Corrigido para 10,0, o treinamento no Gazebo passou a apresentar episódios estáveis e crescentes.
 
@@ -187,11 +187,11 @@ O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gaze
 
 ![Validação do gêmeo 2D](figs/2d/fig_2d_learning_curve_ci.png)
 
-*Figura: (a) Curva de aprendizado SAC (world=sparse), média ± IC 95% de 3 seeds. Convergência (≥90%) em 4.000–14.000 passos. (b) Trajetórias no ambiente denso (ρ≈0,35): A* (linha reta), SAC e política Adaptativa ρ-criterion — ver `figs/2d/fig_2d_compare_dense.png`.*
+*Figura: (a) Curva de aprendizado SAC (world=sparse), média ± IC 95% de 3 seeds. Convergência (≥90%) em 4.000–14.000 passos. (b) Trajetórias no ambiente denso (ρ≈0,35): A* (linha reta), BC (política aprendida) e política Adaptativa ρ-criterion — ver `figs/2d/fig_2d_compare_dense.png`.*
 
 ![Mapa de decisão e degradação por densidade](figs/2d/fig_2d_heatmap_dense.png)
 
-*Figura: (a) Mapa de decisão ρ-criterion no ambiente denso: azul (ρ<0,30) usa A*, vermelho usa SAC. (b) Degradação do SAC (treinado só em sparse) por densidade ρ — ρ*=0,30 coincide com o limiar adaptivo (ver `figs/2d/fig_2d_degradation_singlerobot.png`).*
+*Figura: (a) Mapa de decisão ρ-criterion no ambiente denso: azul (ρ<0,30) usa A*, vermelho usa BC. (b) Degradação do SAC (treinado só em sparse) por densidade ρ — ρ*=0,30 coincide com o limiar adaptivo (ver `figs/2d/fig_2d_degradation_singlerobot.png`).*
 
 Diagnóstico de generalização por densidade: o modelo `sac_2d_best` foi treinado exclusivamente no mundo sparse (ρ=0,05). Avaliados 100 episódios por densidade sem novo treinamento, a taxa de sucesso cai de **91%** no esparso para **59%** no denso e **40%** no muito denso — evidência de insuficiência de generalização fora da distribuição de treino. O modo de falha dominante é **colisão** (não timeout), pois em ambientes densificados o agente encontra obstáculos antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo de treinamento: currículo multi-densidade (sparse → dense → very_dense).
 
@@ -283,7 +283,7 @@ Este trabalho desenvolveu e validou, em duas fases complementares, um framework 
 
 | O parcial (01/04/2026) afirmava | O que a correção encontrou | O que vale nesta versão |
 |---|---|---|
-| Par de planejadores RRT*/PPO | Substituído por A*/SAC (ROS2/Nav2), justificado na Seção 2.1 | A*/SAC é o par vigente; RRT*/PPO permanece só na Fase 1 mock (Seção 3.2) |
+| Par de planejadores RRT*/PPO | Substituído por A*/SAC no ROS2/Nav2 (Seção 2.1); revalidação real (Seção 3.4) mostrou SAC perdendo para BC em todo regime | A*/BC é o par vigente do critério; SAC segue isolado como objetivo 3 do plano; RRT*/PPO permanece só na Fase 1 mock (Seção 3.2) |
 | "100% de acurácia no switching" | A métrica de acurácia não capturava oscilação de decisão; chattering real de até 6 trocas/episódio existia sob a política per-step | Reportamos taxa de chattering diretamente (Seção 3.4): 4,9% dos episódios com ≥2 trocas sem histerese, 3,3% com histerese |
 | Regret de 2,2% vs. oracle | Recalculado com protocolo revisado: 2,9% sob mock (Seção 3.2), 8,7% sob planejadores reais (Seção 3.4) | Os dois valores coexistem, cada um rotulado com o protocolo que o produziu |
 | "Supera 6 métodos SOTA, 1º lugar" | A* real vence o ρ-criterion em acerto bruto (Seção 3.4); o cenário urbano (Seção 3.6) mostra empate | H1 reformulada como argumento de custo/paridade, não de superioridade em acerto |

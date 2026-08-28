@@ -4,7 +4,7 @@ visualize_2d.py — Visualização do env 2D treinado.
 Modos:
   --mode episode   → salva PNG/PDF de uma trajetória completa
   --mode compare   → A* vs SAC vs Adaptativo lado a lado (3 painéis)
-  --mode heatmap   → heatmap de decisão A*/SAC no espaço da arena
+  --mode heatmap   → heatmap de decisão A*/BC no espaço da arena
   --mode gif       → gera GIF animado de um episódio (para apresentação)
   --mode all       → gera tudo
 
@@ -209,7 +209,7 @@ def plot_compare(model, world: str = "dense"):
 
 
 # ══════════════════════════════════════════════════════════════
-# MODO 3 — Heatmap de decisão A*/SAC no espaço da arena
+# MODO 3 — Heatmap de decisão A*/BC no espaço da arena
 # ══════════════════════════════════════════════════════════════
 def plot_heatmap(world: str = "dense"):
     cfg  = WORLDS[world]
@@ -230,7 +230,7 @@ def plot_heatmap(world: str = "dense"):
             rho_grid[i, j] = local_density
 
     RHO_STAR = 0.30
-    decision = (rho_grid >= RHO_STAR).astype(float)  # 0=A*, 1=SAC
+    decision = (rho_grid >= RHO_STAR).astype(float)  # 0=A*, 1=BC
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -246,7 +246,7 @@ def plot_heatmap(world: str = "dense"):
     axes[0].set_title(f"(a) Densidade local $\\rho(x,y)$ — {world}", fontsize=11)
     axes[0].set_xlabel("x (m)"); axes[0].set_ylabel("y (m)")
 
-    # Painel direito: decisão A*/SAC
+    # Painel direito: decisão A*/BC
     cmap_dec = matplotlib.colors.ListedColormap(["#2196F3", "#E91E63"])
     im2 = axes[1].imshow(decision, origin="lower",
                          extent=[-half, half, -half, half],
@@ -255,17 +255,17 @@ def plot_heatmap(world: str = "dense"):
         axes[1].add_patch(Circle((cx, cy), cr, color="gray", alpha=0.6))
     legend_patches = [
         mpatches.Patch(color="#2196F3", label=f"A* ($\\rho < {RHO_STAR}$)"),
-        mpatches.Patch(color="#E91E63", label=f"SAC ($\\rho \\geq {RHO_STAR}$)"),
+        mpatches.Patch(color="#E91E63", label=f"BC ($\\rho \\geq {RHO_STAR}$)"),
     ]
     axes[1].legend(handles=legend_patches, loc="upper right", fontsize=9)
     axes[1].set_title(f"(b) Decisão $\\pi(\\rho)$ — $\\rho^*={RHO_STAR}$", fontsize=11)
     axes[1].set_xlabel("x (m)")
     axes[1].text(0.02, 0.02,
-                 f"$\\rho^* = {RHO_STAR}$ → {decision.mean():.0%} SAC",
+                 f"$\\rho^* = {RHO_STAR}$ → {decision.mean():.0%} BC",
                  transform=axes[1].transAxes, fontsize=9, color="white",
                  bbox=dict(boxstyle="round", facecolor="black", alpha=0.5))
 
-    fig.suptitle("Heatmap do critério $\\rho$: onde A* e SAC são ativados",
+    fig.suptitle("Heatmap do critério $\\rho$: onde A* e BC são ativados",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
     for ext in ["png", "pdf"]:
