@@ -212,27 +212,19 @@ com conectividade 4-direcional. O componente A* em tempo de execução (framewor
 Nav2/SmacPlanner2D, implementação C++ otimizada e validada pela comunidade ROS2, reforçando o
 caráter de comparação com implementações de produção.
 
-\textbf{Por que densidade de obstáculos, e por que um limiar rígido:} a escolha da
-densidade local como variável de contexto não é arbitrária --- ela captura diretamente a
-causa raiz da degradação do A* e da vantagem do SAC observada empiricamente
-(Seção~\ref{sec:benchmark_classicos}): o custo de busca do A* cresce com o número de
-obstáculos próximos (mais nós expandidos, maior fator de ramificação efetivo), enquanto o
-custo de decisão de uma política aprendida é aproximadamente constante, independente da
-geometria local. Densidade é, portanto, a variável que \textit{causa} o trade-off entre os
-dois planejadores, não apenas uma métrica correlacionada com ele --- outras variáveis
-candidatas (distância ao goal, velocidade do robô, tipo de obstáculo) descrevem o estado do
-robô ou da tarefa, não a dificuldade geométrica do ambiente que motiva a escolha entre busca
-exaustiva e uma política aprendida. A decisão é \textit{local} (calculada na vizinhança
-imediata do robô, não um valor global do mapa) porque a dificuldade real muda conforme o
-robô se move entre regiões abertas e congestionadas da mesma arena.
-
-A comutação usa um limiar determinístico rígido, não uma mistura contínua (combinação
-ponderada das duas ações próxima ao limiar) por restrição de tempo real: uma fusão suave
-exigiria custo de arbitragem a cada passo de controle (calcular o peso de mistura, executar
-ambos os planejadores parcialmente), incompatível com a taxa do laço de controle do robô ---
-e trocaria uma garantia de regret limpa (Seção~\ref{sec:regret}) por um peso de mistura
-contínuo sem alvo claro de calibração. Esse é um ponto de projeto deliberado, revisitado
-como extensão de trabalho futuro na Conclusão.
+\textbf{Por que densidade de obstáculos, e por que um limiar rígido:} a densidade local captura
+a causa raiz do trade-off, não apenas uma métrica correlacionada com ele --- o custo de busca do
+A* cresce com o número de obstáculos próximos (mais nós expandidos, maior fator de ramificação),
+enquanto o custo de decisão de uma política aprendida é aproximadamente constante
+(Seção~\ref{sec:benchmark_classicos}). Outras variáveis candidatas (distância ao goal,
+velocidade, tipo de obstáculo) descrevem o estado do robô ou da tarefa, não a dificuldade
+geométrica que motiva a escolha entre busca exaustiva e política aprendida; e a decisão é
+\textit{local} porque essa dificuldade muda conforme o robô transita entre regiões abertas e
+congestionadas da mesma arena. A comutação usa limiar rígido, não mistura contínua, por
+restrição de tempo real: uma fusão suave exigiria arbitragem a cada passo de controle (calcular
+o peso, executar ambos os planejadores parcialmente), incompatível com a taxa do laço de
+controle, e trocaria uma garantia de regret limpa (Seção~\ref{sec:regret}) por um peso contínuo
+sem alvo claro de calibração --- ponto de projeto deliberado, revisitado na Conclusão.
 
 A densidade local de obstáculos é calculada em uma janela $w$ ao redor da pose atual do
 robô na costmap de ocupação:
@@ -305,33 +297,18 @@ origem-destino conectados).
 
 \noindent\small\textit{Dados coletados em junho/2026; semente fixa 42; densidade 25\%; Python 3.10 em CPU. Grid $N{\times}N$.}
 
-Dijkstra e A* crescem linearmente em tempo e memória, confirmando complexidade $O(V \log V)$
-na prática. Floyd-Warshall exibe crescimento cúbico: ao passar de 10$\times$10 para
-20$\times$20 (4$\times$ mais nós), o tempo cresce $\approx 113\times$. A* é o único algoritmo
-que combina escalabilidade com direcionamento ao objetivo, justificando formalmente sua
-escolha como componente clássico do framework adaptivo.
+Dijkstra e A* crescem linearmente (complexidade $O(V \log V)$ na prática), enquanto
+Floyd-Warshall cresce cubicamente ($\approx 113\times$ de 10$\times$10 para 20$\times$20) e
+torna-se inviável a partir de 50$\times$50. A* é o único que combina escalabilidade com
+direcionamento ao objetivo, justificando sua escolha como componente clássico do framework.
 
 % ── Figuras do benchmark ─────────────────────────────────────
 \begin{figure}[htbp]
   \centering
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/benchmark/benchmark_time.png}
-    \caption{Tempo dos algoritmos clássicos (log-log). Dijkstra e A* crescem
-             linearmente; Floyd-Warshall e Johnson tornam-se inviáveis para
-             $N>900$ nós.}
-    \label{fig:benchmark_time}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/pareto/fig_pareto_boxplot_main.png}
-    \caption{Limiar $\tau^*{=}0{,}30$: boxplots de sucesso e equações de retorno
-             marginal. $\tau{=}0{,}30$ maximiza a mediana e minimiza a variância
-             --- ROI de $0{,}11$~pp/pp em $\tau{=}0{,}25$.}
-    \label{fig:pareto_boxplot}
-  \end{subfigure}
-  \caption{Benchmark dos clássicos e justificativa formal do limiar adaptivo.}
+  \includegraphics[width=0.55\textwidth]{figs/benchmark/benchmark_time.png}
+  \caption{Tempo dos algoritmos clássicos (log-log). Dijkstra e A* crescem linearmente;
+           Floyd-Warshall e Johnson tornam-se inviáveis para $N>900$ nós.}
+  \label{fig:benchmark_time}
 \end{figure}
 
 
@@ -345,17 +322,19 @@ Todos os métodos comparados nesta fase utilizam modelos de planejamento calibra
 estatisticamente: não são reimplementações dos algoritmos originais da literatura, mas
 proxies calibrados para reproduzir as taxas de sucesso reportadas nos respectivos artigos.
 
-\textit{Como o limiar foi determinado.} Para achar o melhor ponto de comutação, testamos
-vários limiares candidatos, de 0,05 a 0,60. Para cada um, rodamos 500 cenários com densidades
-sorteadas no intervalo $[0{,}05,\, 0{,}60]$, aplicando a regra ``A* abaixo do limiar, SAC
-acima'' e registrando se o robô chegou ao destino. O melhor limiar é o que mais se aproxima de
-um seletor ideal, isto é, um seletor que sempre escolhe o planejador certo para cada
-densidade. A varredura apontou $\rho^* = 0{,}30$: abaixo desse valor o A* tem mais sucesso;
-acima, o SAC. O custo computacional reforça a escolha. No ponto $\rho = 0{,}30$, o tempo do A*
-já subiu de 16~ms para 115~ms, enquanto o SAC se mantém constante em $\approx$12~ms. Além
-disso, usar o SAC em mais da metade dos passos quase não aumenta o sucesso
-(Fig.~\ref{fig:pareto_boxplot}). Por isso, $\rho^* = 0{,}30$ é o melhor equilíbrio entre
-desempenho e custo.
+\textit{Como o limiar foi determinado, e o que a auditoria desta correção encontrou.} Para achar
+o ponto de comutação, testamos limiares candidatos de 0,05 a 0,60, rodando 500 cenários por
+limiar com densidades sorteadas em $[0{,}05,\, 0{,}60]$ e aplicando a regra ``A* abaixo do
+limiar, política aprendida acima''. \textbf{Ao reconferir
+\texttt{results\_abstract/threshold\_sensitivity.csv} nesta correção, o regret é minimizado em
+$\tau{=}0{,}20$ (0,60\%), não em $\tau{=}0{,}30$ (2,92\%)} --- o valor até então relatado como
+determinado pela varredura não refletia o próprio dado citado, e a alegação de que
+``$\rho^*{=}0{,}30$ minimiza regret'' foi retirada. O que permanece válido é o argumento de
+custo: no ponto $\rho{=}0{,}30$ o tempo do A* já subiu de 16~ms para 115~ms, enquanto a política
+aprendida se mantém constante em $\approx$12~ms, o que justifica preferir um limiar mais baixo
+que o cruzamento de sucesso puro sugeriria. O limiar $\rho^*{=}0{,}30$ é mantido por
+continuidade com a Fase~2 e com as Seções~\ref{sec:h1_real}--\ref{sec:urbano}, não por ser o
+mínimo de regret (ver Limitações).
 
 \begin{table}[H]
   \centering
@@ -460,31 +439,15 @@ trajetórias de A* (linha reta analítica), BC e política Adaptativa nos três 
 
 O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gazebo não
 convergia por múltiplas sessões: como os dois ambientes usam a mesma estrutura de
-observação e recompensa, uma comparação direta das constantes
-(Tabela~\ref{tab:reward_comparison}) isolou a causa em \texttt{R\_APPROACH=2.0} no Gazebo
-contra \texttt{10.0} no Env2D. O robô recebe $+0{,}1$ por passo apenas por sobreviver
+observação e recompensa, uma comparação direta das constantes isolou a causa: todas coincidiam
+($R_{\mathrm{GOAL}}{=}{+}100$, $R_{\mathrm{COLLISION}}{=}{-}100$,
+$R_{\mathrm{SURVIVAL}}{=}0{,}1$/passo, \texttt{MAX\_STEPS}${=}200$) exceto
+\texttt{R\_APPROACH}, em 2,0 no Gazebo contra 10,0 no Env2D. O robô recebe $+0{,}1$ por passo apenas por sobreviver
 (em 200 passos, $+20$ sem sair do lugar); para navegar valer mais que ficar parado, o
 bônus de aproximação precisa superar esse valor ($R_{\text{app}} > 6{,}67$). Com
 \texttt{R\_APPROACH=2,0} o agente aprendia que não mover era a estratégia mais segura.
 Corrigido para $10{,}0$, o treinamento no Gazebo passou a apresentar episódios estáveis e
 crescentes (Fig.~\ref{fig:2d_heatmap}).
-
-\begin{table}[H]
-  \centering
-  \caption{Constantes de reward: Env2D (convergiu) vs.\ Gazebo (não convergia)}
-  \label{tab:reward_comparison}
-  \begin{tabular}{lrr}
-    \toprule
-    \textbf{Constante} & \textbf{Env2D} & \textbf{Gazebo (antes)} \\
-    \midrule
-    \texttt{R\_GOAL}      & $+100$ & $+100$ \\
-    \texttt{R\_COLLISION} & $-100$ & $-100$ \\
-    \texttt{R\_SURVIVAL}  & $0{,}1$/passo & $0{,}1$/passo \\
-    \texttt{MAX\_STEPS}   & 200 & 200 \\
-    \texttt{R\_APPROACH}  & \textbf{10,0} & \textbf{2,0} (corrigido para 10,0) \\
-    \bottomrule
-  \end{tabular}
-\end{table}
 
 \begin{figure}[htbp]
   \centering
@@ -503,7 +466,6 @@ crescentes (Fig.~\ref{fig:2d_heatmap}).
              BC (política aprendida) e política Adaptativa $\rho$-criterion.}
     \label{fig:2d_compare}
   \end{subfigure}
-  \caption{Validação do gêmeo 2D: convergência do SAC e comparação de trajetórias.}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -523,7 +485,6 @@ crescentes (Fig.~\ref{fig:2d_heatmap}).
              --- $\rho^*{=}0{,}30$ coincide com o limiar adaptivo.}
     \label{fig:2d_degradation_singlerobot}
   \end{subfigure}
-  \caption{Mapa de decisão espacial e degradação por densidade fora da distribuição.}
 \end{figure}
 
 
@@ -702,44 +663,42 @@ circular aberta usada até aqui. É o experimento com maior volume de dados reai
 \textbf{2.000 trials} (500 por condição, quatro condições), A* real e BC real casado por
 densidade.
 
-\textbf{Resultado --- condição estática:} sucesso pareado de 98,8\% (A*), 100\% (BC) e 99,6\%
-($\rho$-criterion), com eficiência de rota (percorrido/ótimo) de 0,811, 0,886 e 0,859
-respectivamente --- o mesmo padrão de leve vantagem do BC em ambiente estruturado já visto
-nas Seções~\ref{sec:h1_real}--\ref{sec:multiagente}.
+Às três condições dinâmicas somam-se duas extensões que isolam o efeito do \textit{número} de
+obstáculos do efeito da \textit{velocidade}: 3 obstáculos simultâneos cobrindo os dois eixos do
+cruzamento, e o mesmo layout ao dobro da velocidade.
 
-\textbf{Resultado --- condição dinâmica (1 obstáculo):} o obstáculo móvel derruba o sucesso
-dos três métodos de forma quase idêntica --- 49,2\% (A*), 48,8\% (BC), 48,6\%
-($\rho$-criterion) --- e a eficiência de rota cai de $\sim$0,85 para $\sim$0,55--0,64.
-\textbf{O padrão central deste testbed é o empate:} nenhum dos três métodos se distingue
-estatisticamente do outro sob perturbação dinâmica, ao contrário da Seção~\ref{sec:h1_real}
-(onde A* vencia com folga em arenas abertas).
+\begin{table}[H]
+  \centering
+  \caption{Cenário urbano: sucesso e eficiência de rota (percorrido/ótimo) por condição,
+           $N{=}500$/condição, A* e BC reais pareados}
+  \label{tab:urbano}
+  \small
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    & \multicolumn{3}{c}{\textbf{Taxa de sucesso}} & \multicolumn{3}{c}{\textbf{Eficiência de rota}} \\
+    \textbf{Condição} & A* & BC & $\rho$-crit. & A* & BC & $\rho$-crit. \\
+    \midrule
+    Estático                  & 98,8\% & 100\%  & 99,6\% & 0,811 & 0,886 & 0,859 \\
+    1 obstáculo               & 49,2\% & 48,8\% & 48,6\% & 0,551 & 0,636 & 0,602 \\
+    3 obstáculos              & 39,0\% & 35,8\% & 36,4\% & 0,466 & 0,550 & 0,509 \\
+    3 obstáculos, 2$\times$ vel. & 31,8\% & 28,8\% & 31,4\% & 0,388 & 0,433 & 0,425 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\textbf{Extensão --- múltiplos obstáculos dinâmicos:} para fechar de forma mais completa o
-item ``obstáculos dinâmicos'' do Plano de Trabalho, estendemos o testbed com duas condições
-adicionais, mantendo o mesmo protocolo pareado: (i)~\textbf{3 obstáculos simultâneos},
-cobrindo os dois eixos do cruzamento em ``+'' (corredor horizontal, vertical e uma trajetória
-diagonal), e (ii)~o mesmo layout com \textbf{o dobro da velocidade}, para isolar o efeito do
-número de obstáculos do efeito da velocidade. O sucesso degrada progressivamente e de forma
-quase idêntica nos três métodos em cada etapa: de 98,8--100\% (estático) para 48,6--49,2\%
-(1 obstáculo), 35,8--39,0\% (3 obstáculos) e 28,8--31,8\% (3 obstáculos, 2$\times$
-velocidade). A degradação monotônica e paralela entre A*, BC e $\rho$-criterion reforça o
-achado do empate sob perturbação dinâmica: nenhum dos três absorve a complexidade crescente
-melhor que os outros, e a escolha entre eles permanece justificada pelo critério de custo
-(Seção~\ref{sec:h1_real}), não por vantagem de robustez de um método específico.
+\normalsize
+
+\textbf{O padrão central deste testbed é o empate.} No estático repete-se a leve vantagem do BC
+em ambiente estruturado já vista nas Seções~\ref{sec:h1_real}--\ref{sec:multiagente}; sob
+perturbação dinâmica, nenhum dos três métodos se distingue do outro em nenhuma das três
+condições, ao contrário da Seção~\ref{sec:h1_real} (onde o A* vencia com folga em arenas
+abertas). A degradação é monotônica e paralela entre os três conforme a complexidade cresce:
+nenhum absorve a perturbação melhor que os outros, e a escolha entre eles permanece justificada
+pelo critério de custo (Seção~\ref{sec:h1_real}), não por vantagem de robustez.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_multi.png}
-  \caption{Sucesso dos três métodos em quatro condições de complexidade crescente
-           ($N{=}500$/condição, dados reais): estático, 1 obstáculo, 3 obstáculos em
-           múltiplos eixos, e os mesmos 3 obstáculos a 2$\times$ velocidade. A degradação é
-           paralela entre os três métodos em toda a faixa.}
-  \label{fig:urban_dynamic_multi}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figs/2d/fig_2d_urban_dynamic_multi_trajectory.png}
+  \includegraphics[width=0.55\textwidth]{figs/2d/fig_2d_urban_dynamic_multi_trajectory.png}
   \caption{Episódio real do $\rho$-criterion (política BC, $\rho_0$ acima do limiar)
            navegando o cruzamento urbano com 3 obstáculos dinâmicos simultâneos. Marcadores
            translúcidos mostram a posição de cada obstáculo ao longo do tempo (mais opaco =
@@ -806,7 +765,6 @@ coordenação, não a dificuldade do ambiente.
              $N{\geq}5$; deadlock nulo.}
     \label{fig:marl_degradation_density}
   \end{subfigure}
-  \caption{Escalabilidade do CBS centralizado e degradação do RL independente sem coordenação.}
 \end{figure}
 
 Curiosamente, uma política A* de linha reta independente coordena melhor em baixa densidade
