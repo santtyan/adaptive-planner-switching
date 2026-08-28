@@ -154,7 +154,34 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--trials", type=int, default=500)
     p.add_argument("--seed0", type=int, default=5000)
+    p.add_argument("--measure-time", action="store_true",
+                   help="instrumenta o custo de decisão por passo (ms) de cada "
+                        "método e grava as colunas *_decision_ms no CSV")
+    p.add_argument("--out", default=None,
+                   help="caminho do CSV de saída (default: results_abstract/"
+                        "h1_real_2d_mixed_pool.csv, o CSV canônico)")
+    p.add_argument("--force", action="store_true",
+                   help="permite sobrescrever um CSV existente que tenha MAIS "
+                        "trials que esta execução")
     args = p.parse_args()
+
+    out_path = args.out or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "results_abstract", "h1_real_2d_mixed_pool.csv")
+
+    # Guard anti-sobrescrita: este script já destruiu (e só não perdeu porque o
+    # arquivo estava commitado) o CSV canônico de 1.500 trials, ao ser rodado com
+    # o default de 500 só para inspeção. Falha ANTES de simular, não depois.
+    if os.path.exists(out_path) and not args.force:
+        with open(out_path) as f:
+            existing = sum(1 for _ in f) - 1  # menos o header
+        if existing > args.trials:
+            print(f"ERRO: {out_path} já tem {existing} trials, mais que os "
+                  f"{args.trials} desta execução.\n"
+                  f"Sobrescrever perderia dado mais forte. Use --force para "
+                  f"confirmar, ou --out para gravar em outro arquivo.",
+                  file=sys.stderr)
+            sys.exit(1)
 
     astar_policy = AStarPolicy()
     bc_policies = {w: load_bc(w) for w in WORLDS_LIST}
@@ -166,7 +193,8 @@ def main():
         world = rng.choice(WORLDS_LIST)
         env = Env2D(world=world, seed=args.seed0 + trial)
         seed = args.seed0 + trial
-        res = run_one(env, seed, astar_policy, bc_policies[world])
+        res = run_one(env, seed, astar_policy, bc_policies[world],
+                      measure_time=args.measure_time)
         res["world"] = world
         res["trial"] = trial
         rows.append(res)
@@ -213,21 +241,34 @@ def main():
     for w, d in per_world.items():
         print(f"  {w:>10}: astar={d['astar']:.1%} bc={d['bc']:.1%} adaptive={d['adaptive']:.1%} (n={d['n']})")
 
-    out_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                              "results_abstract", "h1_real_2d_mixed_pool.csv")
+    cost_cols = ["astar_decision_ms", "bc_decision_ms", "adaptive_decision_ms"]
+    if args.measure_time:
+        print("\n  Custo de decisão (ms por passo do episódio):")
+        for c in cost_cols:
+            print(f"    {c.replace('_decision_ms', ''):>10}: "
+                  f"{np.mean([r[c] for r in rows]):.3f} ms/passo")
 
     def _fmt_eff(v):
         return f"{v:.4f}" if v is not None else ""
 
+    header = ["trial", "world", "rho0", "used_astar", "astar", "bc", "adaptive",
+              "astar_route_efficiency", "bc_route_efficiency",
+              "adaptive_route_efficiency"]
+    if args.measure_time:
+        header += cost_cols
+
     with open(out_path, "w") as f:
-        f.write("trial,world,rho0,used_astar,astar,bc,adaptive,"
-                "astar_route_efficiency,bc_route_efficiency,adaptive_route_efficiency\n")
+        f.write(",".join(header) + "\n")
         for r in rows:
-            f.write(f"{r['trial']},{r['world']},{r['rho0']:.4f},{r['used_astar']},"
-                    f"{int(r['astar'])},{int(r['bc'])},{int(r['adaptive'])},"
-                    f"{_fmt_eff(r['astar_route_efficiency'])},"
-                    f"{_fmt_eff(r['bc_route_efficiency'])},"
-                    f"{_fmt_eff(r['adaptive_route_efficiency'])}\n")
+            vals = [str(r["trial"]), r["world"], f"{r['rho0']:.4f}",
+                    str(r["used_astar"]), str(int(r["astar"])),
+                    str(int(r["bc"])), str(int(r["adaptive"])),
+                    _fmt_eff(r["astar_route_efficiency"]),
+                    _fmt_eff(r["bc_route_efficiency"]),
+                    _fmt_eff(r["adaptive_route_efficiency"])]
+            if args.measure_time:
+                vals += [f"{r[c]:.4f}" for c in cost_cols]
+            f.write(",".join(vals) + "\n")
     print(f"\nSalvo em {out_path}")
 
 
