@@ -401,16 +401,6 @@ convergia: comparando as constantes de reward entre os dois ambientes, todas coi
 que ficar parado --- com 2,0 o agente aprendia a não se mover. Corrigido para 10,0, o Gazebo
 passou a apresentar episódios estáveis e crescentes (Fig.~\ref{fig:2d_heatmap}).
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.4\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
-  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$) usa A*,
-           vermelho usa BC, acompanhando a geometria dos obstáculos. Curva de aprendizado,
-           comparação de trajetórias e degradação por densidade nas
-           Informações Complementares.}
-  \label{fig:2d_heatmap}
-\end{figure}
-
 
 Diagnóstico de generalização por densidade. O modelo \texttt{sac\_2d\_best} foi
 treinado exclusivamente no mundo \texttt{sparse} ($\rho{=}0{,}05$). Para quantificar a
@@ -652,9 +642,9 @@ o resultado mais citável (85,3\%) permanece calibrado sobre mock, e a versão r
 modesta, declarada explicitamente. (3)~O critério usa contexto unidimensional e limiar fixo
 rígido offline, por restrição de tempo real; contexto vetorial, meta-aprendizado online e
 fusão suave são extensões naturais onde essa restrição for menos severa. (4)~A avaliação
-restringiu-se ao TurtleBot3 Waffle em Gazebo Classic; outras cinemáticas e simuladores de
-maior fidelidade permanecem em aberto. (5)~O SAC, treinado só em \textit{sparse}, generaliza
-mal (91\%$\to$40\%, Figura~\ref{fig:ic_degradation}), motivando currículo multi-densidade.
+restringiu-se ao TurtleBot3 Waffle em Gazebo Classic, sem generalização testada a outras
+cinemáticas/simuladores; e o SAC, treinado só em \textit{sparse}, generaliza mal para fora
+dele (91\%$\to$40\%, Figura~\ref{fig:ic_degradation}), motivando currículo multi-densidade.
 
 O trabalho progride em três fases: agente único (Fase~1), multi-agente via CBS (Fase~2,
 parcial) e MARL (Fase~3, futuro).
@@ -745,6 +735,15 @@ from the third BARN Challenge at ICRA 2024. \textbf{IEEE Robotics \& Automation 
 \subsection*{Figuras Complementares}
 As figuras a seguir sustentam resultados discutidos no corpo do relatório e são reunidas aqui
 por concisão; os números que elas ilustram estão reportados integralmente nas seções indicadas.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.42\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$) usa A*,
+           vermelho usa BC, acompanhando a geometria dos obstáculos
+           (Seção~\ref{sec:integracao}).}
+  \label{fig:2d_heatmap}
+\end{figure}
 
 \begin{figure}[H]
   \centering
