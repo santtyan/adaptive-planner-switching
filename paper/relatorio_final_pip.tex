@@ -652,15 +652,15 @@ parcial) e MARL (Fase~3, futuro).
 % ============================================================
 \renewcommand{\refname}{}
 \section*{Referências Bibliográficas}
-\vspace{-1.5em}
+\vspace{-2.2em}
 \addcontentsline{toc}{section}{Referências Bibliográficas}
 
 \begin{thebibliography}{99}
-\setlength{\itemsep}{-2pt}
+\setlength{\itemsep}{-4pt}
 \setlength{\parskip}{0pt}
-\footnotesize
+\scriptsize
 \singlespacing
-\setlength{\baselineskip}{10pt}
+\setlength{\baselineskip}{9.5pt}
 
 \bibitem{Cormen2022}
 CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT Press, 2022.
@@ -738,131 +738,66 @@ por concisão; os números que elas ilustram estão reportados integralmente nas
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.42\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
-  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$) usa A*,
-           vermelho usa BC, acompanhando a geometria dos obstáculos
-           (Seção~\ref{sec:integracao}).}
-  \label{fig:2d_heatmap}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.42\textwidth]{figs/benchmark/benchmark_time.png}
-  \caption{Tempo dos algoritmos clássicos (log-log). Dijkstra e A* crescem linearmente;
-           Floyd-Warshall e Johnson tornam-se inviáveis para $N>900$ nós (Seção~\ref{sec:benchmark_classicos},
-           Tabela~\ref{tab:tempo_memoria}).}
-  \label{fig:ic_benchmark_time}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
-    \caption{Curva de aprendizado do SAC (\textit{sparse}), média $\pm$ IC~95\% de 3 seeds.
-             Convergência ($\geq$90\%) em 4.000--14.000 passos (Seção~\ref{sec:integracao}).}
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+    \caption{Mapa de decisão: azul A*, vermelho BC (Seç.~\ref{sec:integracao}).}
+    \label{fig:2d_heatmap}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+    \caption{Aprendizado do SAC, 3 seeds (Seç.~\ref{sec:integracao}).}
     \label{fig:ic_learning_curve}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
-    \caption{Trajetórias no ambiente denso ($\rho{\approx}0{,}35$): A*, BC e política
-             Adaptativa $\rho$-criterion (Seção~\ref{sec:integracao}).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+    \caption{Trajetórias: A*, BC, adaptativo (Seç.~\ref{sec:integracao}).}
     \label{fig:ic_compare}
-  \end{subfigure}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
-    \caption{Degradação do SAC (treinado só em \textit{sparse}) por densidade $\rho$
-             (Seção~\ref{sec:integracao}).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
+    \caption{Degradação do SAC por densidade (Seç.~\ref{sec:integracao}).}
     \label{fig:ic_degradation}
   \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
-    \caption{Trajetória do agente BC (\textit{sparse}), gradiente temporal até o goal
-             (Seção~\ref{sec:integracao}).}
+
+  \vspace{3pt}
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
+    \caption{Trajetória do agente BC (Seç.~\ref{sec:integracao}).}
     \label{fig:ic_bc_trajectory}
-  \end{subfigure}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.42\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/cbs/cbs_scalability.png}
-    \caption{Escalabilidade do CBS (log): timeout já em $N{=}8$
-             (Seção~\ref{sec:multiagente}).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/cbs/cbs_scalability.png}
+    \caption{CBS: timeout em $N{=}8$ (Seç.~\ref{sec:multiagente}).}
     \label{fig:ic_cbs_scalability}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.54\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
-    \caption{Degradação do RL independente: colisão satura ${\approx}100\%$ para $N{\geq}5$;
-             deadlock nulo (Seção~\ref{sec:multiagente}).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
+    \caption{RL independente: colisão ${\approx}100\%$, $N{\geq}5$ (Seç.~\ref{sec:multiagente}).}
     \label{fig:ic_marl_degradation}
-  \end{subfigure}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
-    \caption{MARL com reward compartilhada, $N{=}4$ --- resultado preliminar não reproduzido
-             em retreinos posteriores (Seção~\ref{sec:h1_real}).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.24\textwidth}
+    \centering\includegraphics[width=\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
+    \caption{MARL reward compartilhada --- preliminar (Seç.~\ref{sec:h1_real}).}
     \label{fig:ic_marl_shared}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{figs/2d/fig_2d_urban_dynamic_multi_trajectory.png}
-    \caption{Episódio do $\rho$-criterion no cruzamento urbano com 3 obstáculos dinâmicos
-             (Seção~\ref{sec:urbano}).}
-    \label{fig:ic_urban_trajectory}
   \end{subfigure}
 \end{figure}
 
 \subsection*{Certificados --- Diálogos em Pesquisa e Inovação}
-Os certificados de participação nas palestras do Programa Diálogos em Pesquisa e Inovação
-encontram-se anexados a este relatório.
+Certificados das palestras ``Ciência no Calor do Cerrado'' e ``Currículo Lattes'' anexados a
+este relatório.
 
 \subsection*{Outras Atividades Acadêmicas Relacionadas ao Projeto}
-Ao longo do projeto, o estudante participou de atividades de pesquisa e extensão
-que complementaram a formação em robótica autônoma e deram suporte ao desenvolvimento do
-trabalho:
-
-\begin{itemize}
-  \item \textbf{Projeto CERISE} (orientação do Prof.\ Álisson): atuação em navegação autônoma
-        e gêmeos digitais com TurtleBot3 em simulação, incluindo um sistema de alocação de
-        tarefas entre múltiplos robôs (\texttt{cerise-turtlebot3-nav}).
-  \item \textbf{Projeto AKCIT} (orientação do Prof.\ Hugo): trabalho com Meta Quest~3, visão
-        computacional (YOLO) e automação em Python, reforçando a base de percepção e
-        integração de sistemas usada no projeto.
-  \item \textbf{Apresentação na Rádio UFG} (2025): divulgação científica sobre automação,
-        atividade de extensão associada ao programa.
-  \item \textbf{Programa Diálogos em Pesquisa e Inovação}: participação nas palestras
-        ``Ciência no Calor do Cerrado'' e ``Currículo Lattes'' (certificados anexados acima).
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+  \item \textbf{Projeto CERISE} (Prof.\ Álisson): navegação autônoma e gêmeos digitais com
+        TurtleBot3, incluindo alocação de tarefas entre múltiplos robôs.
+  \item \textbf{Projeto AKCIT} (Prof.\ Hugo): Meta Quest~3, visão computacional (YOLO) e
+        automação em Python, base de percepção usada no projeto.
+  \item \textbf{Apresentação na Rádio UFG} (2025): divulgação científica sobre automação.
 \end{itemize}
 
-\subsection*{Repositório do Projeto}
-Código completo disponível em: \url{https://github.com/santtyan/adaptive-planner-switching}
-
-\subsection*{Processo de Desenvolvimento e Depuração}
-O log cronológico completo do processo de pesquisa (decisões tomadas, bugs de infraestrutura
-encontrados e corrigidos, e o porquê de cada mudança de rumo, incluindo o processo que levou
-à reformulação de H1 na Seção~\ref{sec:h1_real}) está documentado em \texttt{DEVELOPMENT\_LOG.md},
-na raiz do repositório público acima.
-
-\subsection*{Infraestrutura Utilizada}
-Python~3.10, ROS2~Humble, Gazebo~Classic~11, Docker, Stable-Baselines3~2.3, NumPy, Pandas,
-\texttt{timeit}, \texttt{tracemalloc}.
+\subsection*{Repositório e Infraestrutura}
+Código e log cronológico do processo (\texttt{DEVELOPMENT\_LOG.md}) em
+\url{https://github.com/santtyan/adaptive-planner-switching}. Infraestrutura: Python~3.10,
+ROS2~Humble, Gazebo~Classic~11, Docker, Stable-Baselines3~2.3, NumPy, Pandas.
 
 \end{document}
