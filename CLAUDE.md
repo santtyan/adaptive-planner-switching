@@ -59,6 +59,16 @@ pytest ros2_ws/src/adaptive_planner_ros/test/test_density_estimator.py
 Figuras: cada `eval/env2d/plot_*.py` gera uma figura específica. Comando por figura em
 `paper/figs/CATALOG.md`, que também mapeia figura → documento que a usa.
 
+## Skills do projeto
+
+- `.claude/skills/relatorio-pip/` — regras oficiais do PIP/UFG (formato, limites de página/
+  resumo/PDF) e as armadilhas específicas deste repo (`.md` é fonte da verdade, `.tex` é o que
+  compila para o PDF do SIGAA). Inclui `scripts/check_formato.py`.
+- `.claude/skills/revisao-critica-relatorio/` — revisão crítica linha-por-linha padrão banca de
+  prêmio (decisões arbitrárias sem justificativa, afirmação sem fonte, idiossincrasias de texto
+  gerado por IA). Inclui `scripts/check_ai_tics.py`, detector determinístico de travessão,
+  antítese "X, não Y", bibliografia órfã e hardware não declarado.
+
 Docker: serviço `train-all` roda Gazebo e treino no **mesmo** container de propósito — os serviços
 separados `gazebo`+`benchmark` sofrem timeout de descoberta DDS entre containers (bug de infra
 conhecido, não de planejamento; ver `DEVELOPMENT_LOG.md` Fase 6).
@@ -98,6 +108,13 @@ inseri-la em documento.
 
 **Sem travessão (—) em texto** de documentos, slides ou prosa do projeto.
 
+**Comprimir para caber em limite de página pode cortar substância, não só prosa.** Já aconteceu
+com o relatório final: uma compressão de 20→12 páginas removeu um estudo de ablação inteiro e
+uma seção de histerese junto com prosa redundante. Antes de aceitar uma versão comprimida como
+final, `wc -w` do fonte (`.md`) vs. comprimido (`.tex`); se sobrou menos da metade, investigar
+explicitamente o que foi removido. Preferir mover para Informações Complementares (não conta
+página no PIP/UFG) a deletar.
+
 **Sem `Co-Authored-By: Claude`** ou qualquer atribuição ao Claude em mensagens de commit.
 
 ## Armadilhas do repositório
@@ -108,3 +125,6 @@ inseri-la em documento.
   vezes). Corrigir ao tocar nessas seções.
 - Existe muito trabalho de dados/figuras historicamente não commitado no working tree. Verificar
   `git status` antes de qualquer operação destrutiva.
+- `paper/overleaf_export/` (fora do git) é a pasta pronta para importar no Overleaf: `.tex` +
+  só as figuras usadas. **Precisa ser resincronizada manualmente** a cada mudança em
+  `paper/relatorio_final_pip.tex` — não há aviso automático de desatualização.
