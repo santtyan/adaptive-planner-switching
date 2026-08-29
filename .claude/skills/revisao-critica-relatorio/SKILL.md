@@ -1,6 +1,6 @@
 ---
 name: revisao-critica-relatorio
-description: Revisão crítica linha-por-linha de relatórios científicos e artigos (rigor de lógico, gramático sênior e revisor de conferência de computação): decisões arbitrárias sem justificativa, afirmações sem fonte, lacunas de reprodutibilidade, perguntas que uma banca faria e o texto não responde, inconsistências internas, coesão em português, e idiossincrasias de texto gerado por IA (travessão, antítese "X, não Y", tríades compulsivas, adjetivação vazia). Use sempre que o usuário pedir para revisar criticamente, auditar, "achar furos", preparar para banca/prêmio, ou perguntar se a tese/argumentação/narrativa está forte, bem justificada ou pronta para submissão. Use também antes de considerar um relatório final ou artigo pronto para entrega.
+description: Revisão crítica linha-por-linha de relatórios científicos e artigos (rigor de lógico, gramático sênior e revisor de conferência de computação): decisões arbitrárias sem justificativa, afirmações sem fonte, lacunas de reprodutibilidade, perguntas que uma banca faria e o texto não responde, inconsistências internas, falácias lógicas e validade argumentativa, coesão e fluidez narrativa em português, e idiossincrasias de texto gerado por IA (travessão, antítese "X, não Y", tríades compulsivas, adjetivação vazia, conectivos clichê, densidade de parágrafo uniforme). Use sempre que o usuário pedir para revisar criticamente, auditar, "achar furos", checar a lógica/raciocínio do texto, deixar o texto mais fluente/fluido/natural, preparar para banca/prêmio, ou perguntar se a tese/argumentação/narrativa está forte, bem justificada ou pronta para submissão. Use também antes de considerar um relatório final ou artigo pronto para entrega.
 ---
 
 # Revisão crítica de relatório científico
@@ -16,11 +16,15 @@ python3 .claude/skills/revisao-critica-relatorio/scripts/check_ai_tics.py <arqui
 ```
 
 Reporta em segundos, sem gastar contexto de LLM: contagem de travessões, padrão antitético
-"X, não Y", adjetivos sem número ao lado, negrito abrindo parágrafo, meta-comentário sobre o
-próprio processo de correção, referências bibliográficas órfãs nos dois sentidos (citada no
-corpo mas sem `\bibitem`, ou `\bibitem` nunca citado), e se hardware está declarado quando o
-texto menciona benchmark de tempo/CPU. É um detector, não veredito: cada ocorrência pode ser
-legítima, mas toda ocorrência merece uma segunda olhada.
+"X, não Y" (incluindo a variante "não é apenas X, é Y"), adjetivos sem número ao lado, advérbios
+em "-mente" por 1000 palavras, conectivos de abertura clichê ("além disso", "vale ressaltar
+que"...), transições vazias que reformulam o que já foi dito, pares de adjetivos coordenados
+redundantes ("robusto e eficiente"), uniformidade suspeita de tamanho de parágrafo (coeficiente
+de variação), negrito abrindo parágrafo, meta-comentário sobre o próprio processo de correção,
+referências bibliográficas órfãs nos dois sentidos (citada no corpo mas sem `\bibitem`, ou
+`\bibitem` nunca citado), e se hardware está declarado quando o texto menciona benchmark de
+tempo/CPU. É um detector, não veredito: cada ocorrência pode ser legítima, mas toda ocorrência
+merece uma segunda olhada.
 
 ## Passo 2 — releitura integral linha por linha
 
@@ -82,6 +86,41 @@ O padrão de aceitação é o de um gramático profissional revisando um texto p
 "compreensível" ou "sem erro grosseiro": toda frase deveria sobreviver à leitura de um revisor de
 prova de editora acadêmica sem marcação.
 
+## Passo 2c — rigor lógico-argumentativo
+
+Além de gramática (2b) e fluidez (Passo 5), auditar a estrutura de raciocínio do texto,
+frase a frase e parágrafo a parágrafo. Isto é distinto de checar números (Passo 2, itens 1-3):
+aqui o número pode estar certo e a inferência que se tira dele, errada.
+
+- **Cadeia premissa→evidência→conclusão.** Toda conclusão declarada tem uma premissa e uma
+  evidência a até 2-3 linhas de distância? Reconstruir o silogismo implícito de cada claim forte
+  ("logo", "portanto", "isso mostra que", "confirma que") e perguntar: as premissas realmente
+  sustentam esta conclusão, ou apenas soam relacionadas a ela?
+- **Falácias comuns em texto científico:**
+  - *Generalização apressada*: conclusão ampla tirada de amostra pequena ou de um único caso.
+  - *Post hoc ergo propter hoc*: correlação temporal ou de coocorrência apresentada como causal
+    sem mecanismo ou controle que isole a causa.
+  - *Non sequitur*: a conclusão não decorre logicamente das premissas apresentadas, mesmo que
+    cada premissa isolada seja verdadeira.
+  - *Petição de princípio*: a conclusão já está pressuposta numa das premissas, disfarçada de
+    dedução independente.
+  - *Falso dilema*: apresentar duas opções como exaustivas ("ou X ou Y") quando existe uma
+    terceira alternativa não considerada.
+- **Validade vs. solidez.** Um argumento pode ser formalmente válido (a conclusão decorre das
+  premissas) mas não sólido (uma premissa é falsa). Toda vez que o texto usa um conectivo
+  conclusivo ("logo", "portanto", "consequentemente", "isso implica"), checar se a premissa
+  anterior é factualmente estabelecida (número real, citação real, já verificada) ou apenas
+  assumida sem verificação — reconectar com o protocolo anti-fabricação de citações já em uso
+  neste projeto.
+- **Consistência lógica entre seções.** Uma conclusão do Resumo ou da Conclusão contradiz,
+  enfraquece silenciosamente, ou generaliza além do que a evidência da seção de Resultados
+  sustenta? Isto vai além de "inconsistência de número" (Passo 2, item 5): é sobre a força da
+  afirmação bater com a força da evidência, não apenas os números baterem entre si.
+- **Contrafactual do revisor cético.** Para cada conclusão forte do trabalho, formular
+  explicitamente: "que evidência, se existisse, refutaria isto?" Se a resposta for "nenhuma
+  evidência plausível refutaria", a claim está infalsificável demais para ciência — reformular
+  para algo que um experimento poderia de fato derrubar.
+
 ## Passo 3 — idiossincrasias de texto gerado por IA (além do que o script pega)
 
 - **Antítese "X, não Y" em excesso** (mais de 5-6 no documento): é a assinatura mais delatora de
@@ -116,6 +155,33 @@ ablação/baseline que sumiu? Existe seção metodológica que só existe na ver
 de honestidade/limitação que contextualizava um resultado e desapareceu, deixando a claim nua e
 mais forte do que os dados sustentam?
 
+## Passo 5 — fluidez narrativa extrema
+
+Diferente dos passos anteriores (auditoria/detecção), este é um passo de reescrita ativa.
+Aplicar por último, depois de toda correção de conteúdo/lógica/gramática estar fechada — reescrever
+fluência antes disso desperdiça trabalho em texto que ainda vai mudar de número ou estrutura.
+
+- **Variação de abertura de frase.** Nenhuma frase deveria abrir com a mesma palavra ou estrutura
+  sintática da frase imediatamente anterior dentro do mesmo parágrafo ("O critério mede... O
+  critério também..." → variar o sujeito ou a construção da segunda frase).
+- **Ritmo de leitura.** Alternar deliberadamente frases curtas (fecho de ideia, ênfase) com
+  frases longas (desenvolvimento, encadeamento de causas). Um parágrafo inteiro de frases de
+  comprimento semelhante, lido em voz alta, soa mecânico mesmo estando gramaticalmente perfeito.
+- **Transição implícita antes de explícita.** Preferir que a relação lógica entre duas frases
+  fique clara pela própria ordem das ideias e escolha de palavras; recorrer a conectivo explícito
+  ("portanto", "logo", "dessa forma") só quando a relação não é óbvia sem ele. Conectivo em toda
+  frase é sintoma de insegurança do texto, não de rigor — e é um dos traços mais delatores de
+  prosa gerada por IA.
+- **Uma ideia por parágrafo.** Se um parágrafo muda de assunto no meio, quebrar em dois. Se dois
+  parágrafos adjacentes tratam do mesmo ponto sem avançar o argumento, fundir — mesma lógica já
+  aplicada nas fusões de seções redundantes deste tipo de relatório.
+- **Leitura em voz alta mental.** Para cada parágrafo revisado, simular a leitura em voz alta:
+  qualquer trecho que exigiria pausar e reler para entender não está fluente, mesmo que
+  gramaticalmente correto e factualmente preciso.
+- **Critério de aceitação.** O texto deveria soar como um artigo publicado, escrito por um autor
+  humano experiente na área, não como uma lista de fatos verdadeiros concatenados por conectivos.
+  Se ao ler em voz alta o texto soa "correto mas robótico", ainda não passou neste passo.
+
 ## Padrão-ouro de referência (não reinventar métrica que já existe)
 
 Para trabalhos de seleção entre planejadores/algoritmos por característica do problema, o campo
@@ -141,3 +207,8 @@ weighted by Completion Time, melhor ajuste quando a tese é sobre custo/tempo).
       reformulação que promete algo (ex. "prova teórica") nunca entregue no corpo
 - [ ] Zero travessão em prosa (regra deste projeto); antítese "X, não Y" usada com moderação
 - [ ] O achado mais forte do trabalho resiste à pergunta adversarial mais óbvia sobre ele
+- [ ] Toda conclusão forte tem premissa e evidência a até 2-3 linhas de distância; nenhuma
+      falácia (generalização apressada, post hoc, non sequitur, petição de princípio, falso
+      dilema) sobrevive à reconstrução do silogismo implícito
+- [ ] Nenhuma claim é infalsificável ao ponto de nenhuma evidência plausível poder refutá-la
+- [ ] Lido em voz alta (mentalmente), nenhum parágrafo soa mecânico ou exige pausa para reler

@@ -19,6 +19,25 @@ ADJETIVOS_VAZIOS = [
     "natural", "confiável", "estável",
 ]
 
+CONECTIVOS_CLICHE = [
+    "além disso", "dessa forma", "desse modo", "nesse sentido", "nesta perspectiva",
+    "vale ressaltar que", "é importante notar que", "é importante destacar que",
+    "cabe destacar que", "cumpre destacar que", "não obstante", "ademais",
+]
+
+TRANSICOES_VAZIAS = [
+    "isso significa que", "em outras palavras", "dito de outra forma",
+    "ou seja, isso implica", "posto de outra maneira",
+]
+
+ADJETIVOS_COORDENADOS_SUSPEITOS = [
+    (r"robust\w+ e eficient\w+", "robusto e eficiente"),
+    (r"clar\w+ e concis\w+", "claro e conciso"),
+    (r"rigoros\w+ e reproduz[íi]v\w+", "rigoroso e reprodutível"),
+    (r"simples e direto", "simples e direto"),
+    (r"amplo e abrangente", "amplo e abrangente"),
+]
+
 
 def contar(pattern: str, texto: str, flags=0) -> list[tuple[int, str]]:
     achados = []
@@ -40,7 +59,10 @@ def check_travessao(texto: str):
 
 
 def check_antitese(texto: str):
-    pattern = r"não apenas .+?,? mas|não só .+?,? mas|, não .{3,40}(?:,|\.|;)"
+    pattern = (
+        r"não apenas .+?,? mas|não só .+?,? mas|, não .{3,40}(?:,|\.|;)"
+        r"|não é apenas .{3,40},? é "
+    )
     achados = contar(pattern, texto, re.IGNORECASE)
     print(f"\n=== Padrão antitético \"X, não Y\": {len(achados)} ocorrências ===")
     print("Traço de escrita LLM quando usado em excesso (>5-6 no documento todo).")
@@ -72,6 +94,93 @@ def check_negrito_abertura(texto: str):
     print(f"\n=== Negrito abrindo parágrafo (bullet disfarçado de prosa): {len(achados)} ===")
     for ln, txt in achados[:10]:
         print(f"  L{ln}: {txt[:90]}")
+
+
+def check_conectivos_cliche(texto: str):
+    print(f"\n=== Conectivos de abertura clichê: limite de referência >8 no documento ===")
+    total = 0
+    achados_por_termo = {}
+    for termo in CONECTIVOS_CLICHE:
+        achados = contar(re.escape(termo), texto, re.IGNORECASE)
+        if achados:
+            achados_por_termo[termo] = achados
+            total += len(achados)
+    for termo, achados in achados_por_termo.items():
+        print(f"  \"{termo}\": {len(achados)} ocorrência(s)")
+        for ln, txt in achados[:3]:
+            print(f"    L{ln}: {txt[:90]}")
+    print(f"  Total: {total} ({'ACIMA do limite de referência' if total > 8 else 'dentro do esperado'})")
+
+
+def check_transicoes_vazias(texto: str):
+    print("\n=== Transições vazias (reformulação redundante do que já foi dito) ===")
+    total = 0
+    for termo in TRANSICOES_VAZIAS:
+        achados = contar(re.escape(termo), texto, re.IGNORECASE)
+        for ln, txt in achados:
+            total += 1
+            print(f"  L{ln} [\"{termo}\"]: {txt[:90]}")
+    if total == 0:
+        print("  Nenhuma encontrada.")
+    else:
+        print(f"  Total: {total}")
+
+
+def check_adverbios_mente(texto: str):
+    palavras = re.findall(r"\b\w+\b", texto)
+    n_palavras = len(palavras) or 1
+    achados_mente = re.findall(r"\b\w+mente\b", texto, re.IGNORECASE)
+    taxa_por_mil = len(achados_mente) / n_palavras * 1000
+    print(f"\n=== Advérbios em \"-mente\": {len(achados_mente)} ocorrências "
+          f"({taxa_por_mil:.1f} por 1000 palavras) ===")
+    print("  Referência: acima de ~6-8/1000 palavras costuma indicar prosa inflada.")
+    contagem = {}
+    for a in achados_mente:
+        contagem[a.lower()] = contagem.get(a.lower(), 0) + 1
+    mais_comuns = sorted(contagem.items(), key=lambda x: -x[1])[:10]
+    for palavra, n in mais_comuns:
+        print(f"  {palavra}: {n}")
+
+
+def check_adjetivos_coordenados(texto: str):
+    print("\n=== Pares de adjetivos coordenados redundantes (duplicação de qualificador) ===")
+    total = 0
+    for pattern, label in ADJETIVOS_COORDENADOS_SUSPEITOS:
+        achados = contar(pattern, texto, re.IGNORECASE)
+        for ln, txt in achados:
+            total += 1
+            print(f"  L{ln} [{label}]: {txt[:90]}")
+    if total == 0:
+        print("  Nenhum encontrado.")
+
+
+def check_densidade_paragrafo(texto: str, path: Path):
+    """Desvio padrão do tamanho de parágrafo (em palavras) — texto gerado tende a ter
+    parágrafos de tamanho muito uniforme; texto humano varia mais."""
+    if path.suffix == ".tex":
+        blocos = re.split(r"\n\s*\n", texto)
+    else:
+        blocos = re.split(r"\n\s*\n", texto)
+    tamanhos = []
+    for b in blocos:
+        limpo = re.sub(r"\\[a-zA-Z]+(\{[^}]*\})?", " ", b)
+        limpo = re.sub(r"[%].*", "", limpo)
+        n = len(re.findall(r"\b\w+\b", limpo))
+        if n >= 15:
+            tamanhos.append(n)
+    print(f"\n=== Densidade de parágrafo (uniformidade de tamanho) ===")
+    if len(tamanhos) < 3:
+        print("  Poucos parágrafos substanciais para calcular variação.")
+        return
+    media = sum(tamanhos) / len(tamanhos)
+    variancia = sum((t - media) ** 2 for t in tamanhos) / len(tamanhos)
+    desvio = variancia ** 0.5
+    cv = desvio / media if media else 0
+    print(f"  {len(tamanhos)} parágrafos substanciais (>=15 palavras); "
+          f"média={media:.0f} palavras, desvio-padrão={desvio:.0f}, "
+          f"coeficiente de variação={cv:.2f}")
+    print("  Referência: CV < 0.35 sugere parágrafos artificialmente uniformes "
+          "(texto humano bem escrito costuma variar mais).")
 
 
 def check_meta_comentario(texto: str):
@@ -139,6 +248,11 @@ def main():
     check_travessao(texto)
     check_antitese(texto)
     check_adjetivos_vazios(texto)
+    check_adverbios_mente(texto)
+    check_conectivos_cliche(texto)
+    check_transicoes_vazias(texto)
+    check_adjetivos_coordenados(texto)
+    check_densidade_paragrafo(texto, path)
     check_negrito_abertura(texto)
     check_meta_comentario(texto)
     check_citacoes_orfas_tex(texto, path)

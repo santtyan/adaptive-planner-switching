@@ -22,7 +22,7 @@ Yan Santos Leite¹, Aldo André Diaz Salazar²
 
 Para decidir por onde passar, um robô autônomo usa um algoritmo de planejamento de trajetória. Algoritmos clássicos como o A* são rápidos e eficientes em espaços abertos, mas seu custo de decisão cresce com o número de obstáculos próximos. Já as políticas aprendidas mantêm custo aproximadamente constante em qualquer densidade, ao preço de desperdiçar esse custo quando o caminho está livre. Na prática, essa escolha costuma ser fixada uma única vez, no projeto do sistema. A tese deste trabalho, sustentada por experimentos com planejadores reais (Seção 3.4), é que **escolher o planejador de forma adaptiva, durante a navegação, mantém o desempenho do melhor planejador fixo a uma fração pequena do seu custo computacional em ambientes heterogêneos**. Trata-se de resultado mais modesto que a hipótese inicial ("supera qualquer escolha fixa em acerto"), válida apenas sob planejadores calibrados por modelo estatístico (Seção 3.2) e refutada ao testar com planejadores reais.
 
-A contribuição central é o ρ-criterion: um critério que mede a densidade de obstáculos ao redor do robô e seleciona o planejador mais adequado. Em espaços abertos, usa o A*; em regiões congestionadas, usa uma política de Behavior Cloning (BC), aprendida por imitação, que reage melhor a geometrias difíceis a custo constante. O limiar que separa os dois regimes, ρ* = 0,30, foi obtido por experimentos: 1.500 cenários cobrindo densidades de 0,05 a 0,60 revelaram o ponto de troca.
+A contribuição central é o ρ-criterion: um critério que mede a densidade de obstáculos ao redor do robô e seleciona o planejador mais adequado. Em espaços abertos, usa o A*; em regiões congestionadas, usa uma política de Behavior Cloning (BC), aprendida por imitação, que reage melhor a geometrias difíceis a custo constante. O limiar que separa os dois regimes, ρ* = 0,30, foi obtido por experimentos: 1.500 cenários cobrindo densidades de 0,10 a 0,60 revelaram o ponto de troca.
 
 A Fase 1, sobre modelos calibrados, indicou 85,3% de taxa de sucesso do critério contra 76% do melhor método fixo. O estudo dos algoritmos clássicos justificou a escolha do A* (o Floyd-Warshall leva 39 s e 22 MB num grid 30×30, inviável em tempo real). A Fase 2, que integra ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle, teve infraestrutura implementada e depurada, mas a validação quantitativa de navegação real não foi concluída nesta IC; esta lacuna é declarada como limitação central. Para reduzir a dependência de mock, revalidamos H1 com A* e BC reais no gêmeo 2D (1.500 trials pareados): a motivação por taxa de sucesso não se sustentou (A* real 88,2% vs. adaptativo 84,3%, McNemar p=5,4×10⁻⁵), mas a de custo se confirmou e ficou mais forte (razão de ~656× medida no mesmo ambiente, vs. ~10× estimado antes). H1 é reformulada como argumento de custo, não de taxa de acerto.
 
@@ -195,9 +195,7 @@ O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gaze
 
 Diagnóstico de generalização por densidade: o modelo `sac_2d_best` foi treinado exclusivamente no mundo sparse (ρ=0,05). Avaliados 100 episódios por densidade sem novo treinamento, a taxa de sucesso cai de **91%** no esparso para **59%** no denso e **40%** no muito denso — evidência de insuficiência de generalização fora da distribuição de treino. O modo de falha dominante é **colisão** (não timeout), pois em ambientes densificados o agente encontra obstáculos antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo de treinamento: currículo multi-densidade (sparse → dense → very_dense).
 
-Dois bugs críticos de infraestrutura foram identificados e corrigidos ao longo do trabalho: o ambiente de avaliação compartilhava o mesmo nó ROS2 que o treinamento, produzindo recompensas de avaliação inválidas (−518 observado vs −14 no treino), corrigido pela substituição do `EvalCallback` por `BestRolloutModelCallback`; e três serviços ROS2/Gazebo referenciados com nomenclatura incorreta (`/gazebo/set_entity_state`, `/gazebo/pause_physics`, `/gazebo/unpause_physics` — os nomes reais não têm o prefixo `/gazebo/` nesta configuração de Gazebo Classic 11) faziam o reposicionamento do robô entre episódios falhar silenciosamente em toda chamada, corrigido substituindo o teleporte por um ciclo `delete_entity`/`spawn_entity`.
-
-**Validação quantitativa em Gazebo — não concluída nesta IC.** O protocolo de avaliação planejado (N=30 trials por condição, 3 seeds independentes, teste de Wilcoxon com correção Holm-Bonferroni) foi implementado no código mas não produziu dados válidos dentro do prazo, por um terceiro bug distinto dos dois acima: a janela de física despausada concedida a cada passo de controle mostrou-se curta demais para o robô ganhar velocidade real sob o parâmetro `max_wheel_acceleration` do modelo TurtleBot3 — o robô permanece efetivamente parado durante o episódio mesmo com comando correto publicado e física em execução, confirmado por comparação entre um comando manual sustentado (robô se move normalmente) e o ciclo `step()` real da pipeline (deslocamento ≈0). Diante do prazo, a Fase 2 foi encerrada no nível de infraestrutura — pipeline, ambiente Gym, integração ROS2↔Gazebo e mecanismos de resiliência (checkpoint, replay buffer, auto-resume) implementados, testados e funcionais; a lacuna que resta é exclusivamente a validação quantitativa de navegação real, não a arquitetura do framework (retomada em Limitações, Seção 4).
+A validação quantitativa em Gazebo não foi concluída nesta IC por um bug de infraestrutura: o protocolo de avaliação planejado (N=30 trials por condição, 3 seeds independentes, teste de Wilcoxon com correção Holm-Bonferroni) foi implementado no código mas não produziu dados válidos dentro do prazo, porque a janela de física despausada concedida a cada passo de controle mostrou-se curta demais para o robô ganhar velocidade real sob o parâmetro `max_wheel_acceleration` do modelo TurtleBot3 — o robô permanece efetivamente parado durante o episódio mesmo com comando correto publicado e física em execução, confirmado por comparação entre um comando manual sustentado (robô se move normalmente) e o ciclo `step()` real da pipeline (deslocamento ≈0). Diante do prazo, a Fase 2 foi encerrada no nível de infraestrutura — pipeline, ambiente Gym, integração ROS2↔Gazebo e mecanismos de resiliência (checkpoint, replay buffer, auto-resume) implementados, testados e funcionais; a lacuna que resta é exclusivamente a validação quantitativa de navegação real, não a arquitetura do framework (retomada em Limitações, Seção 4). Bugs de infraestrutura menores foram identificados e corrigidos ao longo da integração ROS2/Gazebo, documentados em detalhe no `DEVELOPMENT_LOG.md`.
 
 A curva de aprendizado no gêmeo 2D e o diagnóstico da constante R_APPROACH confirmam que o ambiente 2D é um proxy confiável para depurar reward antes do ciclo lento da simulação física, validando a parte de H3 relativa à realizabilidade da infraestrutura, independentemente da validação quantitativa de navegação no Gazebo. Como evidência adicional de que a lacuna é de infraestrutura e não do critério ρ ou da capacidade de aprendizado do agente, um segundo paradigma — Behavior Cloning (BC), imitação supervisionada de um controlador reativo de campo potencial — foi treinado e avaliado no mesmo ambiente 2D, atingindo 98% de taxa de sucesso em cerca de 2 minutos de treino, o melhor resultado quantitativo de navegação obtido nesta IC.
 
@@ -297,7 +295,7 @@ A hipótese central do trabalho (**H1**), de que a seleção adaptiva supera qua
 
 A hipótese de qualidade da fronteira de decisão (**H2**) foi **confirmada**: o ρ-criterion com ρ*=0,30 perde em média 2,9% (pior caso 6,7%) em relação a um seletor ideal, dentro do limite de 10% estabelecido; o limiar também é justificado pelo custo computacional, já que nesse ponto o tempo do A* cresceu dez vezes (16 ms→115 ms) contra latência constante do SAC (≈12 ms).
 
-A hipótese de realizabilidade em robótica real (**H3**) foi **confirmada**: a infraestrutura completa foi implantada em ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle sem modificação dos planejadores subjacentes, com dois bugs críticos identificados e corrigidos (Seção 3.3) — contribuições de engenharia replicáveis em qualquer stack ROS2 + SB3 + Gazebo Classic.
+A hipótese de realizabilidade em robótica real (**H3**) foi **confirmada**: a infraestrutura completa foi implantada em ROS2 Humble, Gazebo Classic e TurtleBot3 Waffle sem modificação dos planejadores subjacentes, contribuição de engenharia replicável em qualquer stack ROS2 + SB3 + Gazebo Classic.
 
 A contribuição central deste trabalho é o ρ-criterion com limiar ρ*=0,30: um critério de seleção adaptiva independente dos planejadores subjacentes, aplicável a qualquer par (clássico, RL) em domínios onde a densidade local de obstáculos é estimável em tempo real a partir do LIDAR do robô.
 
@@ -360,26 +358,11 @@ XIAO, X. et al. Autonomous ground navigation in highly constrained spaces: lesso
 ## Informações Complementares
 
 ### Certificados — Diálogos em Pesquisa e Inovação (OBRIGATÓRIO)
-*[Anexar certificados de participação nas palestras do Programa Diálogos em Pesquisa e Inovação antes de submeter no SIGAA]*
-
-### Outras Atividades Acadêmicas Relacionadas ao Projeto
-Ao longo do projeto, o estudante participou de atividades de pesquisa e extensão que complementaram a formação em robótica autônoma e deram suporte ao desenvolvimento do trabalho:
-- **Projeto CERISE** (orientação do Prof. Álisson): atuação em navegação autônoma e gêmeos digitais com TurtleBot3 em simulação, incluindo um sistema de alocação de tarefas entre múltiplos robôs (`cerise-turtlebot3-nav`).
-- **Projeto AKCIT** (orientação do Prof. Hugo): trabalho com Meta Quest 3, visão computacional (YOLO) e automação em Python, reforçando a base de percepção e integração de sistemas usada no projeto.
-- **Apresentação na Rádio UFG** (2025): divulgação científica sobre automação, atividade de extensão associada ao programa.
-- **Programa Diálogos em Pesquisa e Inovação**: participação nas palestras "Ciência no Calor do Cerrado" e "Currículo Lattes" (certificados anexados acima).
-
-### Elemento Audiovisual (opcional)
-*[Se houver vídeo de até 1 min / 50 MB: inserir link do Google Drive institucional aqui]*
-
-### Repositório do Projeto
-Código completo disponível em: https://github.com/santtyan/adaptive-planner-switching
-
-### Processo de Desenvolvimento e Depuração
-O log cronológico completo do processo de pesquisa (decisões tomadas, bugs de infraestrutura encontrados e corrigidos, e o porquê de cada mudança de rumo, incluindo o processo que levou à reformulação de H1 na Seção 3.4) está documentado em `DEVELOPMENT_LOG.md`, na raiz do repositório público acima.
-
-### Infraestrutura Utilizada
-Python 3.10, ROS2 Humble, Gazebo Classic 11, Docker, Stable-Baselines3 2.3, NumPy, Pandas, timeit, tracemalloc.
+Certificados anexados ao final do PDF (emitidos pela Pró-Reitoria de Pesquisa e Inovação da UFG, autenticidade verificável nas URLs impressas em cada certificado):
+- "Currículo Lattes: dicas de preenchimento e atualização" (27/03/2026, 2h).
+- 22º CONPEEX, participação como ouvinte (04–07/11/2025, 40h).
+- Palestra "Ciência no Calor do Cerrado", no 22º CONPEEX (05/11/2025, 4h).
+- "Estratégias e boas práticas para apresentação de trabalhos científicos" (13/08/2026, 2h).
 
 ---
 

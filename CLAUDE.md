@@ -65,9 +65,14 @@ Figuras: cada `eval/env2d/plot_*.py` gera uma figura específica. Comando por fi
   resumo/PDF) e as armadilhas específicas deste repo (`.md` é fonte da verdade, `.tex` é o que
   compila para o PDF do SIGAA). Inclui `scripts/check_formato.py`.
 - `.claude/skills/revisao-critica-relatorio/` — revisão crítica linha-por-linha padrão banca de
-  prêmio (decisões arbitrárias sem justificativa, afirmação sem fonte, idiossincrasias de texto
-  gerado por IA). Inclui `scripts/check_ai_tics.py`, detector determinístico de travessão,
-  antítese "X, não Y", bibliografia órfã e hardware não declarado.
+  prêmio: decisões arbitrárias sem justificativa, afirmação sem fonte, rigor lógico-argumentativo
+  (cadeia premissa→evidência→conclusão, falácias comuns), fluidez narrativa extrema, e
+  idiossincrasias de texto gerado por IA. Inclui `scripts/check_ai_tics.py` (detector
+  determinístico: travessão, antítese "X, não Y", adjetivo vazio, advérbio em "-mente",
+  conectivo clichê, densidade de parágrafo uniforme, bibliografia órfã, hardware não declarado).
+  Também publicada em [github.com/santtyan/skills](https://github.com/santtyan/skills) (repo
+  próprio para reuso fora deste projeto) — **sem sincronização automática**: melhorias feitas
+  aqui não propagam para lá sozinhas, e vice-versa.
 
 Docker: serviço `train-all` roda Gazebo e treino no **mesmo** container de propósito — os serviços
 separados `gazebo`+`benchmark` sofrem timeout de descoberta DDS entre containers (bug de infra
@@ -117,6 +122,19 @@ página no PIP/UFG) a deletar.
 
 **Sem `Co-Authored-By: Claude`** ou qualquer atribuição ao Claude em mensagens de commit.
 
+**Certificados obrigatórios do PIP/UFG são anexados via `\includepdf`, não texto solto.** Os
+PDFs de certificado (Programa Diálogos em Pesquisa e Inovação) vivem em `paper/certificados/` e
+são embutidos no `relatorio_final_pip.tex` com `\usepackage{pdfpages}` +
+`\includepdf[pages=-,fitpaper=true]{certificados/arquivo.pdf}`. **`pdflatex` sozinho não
+recomprime essas imagens** — o PDF direto da compilação costuma estourar o limite de 2 MB do
+SIGAA mesmo com os certificados de origem já leves. Sempre rodar, depois de compilar:
+```bash
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH \
+  -sOutputFile=relatorio_final_pip.pdf relatorio_final_pip.pdf   # usar arquivo temporário, não sobrescrever a origem direto
+```
+e conferir visualmente uma página de certificado (`pdftoppm -png -r 100 -f N -l N arquivo.pdf out`)
+antes de considerar pronto — `/ebook` preserva legibilidade, mas vale checar.
+
 ## Armadilhas do repositório
 
 - `models/`, `*.log`, `*.pkl` e `overleaf4/` estão no `.gitignore`. Mudanças em modelos treinados
@@ -128,3 +146,7 @@ página no PIP/UFG) a deletar.
 - `paper/overleaf_export/` (fora do git) é a pasta pronta para importar no Overleaf: `.tex` +
   só as figuras usadas. **Precisa ser resincronizada manualmente** a cada mudança em
   `paper/relatorio_final_pip.tex` — não há aviso automático de desatualização.
+- `paper/relatorio_final_pip.pdf` também está no `.gitignore` — **o PDF final nunca é
+  commitado**, só o `.tex` fonte. Antes de qualquer submissão ao SIGAA, gerar o PDF localmente
+  (`pdflatex` 2× + recompressão Ghostscript, ver seção de certificados acima) a partir do `.tex`
+  commitado, nunca assumir que existe uma cópia versionada pronta para usar.

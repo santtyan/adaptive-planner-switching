@@ -36,13 +36,18 @@ def check_pdf(pdf_path: Path):
     size_mb = pdf_path.stat().st_size / (1024 * 1024)
     status = "OK" if size_mb <= 2.0 else "ESTOURA o limite de 2 MB"
     print(f"  Tamanho do PDF: {size_mb:.2f} MB  [{status}]")
-    out = subprocess.run(["pdfinfo", str(pdf_path)], capture_output=True, text=True)
+    out = subprocess.run(["pdftotext", "-layout", str(pdf_path), "-"], capture_output=True, text=True)
     if out.returncode == 0:
-        for line in out.stdout.splitlines():
-            if line.startswith("Pages:"):
-                pages = int(line.split(":")[1].strip())
-                status = "dentro do referencial" if pages <= 15 else "acima de 15 (permitido, mas confirmar necessidade)"
-                print(f"  Páginas: {pages}  [{status}]")
+        pages = out.stdout.split("\f")
+        total_pages = len(pages)
+        corpo_pages = total_pages
+        for i, p in enumerate(pages, 1):
+            if "Informações Complementares" in p:
+                corpo_pages = i - 1
+                break
+        status = "dentro do referencial" if corpo_pages <= 15 else "acima de 15 (permitido, mas confirmar necessidade)"
+        print(f"  Páginas totais do PDF: {total_pages} (inclui certificados/anexos, não contam p/ limite)")
+        print(f"  Páginas de corpo (até antes de Informações Complementares): {corpo_pages}  [{status}]")
 
 def main():
     root = find_repo_root()
@@ -74,10 +79,23 @@ def main():
 
     print("\n=== Certificados Diálogos em Pesquisa e Inovação (OBRIGATÓRIO) ===")
     text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
-    if "[Anexar certificados" in text or "OBRIGATÓRIO" in text:
-        print("  ⚠️  Ainda parece placeholder — confirmar se os certificados foram anexados de fato.")
+    tex_text = tex_path.read_text(encoding="utf-8") if tex_path.exists() else ""
+    placeholder_md = "[Anexar certificados" in text
+    tem_includepdf = "\\includepdf" in tex_text
+    cert_dir = tex_path.parent / "certificados"
+    arquivos_cert = list(cert_dir.glob("*.pdf")) if cert_dir.exists() else []
+    if placeholder_md:
+        print("  ⚠️  .md ainda tem marcador de placeholder ([Anexar certificados...]) — "
+              "substituir pela lista real antes de considerar pronto.")
+    elif tem_includepdf and arquivos_cert:
+        print(f"  OK: {len(arquivos_cert)} PDF(s) de certificado em {cert_dir.name}/, "
+              f"referenciados via \\includepdf no .tex.")
+    elif tem_includepdf and not arquivos_cert:
+        print(f"  ⚠️  .tex usa \\includepdf mas {cert_dir.name}/ não existe ou está vazia — "
+              "a compilação vai falhar ou os certificados não estarão no PDF final.")
     else:
-        print("  Sem marcador de placeholder encontrado (não garante que os arquivos existem).")
+        print("  ⚠️  Nenhum \\includepdf encontrado no .tex — certificados podem estar "
+              "só mencionados em texto, sem PDF de fato anexado ao documento final.")
 
 if __name__ == "__main__":
     main()
