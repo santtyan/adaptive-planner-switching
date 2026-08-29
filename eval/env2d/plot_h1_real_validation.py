@@ -38,41 +38,43 @@ bc_sr = [df[df.world == w].bc.mean() * 100 for w in worlds]
 astar_cost_ms = [float(np.mean(cost_dist[w]["astar_ms"])) for w in worlds]
 bc_cost_ms = [float(np.mean(cost_dist[w]["bc_ms"])) for w in worlds]
 
-fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+fig, axes = plt.subplots(2, 1, figsize=(8, 11))
 
 ax = axes[0]
 x = np.arange(len(worlds))
 w = 0.35
 ax.bar(x - w/2, astar_sr, w, label="A* (real)", color="#4C72B0")
 ax.bar(x + w/2, bc_sr, w, label="BC (real, casado por densidade)", color="#55A868")
-ax.set_xticks(x); ax.set_xticklabels(labels)
-ax.set_ylabel("Taxa de sucesso (%)")
+ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=13)
+ax.tick_params(axis="y", labelsize=12)
+ax.set_ylabel("Taxa de sucesso (%)", fontsize=14)
 ax.set_ylim(0, 105)
-ax.set_title("(a) Sucesso — A* real permanece à frente em todo regime")
-ax.legend(fontsize=8)
+ax.set_title("(a) Sucesso — A* real permanece à frente em todo regime", fontsize=14)
+ax.legend(fontsize=12)
 for i, (a, b) in enumerate(zip(astar_sr, bc_sr)):
-    ax.text(i - w/2, a + 2, f"{a:.0f}%", ha="center", fontsize=8)
-    ax.text(i + w/2, b + 2, f"{b:.0f}%", ha="center", fontsize=8)
+    ax.text(i - w/2, a + 2, f"{a:.0f}%", ha="center", fontsize=12)
+    ax.text(i + w/2, b + 2, f"{b:.0f}%", ha="center", fontsize=12)
 
 ax = axes[1]
-ax.plot(x, astar_cost_ms, "o-", color="#4C72B0", label="A* (busca completa)", lw=2)
-ax.plot(x, bc_cost_ms, "s-", color="#55A868", label="BC (1 forward pass)", lw=2)
+ax.plot(x, astar_cost_ms, "o-", color="#4C72B0", label="A* (busca completa)", lw=2.5, ms=9)
+ax.plot(x, bc_cost_ms, "s-", color="#55A868", label="BC (1 forward pass)", lw=2.5, ms=9)
 ax.set_yscale("log")
-ax.set_xticks(x); ax.set_xticklabels(labels)
-ax.set_ylabel("Custo de decisão (ms, log)")
+ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=13)
+ax.tick_params(axis="y", labelsize=12)
+ax.set_ylabel("Custo de decisão (ms, log)", fontsize=14)
 ratio_very_dense = astar_cost_ms[-1] / bc_cost_ms[-1]
-ax.set_title(f"(b) Custo — BC ~{ratio_very_dense:.0f}× mais barato em very_dense")
-ax.legend(fontsize=8)
+ax.set_title(f"(b) Custo — BC ~{ratio_very_dense:.0f}× mais barato em very_dense", fontsize=14)
+ax.legend(fontsize=12)
 for i, (a, b) in enumerate(zip(astar_cost_ms, bc_cost_ms)):
-    ax.annotate(f"{a:.1f}ms", (i, a), textcoords="offset points", xytext=(5, 5), fontsize=8)
-    ax.annotate(f"{b:.3f}ms", (i, b), textcoords="offset points", xytext=(5, -12), fontsize=8)
+    ax.annotate(f"{a:.1f}ms", (i, a), textcoords="offset points", xytext=(6, 6), fontsize=12)
+    ax.annotate(f"{b:.3f}ms", (i, b), textcoords="offset points", xytext=(6, -16), fontsize=12)
 
 fig.suptitle("Revalidação de H1 com planejadores REAIS — mesmo ambiente, mesmos trials (09/07/2026)",
-             fontsize=12, fontweight="bold")
+             fontsize=15, fontweight="bold")
 fig.tight_layout()
 
 for ext in ["png", "pdf"]:
     path = os.path.join(FIGS, "2d", f"fig_2d_h1_real_validation.{ext}")
-    fig.savefig(path, dpi=180 if ext == "png" else None, bbox_inches="tight")
+    fig.savefig(path, dpi=300 if ext == "png" else None, bbox_inches="tight")
 plt.close()
 print("Figura salva em paper/figs/2d/fig_2d_h1_real_validation.png/.pdf")

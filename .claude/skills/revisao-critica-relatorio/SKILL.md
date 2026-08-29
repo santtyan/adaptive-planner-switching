@@ -48,6 +48,40 @@ achados em:
    repetição excessiva da mesma expressão, períodos longos demais para leitura corrida,
    personificação vaga ("os cenários revelaram").
 
+## Passo 2b — padrão de gramático sênior da língua portuguesa
+
+Além de coesão/fluidez (item 6 do Passo 2), aplicar rigor de revisor profissional de português,
+frase por frase:
+
+- **Crase**: toda ocorrência de "a" antes de palavra feminina checada por substituição (trocar
+  por masculino: "ao"/"a"?) e por regência do verbo/preposição anterior ("referente à",
+  "em relação à", "devido à" pedem crase; "a partir de" nunca leva).
+- **Regência verbal e nominal**: verbos como "implica" (transitivo direto, sem "em"), "assistir"
+  (sentido de ver = "assistir a"), "visar" (objetivo = "visar a"), preposição exigida por
+  adjetivos ("propenso a", "favorável a") checada uma a uma.
+- **Concordância verbal e nominal em frases longas**: sujeito composto ou intercalado por
+  aposto/parentético é o ponto onde concordância mais quebra ("as taxas de sucesso, medidas em
+  três densidades, revelam" — verbo concorda com "taxas", não com o substantivo mais próximo).
+- **Paralelismo sintático em enumerações**: itens de uma lista ou oração com "e"/"ou" devem ter
+  a mesma estrutura gramatical (todos substantivos, todos infinitivos, todos adjetivos) — não
+  misturar "implementar X, avaliação de Y e testar Z".
+- **Colocação pronominal**: próclise após palavra atrativa (não, que, quando, quem), ênclise em
+  início de oração; evitar mesóclise (não cabe em prosa científica) e próclise incorreta após
+  pausa forte (ponto, ponto e vírgula).
+- **Pontuação de orações intercaladas e explicativas**: aposto e oração explicativa entre
+  vírgulas (nunca apenas uma vírgula de abertura sem a de fechamento); ponto e vírgula para
+  separar orações longas já pontuadas internamente com vírgula, não vírgula simples.
+- **Ambiguidade referencial**: pronome ou elipse cujo antecedente pode ser mais de um substantivo
+  na frase anterior ("o critério supera o método fixo, que não generaliza" — "que" refere-se a
+  qual dos dois?).
+- **Registro formal consistente**: nada de coloquialismo, gíria técnica não glossada na primeira
+  ocorrência, ou mistura de registro entre seções (uma seção em tom de manual, outra em tom de
+  ensaio).
+
+O padrão de aceitação é o de um gramático profissional revisando um texto para publicação, não
+"compreensível" ou "sem erro grosseiro": toda frase deveria sobreviver à leitura de um revisor de
+prova de editora acadêmica sem marcação.
+
 ## Passo 3 — idiossincrasias de texto gerado por IA (além do que o script pega)
 
 - **Antítese "X, não Y" em excesso** (mais de 5-6 no documento): é a assinatura mais delatora de

@@ -232,9 +232,9 @@ def plot_heatmap(world: str = "dense"):
     RHO_STAR = 0.30
     decision = (rho_grid >= RHO_STAR).astype(float)  # 0=A*, 1=BC
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(2, 1, figsize=(7, 12))
 
-    # Painel esquerdo: densidade local
+    # Painel superior: densidade local
     im1 = axes[0].imshow(rho_grid, origin="lower",
                          extent=[-half, half, -half, half],
                          cmap="YlOrRd", vmin=0, vmax=1, aspect="equal")
@@ -246,7 +246,7 @@ def plot_heatmap(world: str = "dense"):
     axes[0].set_title(f"(a) Densidade local $\\rho(x,y)$ — {world}", fontsize=11)
     axes[0].set_xlabel("x (m)"); axes[0].set_ylabel("y (m)")
 
-    # Painel direito: decisão A*/BC
+    # Painel inferior: decisão A*/BC
     cmap_dec = matplotlib.colors.ListedColormap(["#2196F3", "#E91E63"])
     im2 = axes[1].imshow(decision, origin="lower",
                          extent=[-half, half, -half, half],
@@ -259,18 +259,20 @@ def plot_heatmap(world: str = "dense"):
     ]
     axes[1].legend(handles=legend_patches, loc="upper right", fontsize=9)
     axes[1].set_title(f"(b) Decisão $\\pi(\\rho)$ — $\\rho^*={RHO_STAR}$", fontsize=11)
-    axes[1].set_xlabel("x (m)")
+    axes[1].set_xlabel("x (m)"); axes[1].set_ylabel("y (m)")
     axes[1].text(0.02, 0.02,
                  f"$\\rho^* = {RHO_STAR}$ → {decision.mean():.0%} BC",
                  transform=axes[1].transAxes, fontsize=9, color="white",
                  bbox=dict(boxstyle="round", facecolor="black", alpha=0.5))
+    cbar2 = plt.colorbar(im2, ax=axes[1])
+    cbar2.ax.set_visible(False)
 
     fig.suptitle("Heatmap do critério $\\rho$: onde A* e BC são ativados",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
     for ext in ["png", "pdf"]:
         plt.savefig(os.path.join(FIGS2D, f"fig_2d_heatmap_{world}.{ext}"),
-                    dpi=150 if ext == "png" else None, bbox_inches="tight")
+                    dpi=300 if ext == "png" else None, bbox_inches="tight")
     plt.close()
     print(f"  ✓ 2d/fig_2d_heatmap_{world}.png")
 

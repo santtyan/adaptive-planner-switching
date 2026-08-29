@@ -40,6 +40,6 @@ fig.suptitle("RL independente vs. MARL centralizado (reward compartilhada) — N
 fig.tight_layout()
 for ext in ["png", "pdf"]:
     fig.savefig(os.path.join(FIGS, f"fig_marl_shared_reward_comparison.{ext}"),
-                dpi=180 if ext == "png" else None, bbox_inches="tight")
+                dpi=300 if ext == "png" else None, bbox_inches="tight")
 plt.close()
 print("Figura salva em paper/figs/marl/fig_marl_shared_reward_comparison.png/.pdf")

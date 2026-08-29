@@ -113,7 +113,7 @@ def plot_degradation(df, out):
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(Path(out) / f"fig_marl_motivation_degradation_2d.{ext}",
-                    dpi=150, bbox_inches="tight")
+                    dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  ✓ fig_marl_motivation_degradation_2d.png")
 
@@ -141,7 +141,7 @@ def plot_summary(df, out):
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(Path(out) / f"fig_marl_motivation_summary_2d.{ext}",
-                    dpi=150, bbox_inches="tight")
+                    dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  ✓ fig_marl_motivation_summary_2d.png")
 
@@ -179,7 +179,7 @@ def plot_snapshot(model, world, n_agents, out, seed=2):
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(Path(out) / f"fig_2d_multiagent_snapshot.{ext}",
-                    dpi=150, bbox_inches="tight")
+                    dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  ✓ fig_2d_multiagent_snapshot.png")
 
@@ -208,7 +208,7 @@ def plot_degradation_by_density(dfs_by_world, out):
     fig.tight_layout()
     for ext in ("png", "pdf"):
         fig.savefig(Path(out) / "marl" / f"fig_marl_degradation_by_density_2d.{ext}",
-                    dpi=150, bbox_inches="tight")
+                    dpi=300, bbox_inches="tight")
     plt.close(fig)
     print("  ✓ marl/fig_marl_degradation_by_density_2d.png")
 

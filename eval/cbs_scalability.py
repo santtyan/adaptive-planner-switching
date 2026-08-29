@@ -199,7 +199,7 @@ def main():
     ax.legend(fontsize=9)
 
     plt.tight_layout()
-    plt.savefig(OUT_PNG, dpi=150, bbox_inches="tight")
+    plt.savefig(OUT_PNG, dpi=300, bbox_inches="tight")
     plt.savefig(OUT_PNG.replace(".png", ".pdf"), bbox_inches="tight")
     print(f"\nSalvo: {OUT_PNG}")
     plt.close()

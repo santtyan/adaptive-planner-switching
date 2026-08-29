@@ -22,9 +22,13 @@ Framework adaptativo para seleção dinâmica de planejador de trajetória com b
 **Isso substitui uma formulação anterior** ("o critério supera qualquer método fixo em taxa de
 acerto"), que não se sustentou quando os planejadores mock foram trocados por implementações
 reais (ver [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md), Fase 6). Com dados reais, o A\* vence o
-critério adaptativo em acerto puro (88,2% vs. 84,3%, n=1.500), mas paga ~2,5× mais em custo de
-decisão por episódio (21,19 ms vs. 8,60 ms). A tese hoje é sobre **custo**, não sobre superar em
-acerto — todo texto e slide atual reflete essa correção.
+critério adaptativo em acerto puro (88,2% vs. 84,3%, n=1.500), mas o BC mantém custo de decisão
+~656× menor que o A\* em alta densidade (0,045 ms vs. 29,21 ms, medido no mesmo ambiente). A tese
+hoje é sobre **custo**, não sobre superar em acerto — todo texto atual reflete essa correção.
+⚠️ **Nota (29/08/2026):** um número de "custo do próprio ρ-criterion" (8,60 ms/episódio) que
+circulava em slides antigos **não tem instrumentação real no código** — nenhum script mede esse
+tempo de fato (ver nota em `eval/env2d/plot_pareto_success_vs_cost.py`); não usar esse valor até
+a Etapa de instrumentação ser concluída.
 
 ```
 π(ρ₀) = { A*  (clássico, Nav2 SmacPlanner2D / grid A*)   se ρ₀ < 0,30
@@ -140,7 +144,7 @@ Esta é a tabela para responder "onde está o script de X" na hora, sem precisar
 │   ├── relatorio_final_pip.tex  # mesmo conteúdo, formato PDF
 │   └── lafusion_2026_draft.md   # rascunho do artigo para submissão LAFusion 2026
 │
-├── overleaf2/apresentacao/      # slide de reunião com o orientador (.tex, Beamer/metropolis)
+├── overleaf4/apresentacao/      # slide de reunião com o orientador (.tex, Beamer/metropolis)
 ├── docs/
 │   ├── relatorio_parcial.md     # relatório parcial já aprovado (01/04/2026) — narrativa anterior (RRT*/PPO)
 │   └── PLANO_CORRECAO.md        # auditoria que motivou a correção da tese (de "supera" para "empata a custo menor")
@@ -168,10 +172,10 @@ Esta é a tabela para responder "onde está o script de X" na hora, sem precisar
 | **Parecer do Consultor SIGAA** (13/06/2025) | Exige comparação com implementações **otimizadas** dos clássicos, não didáticas | Respondido em `paper/relatorio_final_pip.md`, Seção 2.1 |
 | **Relatório Parcial** | Já aprovado (01/04/2026). Narrativa anterior: RRT\*/PPO, validado com CBS real | `docs/relatorio_parcial.md` |
 | **Relatório Final** | Documento formal para o SIGAA, prazo 31/08/2026. Narrativa atual: A\*/BC/SAC, tese reformulada para custo | `paper/relatorio_final_pip.md` / `.tex` |
-| **Slide de reunião com o orientador** | Deck de trabalho (não defesa), usado para prestar contas e levantar decisões pendentes | `overleaf2/apresentacao/apresentacao_prof_aldo.tex` (⚠️ fora do git, ver nota abaixo) |
+| **Slide de reunião com o orientador** | Deck de trabalho (não defesa), usado para prestar contas e levantar decisões pendentes | `overleaf4/apresentacao/apresentacao_prof_aldo.tex` (⚠️ fora do git, ver nota abaixo) |
 | **Artigo LAFusion 2026** | Submissão para revisão por pares (Springer CCIS), prazo 16/08/2026 | `paper/lafusion_2026_draft.md` |
 
-> **Nota:** `overleaf2/` está no `.gitignore` — mudanças no slide **nunca aparecem em `git status`**.
+> **Nota:** `overleaf4/` está no `.gitignore` — mudanças no slide **nunca aparecem em `git status`**.
 > Se o orientador perguntar sobre uma versão do slide, confirme a data/conteúdo diretamente no
 > arquivo, não pelo histórico do git.
 
