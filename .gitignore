@@ -38,6 +38,7 @@ results/figures/*.pdf
 *.out
 *.toc
 paper/relatorio_final_pip.pdf
+paper/overleaf_export/
 
 # Modelos treinados (grandes)
 *.pkl
