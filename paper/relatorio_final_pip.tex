@@ -257,7 +257,7 @@ Adotamos o vocabulário de \textit{algorithm selection} \cite{Rice1976} para med
 critério: o \textbf{VBS} (\textit{Virtual Best Solver}) é o seletor ideal, o oráculo que, para
 cada instância do problema, conhece de antemão qual planejador teria sucesso e sempre o escolhe;
 o \textbf{SBS} (\textit{Single Best Solver}) é o melhor planejador único fixo em todas as
-instâncias (o A* nas Seções~\ref{sec:h1_real}--\ref{sec:histerese}). O regret do critério
+instâncias (o A* na Seção~\ref{sec:h1_real}). O regret do critério
 adaptivo $\pi$ é a distância ao VBS:
 
 \begin{equation}
@@ -437,12 +437,37 @@ minutos)} no mundo esparso, reproduzível em 3 seeds independentes
 (Figura~\ref{fig:ic_learning_curve}); a Figura~\ref{fig:ic_compare} compara as trajetórias de
 A* (linha reta analítica), BC e política Adaptativa nos três ambientes.
 
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
+    \caption{Curva de aprendizado do SAC (\textit{sparse}), 3 seeds.}
+    \label{fig:ic_learning_curve}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
+    \caption{Trajetórias no ambiente denso: A*, BC e Adaptativo.}
+    \label{fig:ic_compare}
+  \end{subfigure}
+\end{figure}
+
 O ambiente 2D também serviu para diagnosticar por que o treinamento SAC no Gazebo não
 convergia: comparando as constantes de reward entre os dois ambientes, todas coincidiam exceto
 \texttt{R\_APPROACH} (2,0 no Gazebo contra 10,0 no Env2D). Com sobrevivência valendo $+20$ em
 200 passos parado, o bônus de aproximação precisa superar $6{,}67$ para que navegar valha mais
 que ficar parado; com 2,0 o agente aprendia a não se mover. Corrigido para 10,0, o Gazebo
 passou a apresentar episódios estáveis e crescentes (Fig.~\ref{fig:2d_heatmap}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
+  \caption{Mapa de decisão $\rho$-criterion no ambiente denso: azul ($\rho{<}0{,}30$) usa A*,
+           vermelho usa BC.}
+  \label{fig:2d_heatmap}
+\end{figure}
 
 
 Diagnóstico de generalização por densidade. O modelo \texttt{sac\_2d\_best} foi
@@ -456,22 +481,24 @@ antes mesmo de ter tempo de explorar. Este diagnóstico motiva o próximo passo 
 currículo multi-densidade (sparse $\to$ dense $\to$ very\_dense), planejado para quando
 o treino Gazebo liberar recursos computacionais.
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.42\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
+  \caption{Degradação do SAC (treinado só em \textit{sparse}) por densidade $\rho$.}
+  \label{fig:ic_degradation}
+\end{figure}
+
 Dois bugs críticos de infraestrutura foram identificados e corrigidos: o ambiente de avaliação
 compartilhava o nó ROS2 com o treinamento, produzindo recompensas inválidas ($-518$ contra $-14$
 no treino); e três serviços ROS2/Gazebo referenciados com nomenclatura incorreta faziam o
 reposicionamento do robô entre episódios falhar silenciosamente. Ambos estão documentados em
 detalhe no repositório.
 
-\textbf{Validação quantitativa em Gazebo, não concluída nesta IC.} O protocolo planejado
-($N{=}30$ trials/condição, 3 seeds, Wilcoxon com correção Holm-Bonferroni) foi implementado mas
-não produziu dados válidos no prazo, por um terceiro bug: a janela de física despausada por
-passo de controle é curta demais para o robô ganhar velocidade sob o
-\texttt{max\_wheel\_acceleration} do TurtleBot3: o robô permanece parado mesmo com comando
-correto publicado, confirmado por comparação entre comando manual sustentado (move normalmente)
-e o ciclo \texttt{step()} da pipeline (deslocamento $\approx 0$). A Fase~2 foi encerrada no
-nível de infraestrutura: pipeline, ambiente Gym, integração ROS2$\leftrightarrow$Gazebo e
-resiliência (checkpoint, replay buffer, auto-resume) funcionais; a lacuna é exclusivamente a
-validação quantitativa de navegação, não a arquitetura (ver Limitações).
+A validação quantitativa em Gazebo não foi concluída nesta IC por um terceiro bug, distinto dos
+dois acima (detalhado na Limitação~1); a Fase~2 foi encerrada no nível de infraestrutura:
+pipeline, ambiente Gym, integração ROS2$\leftrightarrow$Gazebo e resiliência (checkpoint, replay
+buffer, auto-resume) funcionais, com a lacuna restrita à validação quantitativa de navegação,
+não à arquitetura.
 
 A curva de aprendizado no gêmeo 2D (Figura~\ref{fig:ic_learning_curve}) e o diagnóstico do
 \texttt{R\_APPROACH} confirmam que o ambiente 2D é proxy confiável para depurar reward antes do
@@ -480,6 +507,13 @@ evidência adicional de que a lacuna é de infraestrutura e não do critério $\
 paradigma, \textit{Behavior Cloning} (BC), imitação supervisionada de um controlador de campo
 potencial, atingiu 98\% de sucesso em cerca de 2 minutos de treino no mesmo ambiente, o
 melhor resultado quantitativo de navegação desta IC (Figura~\ref{fig:ic_bc_trajectory}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.36\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
+  \caption{Trajetória do agente BC (\textit{sparse}), gradiente temporal até o goal.}
+  \label{fig:ic_bc_trajectory}
+\end{figure}
 
 Ao longo da IC foram aplicados e comparados quatro paradigmas de aprendizado: planejamento
 clássico determinístico (benchmark real de tempo/memória), RL \textit{single-agent} (SAC,
@@ -561,6 +595,14 @@ por agente, ao contrário do padrão MAPPO \cite{Yu2022}, que mantém pesos comp
 calcula vantagem por agente. O resultado é tratado aqui como preliminar e não confirmado; a
 reformulação de H1 abaixo depende apenas do resultado de custo, não deste achado.
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.42\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
+  \caption{MARL com reward compartilhada, $N{=}4$: resultado preliminar não reproduzido em
+           retreinos posteriores.}
+  \label{fig:ic_marl_shared}
+\end{figure}
+
 \textbf{Reformulação de H1 com esse dado real:} em vez de ``o $\rho$-criterion supera
 qualquer planejador fixo em taxa de sucesso'' (verdadeiro apenas sob os planejadores mock da
 Seção~\ref{sec:validacao_fase1}), a tese sustentada por dados reais é \textbf{``o
@@ -569,10 +611,7 @@ uma fração pequena do seu custo computacional em alta densidade''}, versão ma
 integralmente real e internamente consistente (sucesso e custo medidos no mesmo ambiente,
 mesmos trials), do argumento original de H1+H2.
 
-\subsection{Chattering e Correção por Histerese}
-\label{sec:histerese}
-
-Um limiar único sem zona morta é suscetível a oscilação de decisão (\textit{chattering}) perto
+\textbf{Chattering e correção por histerese.} Um limiar único sem zona morta é suscetível a oscilação de decisão (\textit{chattering}) perto
 de $\rho^*=0{,}30$, defeito clássico de sistemas de controle chaveado \cite{Hespanha2003}, que
 trabalhos recentes de comutação planejador clássico/aprendido continuam a apontar como lacuna
 aberta do campo por não modelarem histerese ou tempo mínimo de permanência entre trocas
@@ -669,6 +708,23 @@ decisão local reativa como domínio do MARL (Fase~3). Para robôs reais, o plan
 ainda precisaria ser convertido em \textit{schedule} cinemático viável, via pós-processamento
 por Grafo de Plano Temporal \cite{Honig2016}.
 
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.42\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/cbs/cbs_scalability.png}
+    \caption{Escalabilidade do CBS (log): timeout já em $N{=}8$.}
+    \label{fig:ic_cbs_scalability}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.54\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
+    \caption{Degradação do RL independente: colisão ${\approx}100\%$ para $N{\geq}5$.}
+    \label{fig:ic_marl_degradation}
+  \end{subfigure}
+\end{figure}
+
 % ============================================================
 \section{Conclusão}
 
@@ -712,13 +768,18 @@ Classic (Seção~\ref{sec:integracao}). (3)~Identificar e testar abordagens de a
 reforço profundo: cumprido, com SAC como principal, CrossQ testado e descartado por baixo
 desempenho, e DDPG substituído por SAC sem teste isolado (Limitações). (4)~Comparar clássicos e
 modernos em tempo de execução e eficiência computacional: cumprido (Tabela~\ref{tab:tempo_memoria}
-e Seção~\ref{sec:h1_real}, incluindo o custo do próprio critério adaptativo medido na
-Seção~\ref{sec:histerese}). (5)~Usar Python, C++, ROS e Gazebo: cumprido parcialmente, com Python
+e Seção~\ref{sec:h1_real}, incluindo o custo do próprio critério adaptativo). (5)~Usar Python, C++, ROS e Gazebo: cumprido parcialmente, com Python
 e C++ (via Nav2/SmacPlanner2D) plenos e Gazebo com infraestrutura completa mas sem a validação
 quantitativa de navegação real (Seção~\ref{sec:integracao}).
 
-\textbf{Limitações.} (1)~A validação com planejadores reais em Gazebo não foi concluída nesta
-IC, por um terceiro bug não resolvido no prazo (Seção~\ref{sec:integracao}); diagnóstico
+\textbf{Limitações.} (1)~A validação quantitativa com planejadores reais em Gazebo não foi
+concluída nesta IC. O protocolo planejado ($N{=}30$ trials/condição, 3 seeds, Wilcoxon com
+correção Holm-Bonferroni) foi implementado, mas não produziu dados válidos no prazo por um
+terceiro bug de infraestrutura (Seção~\ref{sec:integracao}): a janela de física despausada por
+passo de controle é curta demais para o robô ganhar velocidade sob o
+\texttt{max\_wheel\_acceleration} do TurtleBot3, permanecendo parado mesmo com comando correto
+publicado (confirmado por comparação entre comando manual sustentado, que move o robô
+normalmente, e o ciclo \texttt{step()} da pipeline, com deslocamento $\approx 0$); diagnóstico
 registrado para retomada futura. (2)~A motivação original de H1 (taxa de sucesso) não se
 sustenta sob planejadores reais, reformulada como argumento de custo (Seção~\ref{sec:h1_real}):
 o resultado mais citável (85,3\%) permanece calibrado sobre mock, e a versão real é mais
@@ -735,15 +796,12 @@ parcial) e MARL (Fase~3, futuro).
 % ============================================================
 \renewcommand{\refname}{}
 \section*{Referências Bibliográficas}
-\vspace{-2.2em}
 \addcontentsline{toc}{section}{Referências Bibliográficas}
 
 \begin{thebibliography}{99}
-\setlength{\itemsep}{-4pt}
-\setlength{\parskip}{0pt}
-\scriptsize
-\singlespacing
-\setlength{\baselineskip}{9.5pt}
+\setlength{\itemsep}{6pt}
+\setlength{\parskip}{2pt}
+\small
 
 \bibitem{Cormen2022}
 CORMEN, T. H. et al. \textbf{Introduction to Algorithms}. 4.\ ed. Cambridge: MIT Press, 2022.
@@ -838,56 +896,6 @@ from the third BARN Challenge at ICRA 2024. \textbf{IEEE Robotics \& Automation 
 \newpage
 \section*{Informações Complementares}
 \addcontentsline{toc}{section}{Informações Complementares}
-
-\subsection*{Figuras Complementares}
-As figuras a seguir sustentam resultados discutidos no corpo do relatório e são reunidas aqui
-por concisão; os números que elas ilustram estão reportados integralmente nas seções indicadas.
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_heatmap_dense.png}
-    \caption{Mapa de decisão: azul A*, vermelho BC (Seç.~\ref{sec:integracao}).}
-    \label{fig:2d_heatmap}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_learning_curve_ci.png}
-    \caption{Aprendizado do SAC, 3 seeds (Seç.~\ref{sec:integracao}).}
-    \label{fig:ic_learning_curve}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_compare_dense.png}
-    \caption{Trajetórias: A*, BC, adaptativo (Seç.~\ref{sec:integracao}).}
-    \label{fig:ic_compare}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_degradation_singlerobot.png}
-    \caption{Degradação do SAC por densidade (Seç.~\ref{sec:integracao}).}
-    \label{fig:ic_degradation}
-  \end{subfigure}
-
-  \vspace{3pt}
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/2d/fig_2d_bc_trajectory_sparse.png}
-    \caption{Trajetória do agente BC (Seç.~\ref{sec:integracao}).}
-    \label{fig:ic_bc_trajectory}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/cbs/cbs_scalability.png}
-    \caption{CBS: timeout em $N{=}8$ (Seç.~\ref{sec:multiagente}).}
-    \label{fig:ic_cbs_scalability}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/marl/fig_marl_degradation_by_density_2d.png}
-    \caption{RL independente: colisão ${\approx}100\%$, $N{\geq}5$ (Seç.~\ref{sec:multiagente}).}
-    \label{fig:ic_marl_degradation}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.24\textwidth}
-    \centering\includegraphics[width=\textwidth]{figs/marl/fig_marl_shared_reward_comparison.png}
-    \caption{MARL reward compartilhada, resultado preliminar (Seç.~\ref{sec:h1_real}).}
-    \label{fig:ic_marl_shared}
-  \end{subfigure}
-\end{figure}
 
 \subsection*{Certificados: Diálogos em Pesquisa e Inovação}
 Certificados das palestras ``Ciência no Calor do Cerrado'' e ``Currículo Lattes'' anexados a
